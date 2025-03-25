@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Main layout component with header and footer
  */

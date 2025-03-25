@@ -1,8 +1,8 @@
 import { GeistSans } from "geist/font/sans";
 
 export const metadata = {
-  title: "Home",
-  description: "",
+  title: "Car Manual Search",
+  description: "Search your vehicle manual using AI and semantic search",
 };
 
 export default function RootLayout({ children }) {
