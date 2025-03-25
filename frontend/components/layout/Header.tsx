@@ -1,9 +1,11 @@
+'use client';
+
 /**
  * Header component with navigation
  */
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { usePathname } from 'next/navigation';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import { H3 } from '@leafygreen-ui/typography';
@@ -11,7 +13,7 @@ import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
 
 const Header: React.FC = () => {
-  const router = useRouter();
+  const pathname = usePathname();
   
   return (
     <header
@@ -56,7 +58,7 @@ const Header: React.FC = () => {
             <li>
               <Link href="/" passHref>
                 <Button
-                  variant={router.pathname === '/' ? 'primary' : 'default'}
+                  variant={pathname === '/' ? 'primary' : 'default'}
                 >
                   Home
                 </Button>
@@ -66,7 +68,7 @@ const Header: React.FC = () => {
             <li>
               <Link href="/search" passHref>
                 <Button
-                  variant={router.pathname.startsWith('/search') ? 'primary' : 'default'}
+                  variant={pathname?.startsWith('/search') ? 'primary' : 'default'}
                 >
                   Search
                 </Button>
