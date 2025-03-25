@@ -1,0 +1,21 @@
+services:
+  demoname-backend:
+    build:
+      context: .
+      no_cache: true
+      dockerfile: Dockerfile.backend
+    image: imagename-backend:latest
+    ports:
+      - "8000:8000"
+    restart: always
+    container_name: demoname-backend
+  demoname-frontend:
+    build:
+      context: .
+      no_cache: true
+      dockerfile: Dockerfile.frontend
+    image: imagename-frontend:latest
+    ports:
+      - "8000:8000"
+    restart: always
+    container_name: demoname-frontend
