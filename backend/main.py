@@ -38,10 +38,13 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error. Please check the logs for details."}
     )
 
-# Include routers
+# Include routers with consistent slash handling
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(chunks.router, prefix=f"{settings.API_V1_STR}/chunks", tags=["chunks"])
 app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["search"])
+
+# Allow redirects for slash handling (default behavior)
+# Our frontend will consistently use trailing slashes
 
 # Root endpoint
 @app.get("/")

@@ -30,17 +30,27 @@ class MongoDB:
             logger.info(f"Connected to MongoDB: {settings.DATABASE_NAME}")
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
-            raise
+            self._client = None
+            self._db = None
     
-    def get_collection(self, collection_name: str) -> Collection:
+    def get_collection(self, collection_name: str) -> Optional[Collection]:
         """Get a collection from the database"""
-        if not self._db:
-            self._initialize_connection()
-        return self._db[collection_name]
+        try:
+            if self._db is None:
+                self._initialize_connection()
+                
+            if self._db is None:
+                logger.error("Failed to get database connection")
+                return None
+                
+            return self._db[collection_name]
+        except Exception as e:
+            logger.error(f"Error getting collection: {e}")
+            return None
     
     def close_connection(self):
         """Close the MongoDB connection"""
-        if self._client:
+        if self._client is not None:
             self._client.close()
             self._client = None
             self._db = None
@@ -50,7 +60,17 @@ class MongoDB:
         """Create a vector search index on a collection"""
         try:
             collection = self.get_collection(collection_name)
+            if collection is None:
+                logger.error("Cannot create vector search index: collection is None")
+                return {"status": "error", "message": "Database connection unavailable"}
             
+            # Check if index already exists first
+            existing_indexes = collection.list_search_indexes()
+            for index in existing_indexes:
+                if index.get("name") == index_name:
+                    logger.debug(f"Vector search index '{index_name}' already exists")
+                    return {"status": "success", "message": f"Vector search index '{index_name}' already exists"}
+                
             # Define the vector search index configuration
             index_config = {
                 "name": index_name,
@@ -72,11 +92,19 @@ class MongoDB:
             logger.info(f"Vector search index '{index_name}' created successfully")
             return result
         except Exception as e:
-            if "already exists" in str(e):
-                logger.warning(f"Vector search index '{index_name}' already exists")
-                return {"status": "warning", "message": f"Vector search index '{index_name}' already exists"}
-            logger.error(f"Error creating vector search index: {e}")
-            raise
+            # Handle the "already exists" error case more explicitly
+            if "already defined" in str(e) or "already exists" in str(e):
+                # This is an expected condition, so just log at debug level
+                logger.debug(f"Vector search index '{index_name}' already exists")
+                return {"status": "success", "message": f"Vector search index '{index_name}' already exists"}
+            
+            # Log other errors as actual errors
+            logger.error(f"Error creating vector search index: {str(e)}")
+            return {"status": "error", "message": str(e)}
+    
+    def __bool__(self):
+        """Define truth value for the MongoDB instance"""
+        return self._db is not None
     
     def __del__(self):
         """Clean up connection when object is destroyed"""

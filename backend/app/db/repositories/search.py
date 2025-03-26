@@ -15,10 +15,17 @@ class SearchRepository:
         """Initialize the repository with MongoDB collection"""
         self.settings = get_settings()
         self.mongodb = get_mongodb()
-        self.collection = self.mongodb.get_collection(self.settings.CHUNKS_COLLECTION)
+        
+        # Check if MongoDB connection is initialized
+        if self.mongodb is not None:
+            self.collection = self.mongodb.get_collection(self.settings.CHUNKS_COLLECTION)
     
     async def vector_search(self, embedding: List[float], limit: int = 5) -> List[SearchResult]:
         """Perform vector search using the embedding"""
+        # Check if collection is initialized
+        if not hasattr(self, 'collection') or self.collection is None:
+            return []
+            
         try:
             pipeline = [
                 {
@@ -65,6 +72,10 @@ class SearchRepository:
     
     async def text_search(self, query: str, limit: int = 5) -> List[SearchResult]:
         """Perform text search using the query string"""
+        # Check if collection is initialized
+        if not hasattr(self, 'collection') or self.collection is None:
+            return []
+            
         try:
             # Create text index if not exists
             self.collection.create_index([("text", "text")])
@@ -190,5 +201,34 @@ class SearchRepository:
             ))
         
         # Sort by weighted score (descending)
+        combined_results.sort(key=lambda x: x.score, reverse=True)
+        return combined_results
+        
+    async def hybrid_search_intersection(self, vector_results: List[SearchResult], text_results: List[SearchResult]) -> List[SearchResult]:
+        """Combine vector and text search results by taking the intersection (only results in both sets)"""
+        # Create a map of chunk_id to search result for both result sets
+        vector_map = {result.chunk.id: result for result in vector_results}
+        text_map = {result.chunk.id: result for result in text_results}
+        
+        # Find the intersection of IDs
+        common_ids = set(vector_map.keys()).intersection(set(text_map.keys()))
+        
+        # Create combined results for the common IDs
+        combined_results = []
+        for chunk_id in common_ids:
+            vector_result = vector_map[chunk_id]
+            text_result = text_map[chunk_id]
+            
+            # Average the scores for ranking (could be customized)
+            avg_score = (vector_result.score + text_result.score) / 2.0
+            
+            combined_results.append(SearchResult(
+                score=avg_score,
+                vector_score=vector_result.score,
+                text_score=text_result.score,
+                chunk=vector_result.chunk
+            ))
+        
+        # Sort by average score (descending)
         combined_results.sort(key=lambda x: x.score, reverse=True)
         return combined_results

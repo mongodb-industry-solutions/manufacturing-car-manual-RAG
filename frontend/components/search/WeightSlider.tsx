@@ -2,13 +2,13 @@
  * Weight slider component for hybrid search
  */
 import React from 'react';
-import Slider from '@leafygreen-ui/slider';
 import { Body } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import Card from '@leafygreen-ui/card';
 import Icon from '@leafygreen-ui/icon';
 import Tooltip from '@leafygreen-ui/tooltip';
+import { Slider } from '@/components/ui/slider';
 
 interface WeightSliderProps {
   vectorWeight: number;
@@ -22,12 +22,14 @@ const WeightSlider: React.FC<WeightSliderProps> = ({
   // Text weight is always the complement of vector weight
   const textWeight = 1 - vectorWeight;
   
-  const handleChange = (newValue: number) => {
-    // Ensure the value is between 0 and 1
-    const newVectorWeight = Math.max(0, Math.min(1, newValue));
-    const newTextWeight = 1 - newVectorWeight;
-    
-    onWeightChange(newVectorWeight, newTextWeight);
+  const handleChange = (values: number[]) => {
+    if (values && values.length > 0) {
+      // Ensure the value is between 0 and 1
+      const newVectorWeight = Math.max(0, Math.min(1, values[0] / 100));
+      const newTextWeight = 1 - newVectorWeight;
+      
+      onWeightChange(newVectorWeight, newTextWeight);
+    }
   };
   
   return (
@@ -45,7 +47,7 @@ const WeightSlider: React.FC<WeightSliderProps> = ({
           triggerEvent="hover"
           align="top"
         >
-          Adjust the balance between semantic and keyword search approaches
+          Adjust the balance between vector and full-text search approaches
         </Tooltip>
       </div>
       
@@ -61,18 +63,20 @@ const WeightSlider: React.FC<WeightSliderProps> = ({
         
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
           <Body size="small">Keyword: {Math.round(textWeight * 100)}%</Body>
-          <Icon glyph="Type" size="small" fill={palette.blue.base} />
+          <Icon glyph="String" size="small" fill={palette.blue.base} />
         </div>
       </div>
       
-      <Slider
-        min={0}
-        max={1}
-        step={0.05}
-        value={vectorWeight}
-        onChange={handleChange}
-        label="Search Weight Balance"
-      />
+      <div style={{ padding: '10px 0' }}>
+        <Slider
+          min={0}
+          max={100}
+          step={5}
+          defaultValue={[Math.round(vectorWeight * 100)]}
+          onValueChange={handleChange}
+          aria-label="Search Weight Balance"
+        />
+      </div>
       
       <div style={{ 
         display: 'flex',

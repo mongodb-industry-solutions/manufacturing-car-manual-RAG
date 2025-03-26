@@ -43,7 +43,7 @@ const AskQuestion: React.FC<AskQuestionProps> = ({
     <div>
       <Card style={{ marginBottom: spacing[3], padding: spacing[3] }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[3] }}>
-          <Icon glyph="SupportLive" size="large" fill={palette.green.base} />
+          <Icon glyph="Support" size="large" fill={palette.green.base} />
           <div>
             <H3 style={{ margin: 0 }}>Ask about your car manual</H3>
             <Body size="small">
@@ -77,13 +77,14 @@ const AskQuestion: React.FC<AskQuestionProps> = ({
 
       {/* Error state */}
       {error && (
-        <Callout
-          variant="danger"
-          title="Error"
-          style={{ marginBottom: spacing[3] }}
-        >
-          {error}
-        </Callout>
+        <div style={{ marginBottom: spacing[3] }}>
+          <Callout
+            variant="warning"
+            title="Error"
+          >
+            <Body>{error}</Body>
+          </Callout>
+        </div>
       )}
 
       {/* Answer display */}
@@ -110,7 +111,7 @@ const AskQuestion: React.FC<AskQuestionProps> = ({
             gap: spacing[2], 
             marginBottom: spacing[3] 
           }}>
-            <Icon glyph="Robot" size="large" fill={palette.green.base} />
+            <Icon glyph="Person" size="large" fill={palette.green.base} />
             <div>
               <Subtitle>Answer</Subtitle>
               <Body>{answer.answer}</Body>
