@@ -7,6 +7,7 @@ import Button from '@leafygreen-ui/button';
 import { H3, Body, Subtitle } from '@leafygreen-ui/typography';
 import Icon from '@leafygreen-ui/icon';
 import Callout from '@leafygreen-ui/callout';
+import Tooltip from '@leafygreen-ui/tooltip';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import { SearchResult } from '../../types/Search';
@@ -43,151 +44,219 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
     <Card 
       style={{ 
         marginBottom: spacing[3],
-        padding: spacing[3],
-        border: `1px solid ${palette.gray.light2}`,
+        padding: 0,
+        borderRadius: '8px',
+        boxShadow: '0 2px 12px rgba(0, 0, 0, 0.1)',
         transition: 'all 0.2s ease',
         position: 'relative',
+        overflow: 'hidden',
+        border: `1px solid ${palette.gray.light1}`,
       }}
       hoverable
     >
-      {/* Score indicator */}
+      {/* Header section with color bar based on score */}
       <div style={{ 
-        position: 'absolute', 
-        top: spacing[2], 
-        right: spacing[2],
-        display: 'flex',
-        gap: spacing[1],
-        alignItems: 'center',
+        borderTop: `4px solid ${
+          scorePercent >= 90 ? palette.green.base : 
+          scorePercent >= 70 ? palette.green.light1 : 
+          scorePercent >= 50 ? palette.yellow.base : 
+          palette.red.base
+        }`,
+        padding: `${spacing[3]}px ${spacing[3]}px ${spacing[2]}px`
       }}>
-        <Badge variant="green">
-          {scorePercent}% match
-        </Badge>
-        
-        {vector_score && (
-          <Badge variant="lightgray">
-            <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-              <Icon glyph="Diagram" size="small" /> {Math.round(vector_score * 100)}%
-            </span>
-          </Badge>
-        )}
-        
-        {text_score && (
-          <Badge variant="lightgray">
-            <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-              <Icon glyph="Type" size="small" /> {Math.round(text_score * 100)}%
-            </span>
-          </Badge>
-        )}
-      </div>
-      
-      {/* Header */}
-      <H3 style={{ marginBottom: spacing[1] }}>{title}</H3>
-      {subtitle && (
-        <Subtitle style={{ marginBottom: spacing[2], color: palette.gray.dark1 }}>
-          {subtitle}
-        </Subtitle>
-      )}
-      
-      {/* Breadcrumb */}
-      {chunk.breadcrumb_trail && (
-        <Body size="small" style={{ 
-          marginBottom: spacing[2], 
-          color: palette.gray.dark1,
+        {/* Score indicators */}
+        <div style={{ 
+          float: 'right',
           display: 'flex',
+          gap: spacing[1],
           alignItems: 'center',
-          gap: spacing[1]
+          marginLeft: spacing[2],
+          marginBottom: spacing[2]
         }}>
-          <Icon glyph="Folder" size="small" /> {chunk.breadcrumb_trail}
-        </Body>
-      )}
-      
-      {/* Content type badges */}
-      {chunk.content_type && chunk.content_type.length > 0 && (
-        <div style={{ display: 'flex', gap: spacing[1], marginBottom: spacing[2], flexWrap: 'wrap' }}>
-          {chunk.content_type.map((type) => (
-            <Badge key={type} variant="darkgray">
-              {type}
-            </Badge>
-          ))}
-        </div>
-      )}
-      
-      {/* Text content preview - truncated */}
-      <Body style={{ 
-        marginBottom: spacing[2],
-        display: '-webkit-box',
-        WebkitLineClamp: 3,
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}>
-        {chunk.text}
-      </Body>
-      
-      {/* Special content indicators */}
-      <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[2], flexDirection: 'column' }}>
-        {/* Safety Notices Indicator */}
-        {hasSafetyNotices && (
-          <Callout 
-            variant="warning"
-            title="Safety Information" 
+          <Tooltip
+            trigger={
+              <Badge variant={
+                scorePercent >= 90 ? "green" :
+                scorePercent >= 70 ? "lightgray" :
+                scorePercent >= 50 ? "yellow" :
+                "red"
+              }>
+                <span style={{ fontWeight: 'bold' }}>{scorePercent}%</span>
+              </Badge>
+            }
+            triggerEvent="hover"
           >
-            <Body>This section contains important safety warnings</Body>
-          </Callout>
+            Overall match score
+          </Tooltip>
+          
+          {vector_score && (
+            <Tooltip
+              trigger={
+                <Badge variant="lightgray">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                    <Icon glyph="Diagram" size="small" /> {Math.round(vector_score * 100)}%
+                  </span>
+                </Badge>
+              }
+              triggerEvent="hover"
+            >
+              Semantic vector search score
+            </Tooltip>
+          )}
+          
+          {text_score && (
+            <Tooltip
+              trigger={
+                <Badge variant="lightgray">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                    <Icon glyph="String" size="small" /> {Math.round(text_score * 100)}%
+                  </span>
+                </Badge>
+              }
+              triggerEvent="hover"
+            >
+              Keyword text search score
+            </Tooltip>
+          )}
+        </div>
+        
+        {/* Header */}
+        <H3 style={{ marginBottom: spacing[1] }}>{title}</H3>
+        {subtitle && (
+          <Subtitle style={{ marginBottom: spacing[2], color: palette.gray.dark1 }}>
+            {subtitle}
+          </Subtitle>
         )}
         
-        {/* Procedures Indicator */}
-        {hasProcedures && (
-          <Callout 
-            variant="info"
-            title="Step-by-step Procedure" 
-          >
-            <Body>Contains {chunk.procedural_steps?.length} procedural steps</Body>
-          </Callout>
-        )}
-      </div>
-      
-      {/* Footer info */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: spacing[2],
-        borderTop: `1px solid ${palette.gray.light2}`,
-        paddingTop: spacing[2],
-      }}>
-        <div style={{ display: 'flex', gap: spacing[2] }}>
+        {/* Breadcrumb */}
+        {chunk.breadcrumb_trail && (
           <Body size="small" style={{ 
+            marginBottom: spacing[2], 
             color: palette.gray.dark1,
             display: 'flex',
             alignItems: 'center',
             gap: spacing[1]
           }}>
-            <Icon glyph="Page" size="small" /> {pageInfo}
+            <Icon glyph="Folder" size="small" /> {chunk.breadcrumb_trail}
           </Body>
+        )}
+      </div>
+      
+      {/* Content section */}
+      <div style={{ padding: `0 ${spacing[3]}px ${spacing[3]}px` }}>
+        {/* Content type badges */}
+        {chunk.content_type && chunk.content_type.length > 0 && (
+          <div style={{ display: 'flex', gap: spacing[1], marginBottom: spacing[2], flexWrap: 'wrap' }}>
+            {chunk.content_type.map((type) => (
+              <Badge key={type} variant="darkgray">
+                {type}
+              </Badge>
+            ))}
+          </div>
+        )}
+        
+        {/* Text content preview - truncated */}
+        <Card style={{ 
+          padding: spacing[2], 
+          marginBottom: spacing[2],
+          backgroundColor: palette.gray.light3,
+          border: 'none'
+        }}>
+          <Body style={{ 
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}>
+            {chunk.text}
+          </Body>
+        </Card>
+        
+        {/* Special content indicators */}
+        <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[2], flexDirection: 'column' }}>
+          {/* Safety Notices Indicator */}
+          {hasSafetyNotices && (
+            <div style={{ marginBottom: spacing[2] }}>
+              <Callout 
+                variant="warning"
+                title="Safety Information" 
+              >
+                <Body>Contains {chunk.safety_notices?.length} important safety {chunk.safety_notices?.length === 1 ? 'warning' : 'warnings'}</Body>
+              </Callout>
+            </div>
+          )}
           
-          {chunk.metadata?.page_count > 1 && (
-            <Body size="small" style={{ 
-              color: palette.gray.dark1,
-              display: 'flex',
-              alignItems: 'center',
-              gap: spacing[1]
-            }}>
-              <Icon glyph="Copy" size="small" /> {chunk.metadata.page_count} pages
-            </Body>
+          {/* Procedures Indicator */}
+          {hasProcedures && (
+            <div style={{ marginBottom: spacing[2] }}>
+              <Callout 
+                variant="note"
+                title="Step-by-step Procedure" 
+              >
+                <Body>Contains {chunk.procedural_steps?.length} procedural {chunk.procedural_steps?.length === 1 ? 'step' : 'steps'}</Body>
+              </Callout>
+            </div>
           )}
         </div>
         
-        <Link href={`/chunk/${chunk.id}`} passHref>
-          <Button 
-            as="a"
-            variant="primary"
-            size="small"
-            rightGlyph={<Icon glyph="ChevronRight" />}
-          >
-            View Details
-          </Button>
-        </Link>
+        {/* Footer info */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: spacing[2],
+          borderTop: `1px solid ${palette.gray.light2}`,
+          paddingTop: spacing[2],
+        }}>
+          <div style={{ display: 'flex', gap: spacing[2] }}>
+            <Tooltip
+              trigger={
+                <Body size="small" style={{ 
+                  color: palette.gray.dark1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[1]
+                }}>
+                  <Icon glyph="Page" size="small" /> {pageInfo}
+                </Body>
+              }
+              triggerEvent="hover"
+            >
+              Manual page reference
+            </Tooltip>
+            
+            {chunk.metadata?.page_count > 1 && (
+              <Tooltip
+                trigger={
+                  <Body size="small" style={{ 
+                    color: palette.gray.dark1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: spacing[1]
+                  }}>
+                    <Icon glyph="Copy" size="small" /> {chunk.metadata.page_count} pages
+                  </Body>
+                }
+                triggerEvent="hover"
+              >
+                Number of pages this content spans
+              </Tooltip>
+            )}
+          </div>
+          
+          <Link href={`/chunk/${chunk.id}`}>
+            <div style={{ display: 'inline-block' }}>
+              <Button 
+                variant="primary"
+                size="small"
+                rightGlyph={<Icon glyph="ChevronRight" />}
+              >
+                View Details
+              </Button>
+            </div>
+          </Link>
+        </div>
       </div>
     </Card>
   );

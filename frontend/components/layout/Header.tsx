@@ -11,6 +11,7 @@ import { palette } from '@leafygreen-ui/palette';
 import { H3 } from '@leafygreen-ui/typography';
 import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
+import Tooltip from '@leafygreen-ui/tooltip';
 
 const Header: React.FC = () => {
   const pathname = usePathname();
@@ -19,11 +20,12 @@ const Header: React.FC = () => {
     <header
       style={{
         backgroundColor: 'white',
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)',
         padding: `${spacing[2]}px ${spacing[3]}px`,
         position: 'sticky',
         top: 0,
         zIndex: 100,
+        borderBottom: `1px solid ${palette.gray.light2}`,
       }}
     >
       <div
@@ -36,12 +38,28 @@ const Header: React.FC = () => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
-          <Link href="/" passHref style={{ display: 'flex', alignItems: 'center' }}>
-            <Icon glyph="MongoDB" size={30} fill={palette.green.base} />
+          <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
+            <Tooltip
+              trigger={
+                <div style={{ 
+                  backgroundColor: palette.green.light2, 
+                  borderRadius: '50%', 
+                  padding: spacing[1], 
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Icon glyph="Database" size={30} fill={palette.green.base} />
+                </div>
+              }
+              triggerEvent="hover"
+            >
+              Back to home
+            </Tooltip>
           </Link>
           
-          <H3 style={{ margin: 0, color: palette.gray.dark2 }}>
-            Car Manual RAG
+          <H3 style={{ margin: 0, color: palette.gray.dark2, fontWeight: 'bold' }}>
+            Technical Manual Explorer
           </H3>
         </div>
         
@@ -52,26 +70,48 @@ const Header: React.FC = () => {
               listStyle: 'none',
               margin: 0,
               padding: 0,
-              gap: spacing[3],
+              gap: spacing[2],
             }}
           >
             <li>
-              <Link href="/" passHref>
-                <Button
-                  variant={pathname === '/' ? 'primary' : 'default'}
-                >
-                  Home
-                </Button>
+              <Link href="/">
+                <div style={{ display: 'inline-block' }}>
+                  <Button
+                    variant={pathname === '/' ? 'primary' : 'default'}
+                    size="large"
+                    leftGlyph={<Icon glyph="Home" />}
+                  >
+                    Home
+                  </Button>
+                </div>
               </Link>
             </li>
             
             <li>
-              <Link href="/search" passHref>
-                <Button
-                  variant={pathname?.startsWith('/search') ? 'primary' : 'default'}
-                >
-                  Search
-                </Button>
+              <Link href="/search">
+                <div style={{ display: 'inline-block' }}>
+                  <Button
+                    variant={pathname?.startsWith('/search') ? 'primary' : 'default'}
+                    size="large"
+                    leftGlyph={<Icon glyph="MagnifyingGlass" />}
+                  >
+                    Search
+                  </Button>
+                </div>
+              </Link>
+            </li>
+            
+            <li>
+              <Link href="/browse">
+                <div style={{ display: 'inline-block' }}>
+                  <Button
+                    variant={pathname?.startsWith('/browse') ? 'primary' : 'default'}
+                    size="large"
+                    leftGlyph={<Icon glyph="Table" />}
+                  >
+                    Browse Chunks
+                  </Button>
+                </div>
               </Link>
             </li>
           </ul>

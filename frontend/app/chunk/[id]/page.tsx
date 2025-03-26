@@ -2,211 +2,141 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { H1, H3, Body } from '@leafygreen-ui/typography';
-import Card from '@leafygreen-ui/card';
-import Banner from '@leafygreen-ui/banner';
-import Button from '@leafygreen-ui/button';
-import Icon from '@leafygreen-ui/icon';
-import { spacing } from '@leafygreen-ui/tokens';
-import Link from 'next/link';
-
 import dynamic from 'next/dynamic';
+import { H1, Body } from '@leafygreen-ui/typography';
+import Button from '@leafygreen-ui/button';
+import Banner from '@leafygreen-ui/banner';
+import Icon from '@leafygreen-ui/icon';
+import Card from '@leafygreen-ui/card';
+import { spacing } from '@leafygreen-ui/tokens';
+import { Spinner } from '@leafygreen-ui/loading-indicator';
+
 const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const ChunkViewer = dynamic(() => import('@/components/content/ChunkViewer'));
-const ProceduralSteps = dynamic(() => import('@/components/content/ProceduralSteps'));
-// Note: The SafetyNotice component expects a "notice" prop object with type and content
-// but we're using the component differently here than ChunkViewer does
-const SafetyNotice = dynamic(() => import('@/components/content/SafetyNotice'));
-const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
+const AskQuestion = dynamic(() => import('@/components/search/AskQuestion'));
 const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
-import { useChunks } from '@/hooks/useChunks';
-import { Chunk } from '@/types/Chunk';
+const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
 
-export default function ChunkPage() {
+import { useChunks } from '@/hooks/useChunks';
+
+export default function ChunkDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const chunkId = params?.id as string;
-  
-  const { getChunk, loading, error } = useChunks();
-  const [chunk, setChunk] = useState<Chunk | null>(null);
-  
+  const chunkId = params.id as string;
+  const { getChunk, chunk, loading, error } = useChunks();
+
+  // State for toggling the ask question panel
+  const [showAskQuestion, setShowAskQuestion] = useState(false);
+
+  // Fetch chunk data when the ID changes
   useEffect(() => {
     if (chunkId) {
-      fetchChunk();
+      getChunk(chunkId).catch(error => console.error('Failed to fetch chunk:', error));
     }
-  }, [chunkId]);
-  
-  const fetchChunk = async () => {
-    try {
-      const chunkData = await getChunk(chunkId);
-      setChunk(chunkData);
-    } catch (err) {
-      console.error('Error fetching chunk:', err);
-    }
+  }, [chunkId, getChunk]);
+
+  // Handle source click from AskQuestion component
+  const handleSourceClick = (sourceId: string) => {
+    router.push(`/chunk/${sourceId}`);
   };
-  
-  const handleNavigateToChunk = (id: string) => {
-    router.push(`/chunk/${id}`);
-  };
-  
+
+  // Render loading state
   if (loading) {
     return (
       <MainLayout>
         <div style={{ maxWidth: '1000px', margin: '0 auto', padding: spacing[3] }}>
-          <LoadingState message="Loading document content..." />
+          <LoadingState message="Loading chunk details..." />
         </div>
       </MainLayout>
     );
   }
-  
-  if (error || !chunk) {
+
+  // Render error state
+  if (error) {
     return (
       <MainLayout>
         <div style={{ maxWidth: '1000px', margin: '0 auto', padding: spacing[3] }}>
-          <ErrorState 
-            title="Could not load document"
-            message={error || "The requested document section could not be found"}
+          <ErrorState
+            title="Error Loading Content"
+            message={`We couldn't load the requested content: ${error}`}
+            action={
+              <Button
+                variant="primary"
+                onClick={() => router.push('/')}
+                leftGlyph={<Icon glyph="Home" />}
+              >
+                Return Home
+              </Button>
+            }
           />
-          <div style={{ textAlign: 'center', marginTop: spacing[3] }}>
-            <Link href="/" passHref>
-              <Button variant="primary">Back to Search</Button>
-            </Link>
-          </div>
         </div>
       </MainLayout>
     );
   }
-  
-  // Extract heading hierarchy for breadcrumb
-  const title = chunk.heading_level_1 || 'Document Section';
-  const subtitle = chunk.heading_level_2 || '';
-  const subsubtitle = chunk.heading_level_3 || '';
-  
+
+  // Render empty state if no chunk found
+  if (!chunk && !loading) {
+    return (
+      <MainLayout>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: spacing[3] }}>
+          <ErrorState
+            title="Content Not Found"
+            message="The requested page from the manual could not be found."
+            action={
+              <Button
+                variant="primary"
+                onClick={() => router.push('/')}
+                leftGlyph={<Icon glyph="Home" />}
+              >
+                Return Home
+              </Button>
+            }
+          />
+        </div>
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout>
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: spacing[3] }}>
-        {/* Breadcrumb */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: spacing[1],
-          marginBottom: spacing[3],
-          flexWrap: 'wrap'
-        }}>
-          <Link href="/" passHref>
-            <Body weight="medium" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-              <Icon glyph="Home" size="small" style={{ marginRight: '4px' }} /> Home
-            </Body>
-          </Link>
-          <Icon glyph="ChevronRight" size="small" />
-          
-          {chunk.breadcrumb_trail ? (
-            <>
-              <Body>{chunk.breadcrumb_trail}</Body>
-              <Icon glyph="ChevronRight" size="small" />
-            </>
-          ) : null}
-          
-          <Body style={{ fontWeight: 'bold' }}>{title}</Body>
+        {/* Back to search button */}
+        <div style={{ marginBottom: spacing[3] }}>
+          <Button
+            variant="default"
+            onClick={() => router.back()}
+            leftGlyph={<Icon glyph="ArrowLeft" />}
+          >
+            Back
+          </Button>
         </div>
-        
-        {/* Title Section */}
+
+        {/* Main content area */}
         <div style={{ marginBottom: spacing[4] }}>
-          <H1 style={{ marginBottom: spacing[1] }}>{title}</H1>
-          {subtitle && <H3 style={{ marginBottom: spacing[1] }}>{subtitle}</H3>}
-          {subsubtitle && <Body weight="medium">{subsubtitle}</Body>}
-          
-          <div style={{ 
-            display: 'flex', 
-            gap: spacing[2],
-            marginTop: spacing[2],
-            flexWrap: 'wrap'
-          }}>
-            <Body size="small">
-              Page{chunk.page_numbers.length > 1 ? 's' : ''}: {chunk.page_numbers.join(', ')}
-            </Body>
-            
-            {chunk.metadata && chunk.metadata.systems && chunk.metadata.systems.length > 0 && (
-              <Body size="small">
-                System: {chunk.metadata.systems.join(', ')}
-              </Body>
-            )}
-            
-            {chunk.metadata && chunk.metadata.parts && chunk.metadata.parts.length > 0 && (
-              <Body size="small">
-                Parts: {chunk.metadata.parts.join(', ')}
-              </Body>
-            )}
-          </div>
+          {chunk && <ChunkViewer chunk={chunk} showNavigation={true} />}
         </div>
-        
-        {/* Safety Notices */}
-        {chunk.safety_notices && chunk.safety_notices.length > 0 && (
-          <div style={{ marginBottom: spacing[4] }}>
-            <H3 style={{ marginBottom: spacing[2] }}>Safety Notices</H3>
-            {chunk.safety_notices.map((notice, index) => (
-              <SafetyNotice 
-                key={index}
-                notice={notice}
-              />
-            ))}
+
+        {/* Ask question toggle button */}
+        <div style={{ marginBottom: spacing[3], textAlign: 'center' }}>
+          <Button
+            variant={showAskQuestion ? "danger" : "primary"}
+            size="large"
+            onClick={() => setShowAskQuestion(!showAskQuestion)}
+            leftGlyph={<Icon glyph={showAskQuestion ? "X" : "Help"} />}
+          >
+            {showAskQuestion ? "Close Question Panel" : "Ask a Question About This Content"}
+          </Button>
+        </div>
+
+        {/* Conditional render of the ask question component */}
+        {showAskQuestion && (
+          <div style={{ marginBottom: spacing[3] }}>
+            <AskQuestion 
+              initialQuestion={`Can you explain more about "${chunk?.heading_level_2 || chunk?.heading_level_1 || 'this section'}"`}
+              onSourceClick={handleSourceClick}
+            />
           </div>
         )}
-        
-        {/* Main Content */}
-        <Card style={{ padding: spacing[4], marginBottom: spacing[4] }}>
-          <ChunkViewer 
-            chunk={chunk} 
-            showNavigation={false}
-          />
-        </Card>
-        
-        {/* Procedural Steps */}
-        {chunk.procedural_steps && chunk.procedural_steps.length > 0 && (
-          <div style={{ marginBottom: spacing[4] }}>
-            <H3 style={{ marginBottom: spacing[2] }}>Procedure Steps</H3>
-            <Card style={{ padding: spacing[4] }}>
-              <ProceduralSteps steps={chunk.procedural_steps} />
-            </Card>
-          </div>
-        )}
-        
-        {/* Navigation links */}
-        <div style={{ 
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginTop: spacing[4]
-        }}>
-          {chunk.prev_chunk_id ? (
-            <Button 
-              variant="default" 
-              leftGlyph={<Icon glyph="ChevronLeft" />}
-              onClick={() => handleNavigateToChunk(chunk.prev_chunk_id!)}
-            >
-              Previous Section
-            </Button>
-          ) : (
-            <div></div> /* Empty placeholder to maintain flex spacing */
-          )}
-          
-          <Link href="/" passHref>
-            <Button variant="default" glyph="Home">
-              Back to Search
-            </Button>
-          </Link>
-          
-          {chunk.next_chunk_id ? (
-            <Button 
-              variant="default" 
-              rightGlyph={<Icon glyph="ChevronRight" />}
-              onClick={() => handleNavigateToChunk(chunk.next_chunk_id!)}
-            >
-              Next Section
-            </Button>
-          ) : (
-            <div></div> /* Empty placeholder to maintain flex spacing */
-          )}
-        </div>
       </div>
     </MainLayout>
   );

@@ -4,7 +4,7 @@
 import { Chunk } from './Chunk';
 
 export type SearchMethod = 'vector' | 'text' | 'hybrid';
-export type HybridMethod = 'rrf' | 'weighted' | 'union';
+export type HybridMethod = 'rrf' | 'weighted' | 'union' | 'intersection';
 
 export interface SearchResult {
   score: number;

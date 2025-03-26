@@ -7,6 +7,9 @@ import React, { ReactNode } from 'react';
 import { palette } from '@leafygreen-ui/palette';
 import { spacing } from '@leafygreen-ui/tokens';
 import LeafyGreenProvider from '@leafygreen-ui/leafygreen-provider';
+import Banner from '@leafygreen-ui/banner';
+import Icon from '@leafygreen-ui/icon';
+import { Body } from '@leafygreen-ui/typography';
 
 // Components
 import Header from './Header';
@@ -14,9 +17,15 @@ import Footer from './Footer';
 
 interface MainLayoutProps {
   children: ReactNode;
+  showBanner?: boolean;
+  bannerMessage?: string;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({ 
+  children, 
+  showBanner = true,
+  bannerMessage = "This is a demo application showcasing MongoDB technical manual search capabilities."
+}) => {
   return (
     <LeafyGreenProvider darkMode={false}>
       <div 
@@ -28,6 +37,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         }}
       >
         <Header />
+        
+        {showBanner && (
+          <Banner 
+            variant="info"
+            dismissible
+          >
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: spacing[2] 
+            }}>
+              <Icon glyph="InfoWithCircle" />
+              <Body>{bannerMessage}</Body>
+            </div>
+          </Banner>
+        )}
         
         <main 
           style={{ 

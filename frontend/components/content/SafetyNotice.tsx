@@ -16,7 +16,7 @@ const SafetyNotice: React.FC<SafetyNoticeProps> = ({ notice }) => {
   const getVariant = (type: string) => {
     switch (type.toLowerCase()) {
       case 'danger':
-        return 'danger';
+        return 'warning'; // LeafyGreen only has 'warning', not 'danger'
       case 'warning':
         return 'warning';
       case 'caution':
@@ -26,14 +26,17 @@ const SafetyNotice: React.FC<SafetyNoticeProps> = ({ notice }) => {
     }
   };
 
+  const variant = getVariant(notice.type);
+  
   return (
-    <Callout
-      variant={getVariant(notice.type)}
-      title={notice.type.toUpperCase()}
-      style={{ marginBottom: spacing[3] }}
-    >
-      <Body>{notice.content}</Body>
-    </Callout>
+    <div style={{ marginBottom: spacing[3] }}>
+      <Callout
+        variant={variant as any}
+        title={notice.type.toUpperCase()}
+      >
+        <Body>{notice.content}</Body>
+      </Callout>
+    </div>
   );
 };
 

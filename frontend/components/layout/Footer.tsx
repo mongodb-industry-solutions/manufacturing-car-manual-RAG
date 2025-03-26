@@ -37,7 +37,7 @@ const Footer: React.FC = () => {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-            <Icon glyph="MongoDB" size={24} fill={palette.green.base} />
+            <Icon glyph="Database" size={24} fill={palette.green.base} />
             <Body weight="medium">
               Car Manual RAG
             </Body>

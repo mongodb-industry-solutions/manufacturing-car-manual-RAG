@@ -1,10 +1,12 @@
 from typing import Optional, List
+import logging
 from fastapi import APIRouter, HTTPException, Query, Depends
 
 from app.models.chunks import Chunk, ChunkList
 from app.services.embedding import EmbeddingService
 from app.db.repositories.chunks import ChunkRepository
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/", response_model=dict)
@@ -23,11 +25,74 @@ async def create_chunk(chunk: Chunk):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/filters", response_model=dict)
+async def get_available_filters():
+    """Get all available filter values for content types and vehicle systems"""
+    try:
+        chunk_repo = ChunkRepository()
+        if not hasattr(chunk_repo, 'collection') or chunk_repo.collection is None:
+            logger.error("MongoDB collection is not available")
+            return {"content_types": [], "vehicle_systems": []}
+            
+        return await chunk_repo.get_available_filters()
+    except Exception as e:
+        logger.error(f"Error retrieving filters: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving filters: {str(e)}")
+
+@router.get("/", response_model=ChunkList)
+async def get_chunks(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+    content_types: Optional[List[str]] = Query(None),
+    vehicle_systems: Optional[List[str]] = Query(None),
+    has_safety_notices: Optional[bool] = Query(None),
+    has_procedures: Optional[bool] = Query(None),
+    text_search: Optional[str] = Query(None)
+):
+    """
+    Get multiple chunks with pagination and filtering
+    
+    - **skip**: Number of chunks to skip for pagination
+    - **limit**: Maximum number of chunks to return
+    - **content_types**: Filter by content types (e.g., procedure, diagram)
+    - **vehicle_systems**: Filter by vehicle systems (e.g., brakes, engine)
+    - **has_safety_notices**: Filter chunks with safety notices
+    - **has_procedures**: Filter chunks with procedural steps
+    - **text_search**: Text to search for in chunk content and headings
+    """
+    try:
+        # Build filters
+        filters = {}
+        if content_types:
+            filters['content_types'] = content_types
+        if vehicle_systems:
+            filters['vehicle_systems'] = vehicle_systems
+        if has_safety_notices is not None:
+            filters['has_safety_notices'] = has_safety_notices
+        if has_procedures is not None:
+            filters['has_procedures'] = has_procedures
+        if text_search:
+            filters['text_search'] = text_search
+        
+        chunk_repo = ChunkRepository()
+        if not hasattr(chunk_repo, 'collection') or chunk_repo.collection is None:
+            logger.error("MongoDB collection is not available")
+            return ChunkList(total=0, chunks=[])
+            
+        return await chunk_repo.get_chunks(skip, limit, filters)
+    except Exception as e:
+        logger.error(f"Error retrieving chunks: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving chunks: {str(e)}")
+        
 @router.get("/{chunk_id}", response_model=Chunk)
 async def get_chunk(chunk_id: str):
     """Get a chunk by ID"""
     try:
         chunk_repo = ChunkRepository()
+        if not hasattr(chunk_repo, 'collection') or chunk_repo.collection is None:
+            logger.error("MongoDB collection is not available")
+            raise HTTPException(status_code=503, detail="Database service unavailable")
+            
         chunk = await chunk_repo.get_chunk(chunk_id)
         
         if not chunk:
@@ -37,16 +102,8 @@ async def get_chunk(chunk_id: str):
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.get("/", response_model=ChunkList)
-async def get_chunks(skip: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=1000)):
-    """Get multiple chunks with pagination"""
-    try:
-        chunk_repo = ChunkRepository()
-        return await chunk_repo.get_chunks(skip, limit)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error retrieving chunk: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving chunk: {str(e)}")
 
 @router.put("/{chunk_id}", response_model=dict)
 async def update_chunk(chunk_id: str, chunk: Chunk):
@@ -66,7 +123,7 @@ async def update_chunk(chunk_id: str, chunk: Chunk):
             embedding = await embedding_service.generate_embedding(chunk.text)
         
         # Update chunk in the database
-        chunk_dict = chunk.dict()
+        chunk_dict = chunk.model_dump()
         if embedding:
             result = await chunk_repo.update_chunk(chunk_id, {**chunk_dict, "embedding": embedding})
         else:

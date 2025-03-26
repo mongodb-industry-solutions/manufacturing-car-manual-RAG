@@ -37,8 +37,8 @@ class Chunk(BaseModel):
     next_chunk_id: Optional[str] = Field(None, description="ID of the next chunk in sequence")
     prev_chunk_id: Optional[str] = Field(None, description="ID of the previous chunk in sequence")
     
-    class Config:
-        schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "id": "chunk_0042",
                 "text": "To change a flat tire, first ensure the vehicle is safely parked on level ground with the parking brake engaged...",
@@ -56,8 +56,19 @@ class Chunk(BaseModel):
                 "metadata": {"page_count": 2, "chunk_length": 523}
             }
         }
+    }
 
 class ChunkList(BaseModel):
     """Response model for a list of chunks"""
     total: int = Field(..., description="Total number of chunks matching the query")
     chunks: List[Chunk] = Field(..., description="List of chunks")
+    
+class ChunkFilterParams(BaseModel):
+    """Parameters for filtering chunks"""
+    content_types: Optional[List[str]] = Field(None, description="Filter by content types")
+    vehicle_systems: Optional[List[str]] = Field(None, description="Filter by vehicle systems")
+    has_safety_notices: Optional[bool] = Field(None, description="Filter chunks with safety notices")
+    has_procedures: Optional[bool] = Field(None, description="Filter chunks with procedural steps")
+    text_search: Optional[str] = Field(None, description="Text to search within chunks")
+    skip: int = Field(0, ge=0, description="Number of results to skip for pagination")
+    limit: int = Field(10, ge=1, le=100, description="Maximum number of results to return")
