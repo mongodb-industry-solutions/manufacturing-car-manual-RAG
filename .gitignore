@@ -11,6 +11,11 @@ venv.bak/
 **/config.yml
 **/config.yaml
 
+# Google Cloud credentials
+gcp/
+.config/gcloud/
+**/application_default_credentials.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

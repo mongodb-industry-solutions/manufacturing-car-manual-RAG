@@ -23,8 +23,8 @@ interface MainLayoutProps {
 
 const MainLayout: React.FC<MainLayoutProps> = ({ 
   children, 
-  showBanner = true,
-  bannerMessage = "This is a demo application showcasing MongoDB technical manual search capabilities."
+  showBanner = false,
+  bannerMessage = ""
 }) => {
   return (
     <LeafyGreenProvider darkMode={false}>
