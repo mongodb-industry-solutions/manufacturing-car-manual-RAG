@@ -124,11 +124,10 @@ export default function Home() {
               justifyContent: 'center',
             }}
           >
-            <Badge variant="green">Vector Search</Badge>
-            <Badge variant="blue">Keyword Search</Badge>
-            <Badge variant="purple">Hybrid Methods</Badge>
             <Badge variant="yellow">Intelligent Chunking</Badge>
-            <Badge variant="darkgray">RAG-powered QA</Badge>
+            <Badge variant="blue">Keyword Search</Badge>
+            <Badge variant="green">Vector Search</Badge>
+            <Badge variant="purple">Hybrid Methods</Badge>
           </div>
         </div>
 
@@ -144,6 +143,42 @@ export default function Home() {
             marginBottom: spacing[5],
           }}
         >
+          <Card
+            style={{
+              padding: 0,
+              textAlign: 'center',
+              overflow: 'hidden',
+              borderRadius: '8px',
+              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+              border: 'none',
+            }}
+          >
+            <div
+              style={{
+                backgroundColor: palette.yellow.light2,
+                padding: spacing[2],
+                borderBottom: `3px solid ${palette.yellow.base}`,
+              }}
+            >
+              <Icon
+                glyph="Documents"
+                size="large"
+                fill={palette.yellow.dark1}
+              />
+            </div>
+            <div style={{ padding: spacing[3] }}>
+              <Body
+                weight="medium"
+                style={{ marginBottom: spacing[2] }}
+              >
+                Technical Manual Chunking
+              </Body>
+              <Body>
+                See how technical manuals are chunked to optimize for
+                search and contextual understanding
+              </Body>
+            </div>
+          </Card>
           <Card
             style={{
               padding: 0,
@@ -251,43 +286,6 @@ export default function Home() {
               <Body>
                 Combine search approaches with methods like weighted,
                 RRF, union, and intersection
-              </Body>
-            </div>
-          </Card>
-
-          <Card
-            style={{
-              padding: 0,
-              textAlign: 'center',
-              overflow: 'hidden',
-              borderRadius: '8px',
-              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-              border: 'none',
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: palette.yellow.light2,
-                padding: spacing[2],
-                borderBottom: `3px solid ${palette.yellow.base}`,
-              }}
-            >
-              <Icon
-                glyph="Documents"
-                size="large"
-                fill={palette.yellow.dark1}
-              />
-            </div>
-            <div style={{ padding: spacing[3] }}>
-              <Body
-                weight="medium"
-                style={{ marginBottom: spacing[2] }}
-              >
-                Technical Manual Chunking
-              </Body>
-              <Body>
-                See how technical manuals are chunked to optimize for
-                search and contextual understanding
               </Body>
             </div>
           </Card>
