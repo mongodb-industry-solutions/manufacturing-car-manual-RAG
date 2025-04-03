@@ -494,11 +494,6 @@ const hybridResults = await
                   gap: spacing[2],
                 }}
               >
-                <Icon
-                  glyph="Documents"
-                  size={32}
-                  fill={palette.yellow.dark1}
-                />
                 <Body
                   weight="medium"
                   style={{ color: palette.yellow.dark2 }}
@@ -718,73 +713,6 @@ const hybridResults = await
           </div>
         </div>
 
-        {/* Try it out section */}
-        <div
-          style={{
-            marginBottom: spacing[5],
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-            borderRadius: '8px',
-            overflow: 'hidden',
-          }}
-        >
-          <Callout
-            variant="note"
-            title="Try the demo with these examples"
-          >
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: spacing[3],
-              }}
-            >
-              <Body>
-                Experience how different search methods perform on
-                real automotive technical content:
-              </Body>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns:
-                    'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: spacing[3],
-                }}
-              >
-                <ExampleCard
-                  title="Change flat tire"
-                  description="Emergency roadside procedure"
-                  href="/search?q=how%20to%20change%20a%20flat%20tire&method=hybrid"
-                  icon="CarAlt"
-                  color={palette.green}
-                />
-
-                <ExampleCard
-                  title="Oil change procedure"
-                  description="Regular maintenance task"
-                  href="/search?q=oil%20change%20procedure&method=hybrid"
-                  icon="Wrench"
-                  color={palette.blue}
-                />
-
-                <ExampleCard
-                  title="Engine warning light"
-                  description="Troubleshooting indicators"
-                  href="/search?q=engine%20warning%20light&method=hybrid"
-                  icon="Warning"
-                  color={palette.yellow}
-                />
-
-                <ExampleCard
-                  title="Brake fluid replacement"
-                  description="Safety-critical maintenance"
-                  href="/search?q=brake%20fluid%20replacement&method=hybrid"
-                  icon="CheckmarkWithCircle"
-                  color={palette.purple}
-                />
-              </div>
-            </div>
-          </Callout>
-        </div>
 
         {/* MongoDB integration */}
         <div style={{ marginBottom: spacing[5] }}>
@@ -886,7 +814,7 @@ const hybridResults = await
           <ExpandableCard
             title="Understanding Technical Manual Chunking"
             description="Learn how manuals are processed for optimal search"
-            defaultOpen={true}
+            defaultOpen={false}
             style={{
               marginBottom: spacing[3],
               border: `1px solid ${palette.gray.light2}`,
@@ -949,7 +877,7 @@ const hybridResults = await
           <ExpandableCard
             title="Search Methodology Comparison"
             description="Compare different search techniques"
-            defaultOpen={true}
+            defaultOpen={false}
             style={{
               marginBottom: spacing[3],
               border: `1px solid ${palette.gray.light2}`,
@@ -1112,7 +1040,7 @@ function ExampleCard({ title, description, href, icon, color }) {
               flexShrink: 0,
             }}
           >
-            <Icon glyph={icon} fill={color.dark1} />
+            {icon !== "CarAlt" && <Icon glyph={icon} fill={color.dark1} />}
           </div>
           <Body weight="medium">{title}</Body>
         </div>

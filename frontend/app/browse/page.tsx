@@ -103,6 +103,16 @@ export default function BrowsePage() {
     }
   }, [chunks]);
   
+  // Helper to check if chunk matches text filter
+  const chunkMatchesText = (chunk: Chunk, text: string): boolean => {
+    const lowerText = text.toLowerCase();
+    if (chunk.text.toLowerCase().includes(lowerText)) return true;
+    if (chunk.heading_level_1 && chunk.heading_level_1.toLowerCase().includes(lowerText)) return true;
+    if (chunk.heading_level_2 && chunk.heading_level_2.toLowerCase().includes(lowerText)) return true;
+    if (chunk.heading_level_3 && chunk.heading_level_3.toLowerCase().includes(lowerText)) return true;
+    return false;
+  };
+  
   // Filter chunks based on current filters
   const filteredChunks = React.useMemo(() => {
     if (!chunks || !chunks.chunks) return [];
@@ -140,16 +150,6 @@ export default function BrowsePage() {
       return true;
     });
   }, [chunks, filters, textFilter]);
-  
-  // Helper to check if chunk matches text filter
-  const chunkMatchesText = (chunk: Chunk, text: string): boolean => {
-    const lowerText = text.toLowerCase();
-    if (chunk.text.toLowerCase().includes(lowerText)) return true;
-    if (chunk.heading_level_1 && chunk.heading_level_1.toLowerCase().includes(lowerText)) return true;
-    if (chunk.heading_level_2 && chunk.heading_level_2.toLowerCase().includes(lowerText)) return true;
-    if (chunk.heading_level_3 && chunk.heading_level_3.toLowerCase().includes(lowerText)) return true;
-    return false;
-  };
   
   // Toggle filter value
   const toggleFilter = (type, value) => {
@@ -265,7 +265,7 @@ export default function BrowsePage() {
             </Body>
           </div>
           
-          <div style={{ marginBottom: spacing[3] }}>
+          <div style={{ marginBottom: spacing[4], width: '95%', paddingBottom: spacing[2] }}>
             <TextInput
               label="Filter Chunks"
               description="Search within chunk titles and content"

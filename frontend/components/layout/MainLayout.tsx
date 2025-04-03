@@ -13,7 +13,6 @@ import { Body } from '@leafygreen-ui/typography';
 
 // Components
 import Header from './Header';
-import Footer from './Footer';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -63,8 +62,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         >
           {children}
         </main>
-        
-        <Footer />
       </div>
     </LeafyGreenProvider>
   );
