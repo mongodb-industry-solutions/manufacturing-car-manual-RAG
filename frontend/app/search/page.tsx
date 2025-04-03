@@ -35,6 +35,7 @@ export default function SearchPage() {
   const [searchMethod, setSearchMethod] = useState<SearchMethod>('hybrid');
   const [rrf_k] = useState(60); // Fixed RRF k parameter
   const [activeTab] = useState<'search'>('search');
+  const [searchPlaceholder, setSearchPlaceholder] = useState('How do I change a flat tire?');
   
   // Custom hooks
   const { search, loading, error, results } = useSearch();
@@ -96,6 +97,7 @@ export default function SearchPage() {
   
   const handleSearch = (newQuery: string) => {
     setQuery(newQuery);
+    setSearchPlaceholder(newQuery); // Update placeholder to match current query
     performSearch(newQuery, searchMethod);
     
     // Update URL
@@ -133,23 +135,64 @@ export default function SearchPage() {
             onSearch={handleSearch} 
             initialValue={query}
             loading={loading}
+            placeholder={searchPlaceholder}
           />
         </Card>
         
         
-        {/* Search Mode header */}
+        {/* Search Suggestions */}
         <div style={{ 
           marginBottom: spacing[3],
           display: 'flex',
+          flexWrap: 'wrap',
           gap: spacing[2],
           borderBottom: '1px solid #E1E1E1',
           paddingBottom: spacing[2]
         }}>
+          
           <Button 
-            leftGlyph={<Icon glyph="MagnifyingGlass" />}
-            variant="primary"
+            size="small"
+            variant="outline"
+            onClick={() => handleSearch("Oil change procedure")}
+            leftGlyph={<Icon glyph="Wrench" size="small" />}
           >
-            Search Manual
+            Oil change procedure
+          </Button>
+          
+          <Button 
+            size="small" 
+            variant="outline"
+            onClick={() => handleSearch("Check engine light")}
+            leftGlyph={<Icon glyph="Warning" size="small" />}
+          >
+            Check engine light
+          </Button>
+          
+          <Button 
+            size="small" 
+            variant="outline"
+            onClick={() => handleSearch("Tire pressure")}
+            leftGlyph={<Icon glyph="Plus" size="small" />}
+          >
+            Tire pressure
+          </Button>
+          
+          <Button 
+            size="small" 
+            variant="outline"
+            onClick={() => handleSearch("Battery replacement")}
+            leftGlyph={<Icon glyph="LightningBolt" size="small" />}
+          >
+            Battery replacement
+          </Button>
+          
+          <Button 
+            size="small" 
+            variant="outline"
+            onClick={() => handleSearch("Brake maintenance")}
+            leftGlyph={<Icon glyph="Settings" size="small" />}
+          >
+            Brake maintenance
           </Button>
         </div>
         
@@ -194,7 +237,7 @@ export default function SearchPage() {
                 <>
                   <Card style={{ padding: spacing[3], marginBottom: spacing[3] }}>
                     <Subtitle>
-                      Found {results.total} results for &quot;{results.query}&quot; using {results.method} search
+                      Found {results.total} results for &quot;{results.query}&quot; using MongoDB Atlas {results.method} search
                     </Subtitle>
                   </Card>
                   
