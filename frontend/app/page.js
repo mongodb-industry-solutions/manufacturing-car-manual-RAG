@@ -104,9 +104,9 @@ export default function Home() {
               color: palette.gray.dark1,
             }}
           >
-            An interactive demonstration showcasing how MongoDB powers
-            intelligent search and retrieval augmented generation on
-            technical automotive documentation
+            An interactive demonstration showcasing how MongoDB's
+            Document Model, Vector Store and Hybrid Search powers
+            contextual retrieval on technical automotive documentation
           </Subtitle>
 
           <div
@@ -154,7 +154,7 @@ export default function Home() {
             <Badge variant="yellow">Intelligent Chunking</Badge>
             <Badge variant="blue">Full-Text Search</Badge>
             <Badge variant="green">Vector Search</Badge>
-            <Badge variant="purple">Hybrid Methods</Badge>
+            <Badge variant="purple">Hybrid Search</Badge>
             <Badge variant="darkGray">MongoDB Atlas</Badge>
           </div>
         </div>
@@ -713,7 +713,6 @@ const hybridResults = await
           </div>
         </div>
 
-
         {/* MongoDB integration */}
         <div style={{ marginBottom: spacing[5] }}>
           <Card
@@ -1040,7 +1039,9 @@ function ExampleCard({ title, description, href, icon, color }) {
               flexShrink: 0,
             }}
           >
-            {icon !== "CarAlt" && <Icon glyph={icon} fill={color.dark1} />}
+            {icon !== 'CarAlt' && (
+              <Icon glyph={icon} fill={color.dark1} />
+            )}
           </div>
           <Body weight="medium">{title}</Body>
         </div>
