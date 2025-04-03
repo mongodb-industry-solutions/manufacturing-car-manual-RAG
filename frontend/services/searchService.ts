@@ -7,8 +7,7 @@ import {
   VectorSearchRequest, 
   TextSearchRequest, 
   HybridSearchRequest, 
-  SearchResponse,
-  AskResponse
+  SearchResponse
 } from '../types/Search';
 import { Chunk, ChunkList } from '../types/Chunk';
 
@@ -34,12 +33,6 @@ export const searchService = {
     return apiPost<SearchResponse>('/search/hybrid', request);
   },
   
-  /**
-   * Ask a question and get an AI-generated answer using RAG
-   */
-  askQuestion: async (query: string, limit: number = 3): Promise<AskResponse> => {
-    return apiPost<AskResponse>('/search/ask', null, { query, limit });
-  },
   
   /**
    * Get a single chunk by ID

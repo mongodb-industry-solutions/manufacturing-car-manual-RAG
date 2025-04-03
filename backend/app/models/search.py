@@ -23,31 +23,13 @@ class TextSearchRequest(SearchRequest):
     pass
 
 class HybridSearchRequest(SearchRequest):
-    """Request model for hybrid search"""
-    method: Literal["rrf", "weighted", "union", "intersection"] = Field(
-        "weighted",
-        description="Method to combine vector and text search results"
+    """Request model for hybrid search using RRF"""
+    rrf_k: int = Field(
+        60,
+        ge=1,
+        le=100,
+        description="RRF k-value parameter for rank fusion (typically 60)"
     )
-    vector_weight: float = Field(
-        0.7,
-        ge=0.0,
-        le=1.0,
-        description="Weight for vector search (0.0 to 1.0) when using weighted method"
-    )
-    text_weight: float = Field(
-        0.3,
-        ge=0.0,
-        le=1.0,
-        description="Weight for text search (0.0 to 1.0) when using weighted method"
-    )
-
-    @validator('text_weight')
-    def weights_sum_to_one(cls, v, values):
-        """Ensure weights sum to approximately 1.0 when using weighted method"""
-        if 'vector_weight' in values and values.get('method') == 'weighted':
-            if abs(values['vector_weight'] + v - 1.0) > 0.01:
-                raise ValueError('vector_weight and text_weight must sum to 1.0')
-        return v
 
 class SearchResponse(BaseModel):
     """Response model for search endpoints"""
