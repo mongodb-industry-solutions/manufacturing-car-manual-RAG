@@ -14,9 +14,7 @@ import Tabs from '@leafygreen-ui/tabs';
 import dynamic from 'next/dynamic';
 const SearchInput = dynamic(() => import('@/components/search/SearchInput'));
 const SearchMethodSelector = dynamic(() => import('@/components/search/SearchMethodSelector'));
-const WeightSlider = dynamic(() => import('@/components/search/WeightSlider'));
 const SearchResultList = dynamic(() => import('@/components/search/SearchResultList'));
-const AskQuestion = dynamic(() => import('@/components/search/AskQuestion'));
 const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
 const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
@@ -34,63 +32,61 @@ export default function SearchPage() {
   // State
   const [query, setQuery] = useState('');
   const [searchMethod, setSearchMethod] = useState<SearchMethod>('hybrid');
-  const [hybridMethod, setHybridMethod] = useState<HybridMethod>('weighted');
-  const [vectorWeight, setVectorWeight] = useState(0.7);
-  const [textWeight, setTextWeight] = useState(0.3);
-  const [activeTab, setActiveTab] = useState<'search' | 'ask'>(modeParam === 'ask' ? 'ask' : 'search');
+  const [rrf_k] = useState(60); // Fixed RRF k parameter
+  const [activeTab] = useState<'search'>('search');
   
   // Custom hooks
   const { search, loading, error, results } = useSearch();
   
-  // Handle URL params
+  // Handle initial URL params only once on mount
   useEffect(() => {
+    // Set initial state from URL
     if (queryParam) {
       setQuery(queryParam);
-      
-      // If we have a query, perform the search
-      if (queryParam.trim() && activeTab === 'search') {
-        performSearch(queryParam);
-      }
     }
     
     if (methodParam && ['vector', 'text', 'hybrid'].includes(methodParam)) {
       setSearchMethod(methodParam as SearchMethod);
     }
-
-    if (modeParam === 'ask') {
-      setActiveTab('ask');
+    
+    // Perform search only if query exists
+    if (queryParam && queryParam.trim()) {
+      const method = methodParam && ['vector', 'text', 'hybrid'].includes(methodParam) 
+        ? (methodParam as SearchMethod) 
+        : 'hybrid';
+        
+      // Use a slight delay to ensure state is updated
+      setTimeout(() => {
+        performSearch(queryParam, method);
+      }, 10);
     }
-  }, [queryParam, methodParam, modeParam]);
-  
-  // Update URL when search parameters change
-  useEffect(() => {
-    if (query) {
-      updateSearchParams();
-    }
-  }, [searchMethod, activeTab]);
+    // Empty dependency array means this only runs once on mount
+  }, []);
   
   const updateSearchParams = () => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     params.set('method', searchMethod);
-    if (activeTab === 'ask') params.set('mode', 'ask');
     
     // Update URL without causing a navigation/reload
     window.history.pushState({}, '', `/search?${params.toString()}`);
   };
   
-  const performSearch = async (searchQuery: string = query) => {
+  const performSearch = async (searchQuery: string = query, explicitMethod?: SearchMethod) => {
     if (!searchQuery.trim()) return;
     
     try {
-      if (searchMethod === 'hybrid') {
+      // Use explicitly provided method if available, otherwise use state
+      const methodToUse = explicitMethod || searchMethod;
+      
+      console.log(`Performing search with method: ${methodToUse}`);
+      
+      if (methodToUse === 'hybrid') {
         await search('hybrid', searchQuery, 10, {
-          method: hybridMethod,
-          vector_weight: vectorWeight,
-          text_weight: textWeight
+          rrf_k: rrf_k
         });
       } else {
-        await search(searchMethod, searchQuery, 10);
+        await search(methodToUse, searchQuery, 10);
       }
     } catch (err) {
       console.error('Search error:', err);
@@ -99,10 +95,7 @@ export default function SearchPage() {
   
   const handleSearch = (newQuery: string) => {
     setQuery(newQuery);
-    
-    if (activeTab === 'search') {
-      performSearch(newQuery);
-    }
+    performSearch(newQuery, searchMethod);
     
     // Update URL
     const params = new URLSearchParams(searchParams.toString());
@@ -111,47 +104,22 @@ export default function SearchPage() {
   };
   
   const handleMethodChange = (method: SearchMethod) => {
+    console.log(`Method changed to: ${method}`);
     setSearchMethod(method);
     
     // If we have a query, perform the search with the new method
-    if (query.trim() && activeTab === 'search') {
-      setTimeout(() => performSearch(), 0);
+    if (query.trim()) {
+      // Use the explicitly provided method to avoid race conditions with state updates
+      performSearch(query, method);
+      
+      // Update URL
+      const params = new URLSearchParams();
+      if (query) params.set('q', query);
+      params.set('method', method);
+      window.history.pushState({}, '', `/search?${params.toString()}`);
     }
   };
   
-  const handleWeightChange = (newVectorWeight: number, newTextWeight: number) => {
-    setVectorWeight(newVectorWeight);
-    setTextWeight(newTextWeight);
-    
-    // If we have a query, perform the search with the new weights
-    if (query.trim() && searchMethod === 'hybrid' && activeTab === 'search') {
-      setTimeout(() => performSearch(), 0);
-    }
-  };
-
-  // Handle source click from AskQuestion component
-  const handleSourceClick = (sourceId: string) => {
-    router.push(`/chunk/${sourceId}`);
-  };
-  
-  // Handle tab change
-  const handleTabChange = (tab: 'search' | 'ask') => {
-    setActiveTab(tab);
-    
-    // Update URL
-    const params = new URLSearchParams(searchParams.toString());
-    if (tab === 'ask') {
-      params.set('mode', 'ask');
-    } else {
-      params.delete('mode');
-    }
-    router.push(`/search?${params.toString()}`);
-    
-    // If switching to search tab and we have a query, perform the search
-    if (tab === 'search' && query.trim()) {
-      setTimeout(() => performSearch(), 0);
-    }
-  };
   
   return (
     <MainLayout>
@@ -167,7 +135,7 @@ export default function SearchPage() {
           />
         </Card>
         
-        {/* Mode selector buttons */}
+        {/* Search Mode header */}
         <div style={{ 
           marginBottom: spacing[3],
           display: 'flex',
@@ -177,22 +145,13 @@ export default function SearchPage() {
         }}>
           <Button 
             leftGlyph={<Icon glyph="MagnifyingGlass" />}
-            variant={activeTab === 'search' ? 'primary' : 'default'}
-            onClick={() => handleTabChange('search')}
+            variant="primary"
           >
             Search Manual
           </Button>
-          <Button
-            leftGlyph={<Icon glyph="Help" />}
-            variant={activeTab === 'ask' ? 'primary' : 'default'}
-            onClick={() => handleTabChange('ask')}
-          >
-            Ask a Question
-          </Button>
         </div>
         
-        {/* Search Mode */}
-        {activeTab === 'search' && (
+        {/* Search Results */}
           <div style={{ 
             display: 'flex', 
             gap: spacing[3],
@@ -212,21 +171,8 @@ export default function SearchPage() {
                 <SearchMethodSelector 
                   selectedMethod={searchMethod}
                   onChange={handleMethodChange}
-                  hybridMethod={hybridMethod}
-                  onHybridMethodChange={(method) => {
-                    setHybridMethod(method as HybridMethod);
-                    if (query.trim() && searchMethod === 'hybrid') {
-                      setTimeout(() => performSearch(), 0);
-                    }
-                  }}
                 />
                 
-                {searchMethod === 'hybrid' && hybridMethod === 'weighted' && (
-                  <WeightSlider 
-                    vectorWeight={vectorWeight}
-                    onWeightChange={handleWeightChange}
-                  />
-                )}
               </Card>
             </div>
             
@@ -274,27 +220,7 @@ export default function SearchPage() {
               )}
             </div>
           </div>
-        )}
         
-        {/* Ask Question Mode */}
-        {activeTab === 'ask' && (
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <AskQuestion 
-              initialQuestion={query || "How do I perform routine maintenance on my car?"}
-              onSourceClick={handleSourceClick}
-            />
-            
-            <Card style={{ padding: spacing[3], marginTop: spacing[3] }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <Icon glyph="InfoWithCircle" />
-                <Body>
-                  Questions are answered using AI with information from your car manual. For more focused results, 
-                  try the search tab to navigate directly to specific sections.
-                </Body>
-              </div>
-            </Card>
-          </div>
-        )}
       </div>
     </MainLayout>
   );

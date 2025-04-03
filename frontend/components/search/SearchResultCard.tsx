@@ -73,28 +73,35 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
           marginLeft: spacing[2],
           marginBottom: spacing[2]
         }}>
-          <Tooltip
-            trigger={
-              <Badge variant={
-                scorePercent >= 90 ? "green" :
-                scorePercent >= 70 ? "lightgray" :
-                scorePercent >= 50 ? "yellow" :
-                "red"
-              }>
-                <span style={{ fontWeight: 'bold' }}>{scorePercent}%</span>
-              </Badge>
-            }
-            triggerEvent="hover"
-          >
-            Overall match score
-          </Tooltip>
+          {/* For hybrid search: always show overall score with proper formatting */}
+          {(vector_score !== undefined && text_score !== undefined) && (
+            <Tooltip
+              trigger={
+                <Badge variant={
+                  scorePercent >= 90 ? "green" :
+                  scorePercent >= 70 ? "lightgray" :
+                  scorePercent >= 50 ? "yellow" :
+                  scorePercent > 0 ? "red" : "darkgray"
+                }>
+                  <span style={{ fontWeight: 'bold' }}>
+                    {score > 0 ? `${scorePercent}%` : "0%"}
+                  </span>
+                </Badge>
+              }
+              triggerEvent="hover"
+            >
+              Overall match score
+            </Tooltip>
+          )}
           
-          {vector_score && (
+          {/* Only show vector score with proper formatting */}
+          {vector_score !== undefined && (
             <Tooltip
               trigger={
                 <Badge variant="lightgray">
                   <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-                    <Icon glyph="Diagram" size="small" /> {Math.round(vector_score * 100)}%
+                    <Icon glyph="Diagram" size="small" /> 
+                    {vector_score > 0 ? `${Math.round(vector_score * 100)}%` : "0%"}
                   </span>
                 </Badge>
               }
@@ -104,12 +111,14 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
             </Tooltip>
           )}
           
-          {text_score && (
+          {/* Only show text score with proper formatting */}
+          {text_score !== undefined && (
             <Tooltip
               trigger={
                 <Badge variant="lightgray">
                   <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-                    <Icon glyph="String" size="small" /> {Math.round(text_score * 100)}%
+                    <Icon glyph="String" size="small" /> 
+                    {text_score > 0 ? `${Math.round(text_score * 100)}%` : "0%"}
                   </span>
                 </Badge>
               }
@@ -137,7 +146,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
             alignItems: 'center',
             gap: spacing[1]
           }}>
-            <Icon glyph="Folder" size="small" /> {chunk.breadcrumb_trail}
+            {chunk.breadcrumb_trail}
           </Body>
         )}
       </div>
@@ -213,12 +222,9 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
             <Tooltip
               trigger={
                 <Body size="small" style={{ 
-                  color: palette.gray.dark1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: spacing[1]
+                  color: palette.gray.dark1
                 }}>
-                  <Icon glyph="Page" size="small" /> {pageInfo}
+                  {pageInfo}
                 </Body>
               }
               triggerEvent="hover"

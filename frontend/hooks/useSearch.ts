@@ -17,9 +17,7 @@ export interface UseSearchResult {
     query: string, 
     limit?: number,
     hybridOptions?: { 
-      method: HybridMethod, 
-      vector_weight: number, 
-      text_weight: number 
+      rrf_k?: number
     }
   ) => Promise<SearchResponse>;
   loading: boolean;
@@ -37,9 +35,7 @@ export const useSearch = (): UseSearchResult => {
     query: string, 
     limit: number = 5,
     hybridOptions?: { 
-      method: HybridMethod, 
-      vector_weight: number, 
-      text_weight: number 
+      rrf_k?: number 
     }
   ): Promise<SearchResponse> => {
     setLoading(true);
@@ -51,10 +47,28 @@ export const useSearch = (): UseSearchResult => {
       switch (method) {
         case 'vector':
           response = await searchService.vectorSearch({ query, limit });
+          
+          // For vector search, clear any text_score fields in results to avoid confusion
+          if (response && response.results) {
+            response.results = response.results.map(result => ({
+              ...result, 
+              text_score: undefined // Clear text_score for vector search
+            }));
+          }
           break;
+          
         case 'text':
           response = await searchService.textSearch({ query, limit });
+          
+          // For text search, clear any vector_score fields in results to avoid confusion
+          if (response && response.results) {
+            response.results = response.results.map(result => ({
+              ...result, 
+              vector_score: undefined // Clear vector_score for text search
+            }));
+          }
           break;
+          
         case 'hybrid':
           if (!hybridOptions) {
             throw new Error('Hybrid search requires options');
@@ -65,6 +79,7 @@ export const useSearch = (): UseSearchResult => {
             ...hybridOptions
           });
           break;
+          
         default:
           throw new Error(`Unknown search method: ${method}`);
       }

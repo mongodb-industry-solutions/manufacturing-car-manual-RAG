@@ -374,9 +374,13 @@ export default function BrowsePage() {
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: spacing[3] }}>
             <Pagination
               key={`pagination-${paginationKey}`}
-              numPages={Math.ceil(filteredChunks.length / itemsPerPage)}
               currentPage={currentPage}
-              onPageChange={handlePageChange}
+              onForwardArrowClick={() => handlePageChange(currentPage + 1)}
+              onBackArrowClick={() => handlePageChange(currentPage - 1)}
+              shouldDisableForwardArrow={currentPage >= Math.ceil(filteredChunks.length / itemsPerPage)}
+              shouldDisableBackArrow={currentPage <= 1}
+              numTotalItems={filteredChunks.length}
+              itemsPerPage={itemsPerPage}
             />
           </div>
         )}

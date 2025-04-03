@@ -4,7 +4,7 @@
 import { Chunk } from './Chunk';
 
 export type SearchMethod = 'vector' | 'text' | 'hybrid';
-export type HybridMethod = 'rrf' | 'weighted' | 'union' | 'intersection';
+export type HybridMethod = 'rrf';
 
 export interface SearchResult {
   score: number;
@@ -30,18 +30,5 @@ export interface VectorSearchRequest extends SearchRequest {}
 export interface TextSearchRequest extends SearchRequest {}
 
 export interface HybridSearchRequest extends SearchRequest {
-  method: HybridMethod;
-  vector_weight: number;
-  text_weight: number;
-}
-
-export interface AskResponse {
-  query: string;
-  answer: string;
-  sources: {
-    id: string;
-    score: number;
-    text: string;
-    heading: string;
-  }[];
+  rrf_k?: number;
 }

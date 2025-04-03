@@ -34,11 +34,11 @@ const normalizeUrl = (url: string): string => {
     return url.endsWith('/') ? url : `${url}/`;
   }
   
-  // Methods like /search/vector/ need slashes as well
+  // Search endpoints should NOT have trailing slashes
   if (segments.length === 2 && 
       segments[0] === 'search' && 
       ['vector', 'text', 'hybrid', 'ask'].includes(segments[1])) {
-    return url.endsWith('/') ? url : `${url}/`;
+    return url.endsWith('/') ? url.slice(0, -1) : url;
   }
   
   // ID endpoints like /chunks/chunk_001 should NOT have trailing slashes
