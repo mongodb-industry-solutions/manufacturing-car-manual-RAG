@@ -88,7 +88,7 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
             trigger={
               <Badge variant="darkgray">
                 <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-                  <Icon glyph="Page" size="small" /> {pageInfo}
+                  <Icon glyph="File" size="small" /> {pageInfo}
                 </span>
               </Badge>
             }
@@ -264,7 +264,7 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
           paddingBottom: spacing[2],
           borderBottom: `1px solid ${palette.gray.light2}`,
         }}>
-          <Icon glyph="Document" fill={palette.green.base} size="large" />
+          <Icon glyph="Note" fill={palette.green.base} size="large" />
           <H3 style={{ margin: 0 }}>Content</H3>
         </div>
         <Body style={{ lineHeight: '1.6' }}>{chunk.text}</Body>

@@ -115,29 +115,7 @@ export default function ChunkDetailPage() {
         <div style={{ marginBottom: spacing[4] }}>
           {chunk && <ChunkViewer chunk={chunk} showNavigation={true} />}
         </div>
-
-        {/* Ask question toggle button */}
-        <div style={{ marginBottom: spacing[3], textAlign: 'center' }}>
-          <Button
-            variant={showAskQuestion ? "danger" : "primary"}
-            size="large"
-            onClick={() => setShowAskQuestion(!showAskQuestion)}
-            leftGlyph={<Icon glyph={showAskQuestion ? "X" : "Help"} />}
-          >
-            {showAskQuestion ? "Close Question Panel" : "Ask a Question About This Content"}
-          </Button>
-        </div>
-
-        {/* Conditional render of the ask question component */}
-        {showAskQuestion && (
-          <div style={{ marginBottom: spacing[3] }}>
-            <AskQuestion 
-              initialQuestion={`Can you explain more about "${chunk?.heading_level_2 || chunk?.heading_level_1 || 'this section'}"`}
-              onSourceClick={handleSourceClick}
-            />
-          </div>
-        )}
-      </div>
+      </div> 
     </MainLayout>
   );
 }
