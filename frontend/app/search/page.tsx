@@ -22,6 +22,7 @@ const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
 import { useSearch } from '@/hooks/useSearch';
 import { SearchMethod, HybridMethod } from '@/types/Search';
 
+
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -135,6 +136,7 @@ export default function SearchPage() {
           />
         </Card>
         
+        
         {/* Search Mode header */}
         <div style={{ 
           marginBottom: spacing[3],
@@ -155,17 +157,11 @@ export default function SearchPage() {
           <div style={{ 
             display: 'flex', 
             gap: spacing[3],
-            flexDirection: 'row',
-            '@media (max-width: 768px)': {
-              flexDirection: 'column',
-            }
+            flexDirection: 'row'
           }}>
             {/* Left column - search options */}
             <div style={{ 
-              width: '300px',
-              '@media (max-width: 768px)': {
-                width: '100%',
-              }
+              width: '300px'
             }}>
               <Card style={{ padding: spacing[3], marginBottom: spacing[3] }}>
                 <SearchMethodSelector 
@@ -178,10 +174,7 @@ export default function SearchPage() {
             
             {/* Right column - search results */}
             <div style={{ 
-              flexGrow: 1,
-              '@media (max-width: 768px)': {
-                width: '100%',
-              }
+              flexGrow: 1
             }}>
               {/* Error state */}
               {error && (
