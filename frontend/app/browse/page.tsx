@@ -214,15 +214,8 @@ export default function BrowsePage() {
           <ErrorState
             title="Error Loading Chunks"
             message={`We couldn't load the chunks: ${error}`}
-            action={
-              <Button
-                variant="primary"
-                onClick={() => router.push('/')}
-                leftGlyph={<Icon glyph="Home" />}
-              >
-                Return Home
-              </Button>
-            }
+            onRetry={() => router.push('/')}
+            details="Please try again later or return to the home page."
           />
         </div>
       </MainLayout>
