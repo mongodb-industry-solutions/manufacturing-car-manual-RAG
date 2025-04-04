@@ -11,7 +11,7 @@ const CACHE_KEY_CHUNK = 'car_manual_chunk_cache_';
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour cache TTL
 
 // Helper to check if we're in a browser environment
-const isBrowser = typeof window !== 'undefined';
+const isBrowser = typeof window !== 'undefined' && typeof localStorage !== 'undefined';
 
 // Cache handler for localStorage
 const cacheManager = {

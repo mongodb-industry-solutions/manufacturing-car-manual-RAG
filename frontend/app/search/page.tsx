@@ -71,7 +71,9 @@ function SearchPageContent() {
     params.set('method', searchMethod);
     
     // Update URL without causing a navigation/reload
-    window.history.pushState({}, '', `/search?${params.toString()}`);
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', `/search?${params.toString()}`);
+    }
   };
   
   const performSearch = async (searchQuery: string = query, explicitMethod?: SearchMethod) => {
