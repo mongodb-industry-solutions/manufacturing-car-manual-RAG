@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { H1, H2, Body, Subtitle } from '@leafygreen-ui/typography';
-import Card from '@leafygreen-ui/card';
+import { MyH1 as H1, MyH2 as H2, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 import Banner from '@leafygreen-ui/banner';
 import { ParagraphSkeleton } from '@leafygreen-ui/skeleton-loader';
 import { spacing } from '@leafygreen-ui/tokens';
-import Button from '@leafygreen-ui/button';
+import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import Tabs from '@leafygreen-ui/tabs';
 
@@ -22,8 +22,8 @@ const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
 import { useSearch } from '@/hooks/useSearch';
 import { SearchMethod, HybridMethod } from '@/types/Search';
 
-
-export default function SearchPage() {
+// Client Component that uses searchParams
+function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryParam = searchParams.get('q');
@@ -123,7 +123,6 @@ export default function SearchPage() {
     }
   };
   
-  
   return (
     <MainLayout>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: spacing[3] }}>
@@ -152,7 +151,7 @@ export default function SearchPage() {
           
           <Button 
             size="small"
-            variant="outline"
+            variant="primaryOutline"
             onClick={() => handleSearch("Oil change procedure")}
             leftGlyph={<Icon glyph="Wrench" size="small" />}
           >
@@ -161,7 +160,7 @@ export default function SearchPage() {
           
           <Button 
             size="small" 
-            variant="outline"
+            variant="primaryOutline"
             onClick={() => handleSearch("Check engine light")}
             leftGlyph={<Icon glyph="Warning" size="small" />}
           >
@@ -170,7 +169,7 @@ export default function SearchPage() {
           
           <Button 
             size="small" 
-            variant="outline"
+            variant="primaryOutline"
             onClick={() => handleSearch("Tire pressure")}
             leftGlyph={<Icon glyph="Plus" size="small" />}
           >
@@ -179,7 +178,7 @@ export default function SearchPage() {
           
           <Button 
             size="small" 
-            variant="outline"
+            variant="primaryOutline"
             onClick={() => handleSearch("Battery replacement")}
             leftGlyph={<Icon glyph="LightningBolt" size="small" />}
           >
@@ -188,7 +187,7 @@ export default function SearchPage() {
           
           <Button 
             size="small" 
-            variant="outline"
+            variant="primaryOutline"
             onClick={() => handleSearch("Brake maintenance")}
             leftGlyph={<Icon glyph="Settings" size="small" />}
           >
@@ -259,5 +258,14 @@ export default function SearchPage() {
         
       </div>
     </MainLayout>
+  );
+}
+
+// Main page component that wraps the client component in a Suspense boundary
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<LoadingState message="Loading search page..." />}>
+      <SearchPageContent />
+    </Suspense>
   );
 }

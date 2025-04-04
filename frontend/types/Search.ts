@@ -32,3 +32,17 @@ export interface TextSearchRequest extends SearchRequest {}
 export interface HybridSearchRequest extends SearchRequest {
   rrf_k?: number;
 }
+
+/**
+ * Interface for question-answering results
+ */
+export interface AskResponse {
+  query: string;
+  answer: string;
+  sources?: {
+    id: string;
+    text: string;
+    heading?: string;
+    score: number;
+  }[];
+}

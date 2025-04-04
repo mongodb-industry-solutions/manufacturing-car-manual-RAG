@@ -2,9 +2,9 @@
  * Loading state component
  */
 import React from 'react';
-import Card from '@leafygreen-ui/card';
-import { Spinner } from '@leafygreen-ui/loading-indicator';
-import { H3, Body } from '@leafygreen-ui/typography';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
+import { MySpinner as Spinner } from '@/components/ui/TypographyWrapper';
+import { MyH3 as H3, MyBody as Body } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
 
 interface LoadingStateProps {
@@ -28,7 +28,7 @@ const LoadingState: React.FC<LoadingStateProps> = ({
         gap: spacing[3]
       }}
     >
-      <Spinner size="large" />
+      <Spinner />
       <H3>{message}</H3>
       <Body>Please wait while we retrieve the data</Body>
     </div>

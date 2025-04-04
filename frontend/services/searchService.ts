@@ -7,7 +7,8 @@ import {
   VectorSearchRequest, 
   TextSearchRequest, 
   HybridSearchRequest, 
-  SearchResponse
+  SearchResponse,
+  AskResponse
 } from '../types/Search';
 import { Chunk, ChunkList } from '../types/Chunk';
 
@@ -46,5 +47,12 @@ export const searchService = {
    */
   getChunks: async (skip: number = 0, limit: number = 100): Promise<ChunkList> => {
     return apiGet<ChunkList>('/chunks', { skip, limit });
+  },
+
+  /**
+   * Ask a question and get an AI-generated answer with sources
+   */
+  askQuestion: async (query: string, limit: number = 3): Promise<AskResponse> => {
+    return apiPost<AskResponse>('/ask', { query, limit });
   }
 };

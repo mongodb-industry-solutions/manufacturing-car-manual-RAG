@@ -2,9 +2,9 @@
  * Search result card component
  */
 import React from 'react';
-import Card from '@leafygreen-ui/card';
-import Button from '@leafygreen-ui/button';
-import { H3, Body, Subtitle } from '@leafygreen-ui/typography';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
+import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import { MyH3 as H3, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import Callout from '@leafygreen-ui/callout';
 import Tooltip from '@leafygreen-ui/tooltip';

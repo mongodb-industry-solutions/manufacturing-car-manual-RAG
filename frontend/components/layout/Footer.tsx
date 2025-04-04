@@ -6,7 +6,7 @@
 import React from 'react';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { Body } from '@leafygreen-ui/typography';
+import { MyBody as Body } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import Link from 'next/link';
 

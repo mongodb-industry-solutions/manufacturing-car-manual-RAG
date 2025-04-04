@@ -3,10 +3,10 @@
  */
 import React from 'react';
 import { Chunk } from '../../types/Chunk';
-import { H1, H2, H3, Body, Subtitle } from '@leafygreen-ui/typography';
+import { MyH1 as H1, MyH2 as H2, MyH3 as H3, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import Card from '@leafygreen-ui/card';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import Badge from '@leafygreen-ui/badge';
 import ExpandableCard from '@leafygreen-ui/expandable-card';
