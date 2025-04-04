@@ -11,17 +11,21 @@ import Icon from '@leafygreen-ui/icon';
 import Banner from '@leafygreen-ui/banner';
 
 interface ErrorStateProps {
+  title?: string;
   message?: string;
   details?: string;
   onRetry?: () => void;
   isFullPage?: boolean;
+  action?: React.ReactNode;
 }
 
 const ErrorState: React.FC<ErrorStateProps> = ({ 
+  title,
   message = 'An error occurred',
   details,
   onRetry,
-  isFullPage = false
+  isFullPage = false,
+  action
 }) => {
   const content = (
     <div
@@ -40,7 +44,9 @@ const ErrorState: React.FC<ErrorStateProps> = ({
         fill={palette.red.base} 
       />
       
-      <H3>{message}</H3>
+      <H3>{title || message}</H3>
+      
+      {message && title && <Body>{message}</Body>}
       
       {details && (
         <Banner variant="danger">
@@ -48,7 +54,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
         </Banner>
       )}
       
-      {onRetry && (
+      {action || (onRetry && (
         <Button
           variant="primary"
           onClick={onRetry}
@@ -56,7 +62,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({
         >
           Try Again
         </Button>
-      )}
+      ))}
     </div>
   );
 
