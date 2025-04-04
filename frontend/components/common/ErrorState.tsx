@@ -54,15 +54,15 @@ const ErrorState: React.FC<ErrorStateProps> = ({
         </Banner>
       )}
       
-      {action || (onRetry && (
+      {onRetry && (
         <Button
           variant="primary"
           onClick={onRetry}
-          leftGlyph={<Icon glyph="Refresh" />}
+          leftGlyph={<Icon glyph={title?.includes("Error Loading") ? "Home" : "Refresh"} />}
         >
-          Try Again
+          {title?.includes("Error Loading") ? "Return Home" : "Try Again"}
         </Button>
-      ))}
+      )}
     </div>
   );
 

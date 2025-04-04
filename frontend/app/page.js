@@ -23,7 +23,7 @@ import Callout from '@leafygreen-ui/callout';
 import Banner from '@leafygreen-ui/banner';
 import Code from '@leafygreen-ui/code';
 import { Tabs, Tab } from '@leafygreen-ui/tabs';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 const MainLayout = dynamic(() =>
   import('@/components/layout/MainLayout')
