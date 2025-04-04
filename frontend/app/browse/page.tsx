@@ -9,9 +9,11 @@ import { spacing } from '@leafygreen-ui/tokens';
 import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import { palette } from '@leafygreen-ui/palette';
-import Pagination from '@leafygreen-ui/pagination';
 import Badge from '@leafygreen-ui/badge';
 import TextInput from '@leafygreen-ui/text-input';
+
+// Dynamically import problematic components that might use document/window
+const Pagination = dynamic(() => import('@leafygreen-ui/pagination'), { ssr: false });
 
 const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
@@ -174,7 +176,9 @@ export default function BrowsePage() {
     // Force re-render with a new key for the pagination component
     setPaginationKey(prev => prev + 1);
     // Scroll to top of the page for better UX
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, []);
   
   // Get current page items
@@ -232,7 +236,9 @@ export default function BrowsePage() {
               variant="primaryOutline"
               onClick={() => {
                 clearCache();
-                window.location.reload();
+                if (typeof window !== 'undefined') {
+                  window.location.reload();
+                }
               }}
               leftGlyph={<Icon glyph="Refresh" />}
             >
@@ -408,7 +414,9 @@ export default function BrowsePage() {
                 leftGlyph={<Icon glyph="Refresh" />}
                 onClick={() => {
                   clearCache();
-                  window.location.reload();
+                  if (typeof window !== 'undefined') {
+                    window.location.reload();
+                  }
                 }}
                 style={{ marginTop: spacing[3] }}
               >
