@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { H1, H2, H3, Body, Subtitle } from '@leafygreen-ui/typography';
-import Card from '@leafygreen-ui/card';
+import { MyH1 as H1, MyH2 as H2, MyH3 as H3, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
-import Button from '@leafygreen-ui/button';
+import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import { palette } from '@leafygreen-ui/palette';
 import Pagination from '@leafygreen-ui/pagination';
@@ -226,7 +226,7 @@ export default function BrowsePage() {
     <MainLayout>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: spacing[3] }}>
         <div style={{ marginBottom: spacing[3], display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <H1>Browse Car Manual Chunks</H1>
+          <H1 as="h1">Browse Car Manual Chunks</H1>
           <div style={{ display: 'flex', gap: spacing[2] }}>
             <Button
               variant="primaryOutline"

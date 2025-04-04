@@ -3,12 +3,12 @@
  */
 import React from 'react';
 import { RadioGroup, Radio } from '@leafygreen-ui/radio-group';
-import { Body } from '@leafygreen-ui/typography';
+import { MyBody as Body } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
 import { SearchMethod } from '../../types/Search';
 import Icon from '@leafygreen-ui/icon';
 import { palette } from '@leafygreen-ui/palette';
-import Card from '@leafygreen-ui/card';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 
 interface SearchMethodSelectorProps {
   selectedMethod: SearchMethod;

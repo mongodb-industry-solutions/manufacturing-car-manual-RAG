@@ -9,7 +9,7 @@ import { spacing } from '@leafygreen-ui/tokens';
 import LeafyGreenProvider from '@leafygreen-ui/leafygreen-provider';
 import Banner from '@leafygreen-ui/banner';
 import Icon from '@leafygreen-ui/icon';
-import { Body } from '@leafygreen-ui/typography';
+import { MyBody as Body } from '@/components/ui/TypographyWrapper';
 
 // Components
 import Header from './Header';

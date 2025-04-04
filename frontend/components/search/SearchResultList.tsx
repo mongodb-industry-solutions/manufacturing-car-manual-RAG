@@ -4,10 +4,10 @@
 import React from 'react';
 import { SearchResult } from '../../types/Search';
 import SearchResultCard from './SearchResultCard';
-import { H2, Body } from '@leafygreen-ui/typography';
+import { MyH2 as H2, MyBody as Body } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import Card from '@leafygreen-ui/card';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 
 interface SearchResultListProps {

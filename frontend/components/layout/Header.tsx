@@ -8,8 +8,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { H3 } from '@leafygreen-ui/typography';
-import Button from '@leafygreen-ui/button';
+import { MyH3 as H3 } from '@/components/ui/TypographyWrapper';
+import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import Tooltip from '@leafygreen-ui/tooltip';
 

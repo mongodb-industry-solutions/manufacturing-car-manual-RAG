@@ -2,11 +2,11 @@
  * Empty state component
  */
 import React from 'react';
-import Card from '@leafygreen-ui/card';
-import { H3, Body } from '@leafygreen-ui/typography';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
+import { MyH3 as H3, MyBody as Body } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import Button from '@leafygreen-ui/button';
+import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 
 interface EmptyStateProps {
