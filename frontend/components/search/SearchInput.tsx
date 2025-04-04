@@ -3,10 +3,10 @@
  */
 import React, { useState } from 'react';
 import TextInput from '@leafygreen-ui/text-input';
-import Button from '@leafygreen-ui/button';
+import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import { spacing } from '@leafygreen-ui/tokens';
-import { Spinner } from '@leafygreen-ui/loading-indicator';
+import { MySpinner as Spinner } from '@/components/ui/TypographyWrapper';
 
 interface SearchInputProps {
   onSearch: (query: string) => void;

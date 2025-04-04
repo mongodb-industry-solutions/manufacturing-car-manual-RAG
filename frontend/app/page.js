@@ -1,19 +1,21 @@
 'use client';
 
 import {
-  H1,
-  H2,
-  H3,
-  Body,
-  Subtitle,
+  MyH1 as H1,
+  MyH2 as H2,
+  MyH3 as H3,
+  MyBody as Body,
+  MySubtitle as Subtitle
+} from '@/components/ui/TypographyWrapper';
+import {
   InlineCode,
   Disclaimer,
 } from '@leafygreen-ui/typography';
-import Card from '@leafygreen-ui/card';
+import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 import ExpandableCard from '@leafygreen-ui/expandable-card';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import Button from '@leafygreen-ui/button';
+import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
