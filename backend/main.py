@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Create FastAPI app
-app = FastAPI(title=settings.PROJECT_NAME)
+app = FastAPI(title=settings.PROJECT_NAME, redirect_slashes=False)
 
 # Configure CORS
 app.add_middleware(
