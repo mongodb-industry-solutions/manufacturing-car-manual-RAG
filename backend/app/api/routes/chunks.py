@@ -39,6 +39,7 @@ async def get_available_filters():
         logger.error(f"Error retrieving filters: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving filters: {str(e)}")
 
+@router.get("", response_model=ChunkList)
 @router.get("/", response_model=ChunkList)
 async def get_chunks(
     skip: int = Query(0, ge=0),
