@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     
     # Search configuration
     VECTOR_DIMENSIONS: int = 768  # Default for text-embedding-gecko
-    VECTOR_INDEX_NAME: str = Field("manual_vector_search_index", env="VECTOR_INDEX_NAME")
-    TEXT_INDEX_NAME: str = Field("manual_text_search_index", env="TEXT_INDEX_NAME")
+    VECTOR_INDEX_NAME: str = Field("manual_vector_index", env="VECTOR_INDEX_NAME")
+    TEXT_INDEX_NAME: str = Field("manual_text_index", env="TEXT_INDEX_NAME")
     VECTOR_FIELD_NAME: str = Field("embedding", env="VECTOR_FIELD_NAME")
     
     # AWS Bedrock configuration
