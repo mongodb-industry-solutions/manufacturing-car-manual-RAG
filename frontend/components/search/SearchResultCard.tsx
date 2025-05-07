@@ -20,25 +20,47 @@ interface SearchResultCardProps {
 }
 
 const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }) => {
-  const { chunk, score, vector_score, text_score } = result;
+  // Use new flattened result format if available, fall back to legacy chunk format
+  const { score, vector_score, text_score } = result;
   
-  // Format score as percentage
-  const scorePercent = Math.round(score * 100);
+  // Get either direct fields from result or from chunk object
+  const chunk = result.chunk || {}; // Fallback for backward compatibility
+  
+  // Get the text content and other fields either directly from result or from chunk
+  const text = result.text || chunk.text || '';
+  const context = result.context || chunk.context;
+  const breadcrumb_trail = result.breadcrumb_trail || chunk.breadcrumb_trail;
+  const page_numbers = result.page_numbers || chunk.page_numbers || [];
+  const content_type = result.content_type || chunk.content_type || [];
+  const metadata = result.metadata || chunk.metadata || {};
+  const vehicle_systems = result.vehicle_systems || chunk.vehicle_systems || [];
+  const safety_notices = chunk.safety_notices || [];
+  const procedural_steps = chunk.procedural_steps || [];
+  const heading_level_1 = result.heading_level_1 || chunk.heading_level_1;
+  const heading_level_2 = result.heading_level_2 || chunk.heading_level_2;
+  const heading_level_3 = result.heading_level_3 || chunk.heading_level_3;
+  const chunk_id = result.chunk_id || chunk.id;
+  
+  // Format score as percentage, ensure score is between 0-1
+  const normalizedScore = Math.max(0, Math.min(1, score));
+  const scorePercent = Math.round(normalizedScore * 100);
   
   // Get heading hierarchy for result
-  const title = chunk.heading_level_1 || chunk.breadcrumb_trail?.split(' > ')[0] || 'Document Section';
-  const subtitle = chunk.heading_level_2 || chunk.heading_level_3 || '';
+  const title = heading_level_1 || breadcrumb_trail?.split(' > ')[0] || 'Document Section';
+  const subtitle = heading_level_2 || heading_level_3 || '';
   
   // Show safety notices if any
-  const hasSafetyNotices = chunk.safety_notices && chunk.safety_notices.length > 0;
+  const hasSafetyNotices = 
+    (safety_notices && safety_notices.length > 0) || 
+    (metadata && metadata.has_safety === true);
   
   // Check if there are procedural steps
-  const hasProcedures = chunk.procedural_steps && chunk.procedural_steps.length > 0;
+  const hasProcedures = procedural_steps && procedural_steps.length > 0;
   
   // Create page info text
-  const pageInfo = chunk.page_numbers.length > 1 
-    ? `Pages ${chunk.page_numbers.join(', ')}` 
-    : `Page ${chunk.page_numbers[0]}`;
+  const pageInfo = page_numbers.length > 1 
+    ? `Pages ${page_numbers.join(', ')}` 
+    : `Page ${page_numbers[0]}`;
   
   return (
     <Card 
@@ -90,7 +112,9 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
               }
               triggerEvent="hover"
             >
-              Overall match score
+              {vector_score !== undefined && text_score !== undefined 
+                ? `RRF score (expected to be low, typically under 5%). These low scores are mathematically correct due to the RRF formula: 1/(k+rank).` 
+                : `Overall match score`}
             </Tooltip>
           )}
           
@@ -101,13 +125,17 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                 <Badge variant="lightgray">
                   <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
                     <Icon glyph="Diagram" size="small" /> 
-                    {vector_score > 0 ? `${Math.round(vector_score * 100)}%` : "0%"}
+                    {vector_score > 0 
+                      ? `${Math.round(Math.min(1, Math.max(0, vector_score)) * 100)}%` 
+                      : "0%"}
                   </span>
                 </Badge>
               }
               triggerEvent="hover"
             >
-              Semantic vector search score
+              {text_score !== undefined 
+                ? `Vector component of RRF score (naturally low due to the 1/(k+rank) formula)`
+                : `Semantic vector search score`}
             </Tooltip>
           )}
           
@@ -118,13 +146,17 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                 <Badge variant="lightgray">
                   <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
                     <Icon glyph="String" size="small" /> 
-                    {text_score > 0 ? `${Math.round(text_score * 100)}%` : "0%"}
+                    {text_score > 0 
+                      ? `${Math.round(Math.min(1, Math.max(0, text_score)) * 100)}%` 
+                      : "0%"}
                   </span>
                 </Badge>
               }
               triggerEvent="hover"
             >
-              Keyword text search score
+              {vector_score !== undefined 
+                ? `Text component of RRF score (naturally low due to the 1/(k+rank) formula)`
+                : `Keyword text search score`}
             </Tooltip>
           )}
         </div>
@@ -138,7 +170,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
         )}
         
         {/* Breadcrumb */}
-        {chunk.breadcrumb_trail && (
+        {breadcrumb_trail && (
           <Body size="small" style={{ 
             marginBottom: spacing[2], 
             color: palette.gray.dark1,
@@ -146,7 +178,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
             alignItems: 'center',
             gap: spacing[1]
           }}>
-            {chunk.breadcrumb_trail}
+            {breadcrumb_trail}
           </Body>
         )}
       </div>
@@ -154,9 +186,9 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
       {/* Content section */}
       <div style={{ padding: `0 ${spacing[3]}px ${spacing[3]}px` }}>
         {/* Content type badges */}
-        {chunk.content_type && chunk.content_type.length > 0 && (
+        {content_type && content_type.length > 0 && (
           <div style={{ display: 'flex', gap: spacing[1], marginBottom: spacing[2], flexWrap: 'wrap' }}>
-            {chunk.content_type.map((type) => (
+            {content_type.map((type) => (
               <Badge key={type} variant="darkgray">
                 {type}
               </Badge>
@@ -178,7 +210,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}>
-            {chunk.text}
+            {text}
           </Body>
         </Card>
         
@@ -191,7 +223,11 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                 variant="warning"
                 title="Safety Information" 
               >
-                <Body>Contains {chunk.safety_notices?.length} important safety {chunk.safety_notices?.length === 1 ? 'warning' : 'warnings'}</Body>
+                {safety_notices && safety_notices.length > 0 ? (
+                  <Body>Contains {safety_notices.length} important safety {safety_notices.length === 1 ? 'warning' : 'warnings'}</Body>
+                ) : (
+                  <Body>Contains important safety information</Body>
+                )}
               </Callout>
             </div>
           )}
@@ -203,7 +239,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                 variant="note"
                 title="Step-by-step Procedure" 
               >
-                <Body>Contains {chunk.procedural_steps?.length} procedural {chunk.procedural_steps?.length === 1 ? 'step' : 'steps'}</Body>
+                <Body>Contains {procedural_steps.length} procedural {procedural_steps.length === 1 ? 'step' : 'steps'}</Body>
               </Callout>
             </div>
           )}
@@ -232,7 +268,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
               Manual page reference
             </Tooltip>
             
-            {chunk.metadata?.page_count > 1 && (
+            {metadata && metadata.page_count > 1 && (
               <Tooltip
                 trigger={
                   <Body size="small" style={{ 
@@ -241,7 +277,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                     alignItems: 'center',
                     gap: spacing[1]
                   }}>
-                    <Icon glyph="Copy" size="small" /> {chunk.metadata.page_count} pages
+                    <Icon glyph="Copy" size="small" /> {metadata.page_count} pages
                   </Body>
                 }
                 triggerEvent="hover"
@@ -251,7 +287,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
             )}
           </div>
           
-          <Link href={`/chunk/${chunk.id}`}>
+          <Link href={`/chunk/${chunk_id}`}>
             <div style={{ display: 'inline-block' }}>
               <Button 
                 variant="primary"

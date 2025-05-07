@@ -139,9 +139,13 @@ export default function BrowsePage() {
         }
       }
       
-      // Safety notices filter
-      if (filters.hasSafetyNotices && (!chunk.safety_notices || chunk.safety_notices.length === 0)) {
-        return false;
+      // Safety notices filter - check both explicit notices and metadata flag
+      if (filters.hasSafetyNotices) {
+        const hasSafetyNotices = (chunk.safety_notices && chunk.safety_notices.length > 0) || 
+                                (chunk.metadata && chunk.metadata.has_safety === true);
+        if (!hasSafetyNotices) {
+          return false;
+        }
       }
       
       // Procedures filter
@@ -155,6 +159,10 @@ export default function BrowsePage() {
   
   // Toggle filter value
   const toggleFilter = (type, value) => {
+    // Reset to page 1 whenever filters change
+    setCurrentPage(1);
+    setPaginationKey(prev => prev + 1);
+    
     setFilters(prev => {
       if (type === 'contentType' || type === 'vehicleSystems') {
         const index = prev[type].indexOf(value);
@@ -191,12 +199,26 @@ export default function BrowsePage() {
     if (chunk.heading_level_1) return chunk.heading_level_1;
     if (chunk.heading_level_2) return chunk.heading_level_2;
     if (chunk.heading_level_3) return chunk.heading_level_3;
-    return `${chunk.id.substring(0, 10)}...`;
+    if (chunk.context) return chunk.context;
+    
+    // Handle case where id might not be available
+    const displayId = chunk.id || 
+      (chunk._id ? (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid) : 'Unknown ID');
+    
+    return `${displayId.substring(0, 15)}...`;
   };
   
   // Handle chunk click to view details
-  const handleChunkClick = (chunkId: string) => {
-    router.push(`/chunk/${chunkId}`);
+  const handleChunkClick = (chunk: Chunk) => {
+    // Get the proper ID to use for navigation
+    const chunkId = chunk.id || 
+      (chunk._id ? (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid) : null);
+    
+    if (chunkId) {
+      router.push(`/chunk/${chunkId}`);
+    } else {
+      console.error('Could not determine chunk ID for navigation');
+    }
   };
   
   // Render loading state
@@ -270,7 +292,12 @@ export default function BrowsePage() {
               description="Search within chunk titles and content"
               placeholder="Enter keywords to filter chunks"
               value={textFilter}
-              onChange={e => setTextFilter(e.target.value)}
+              onChange={e => {
+                setTextFilter(e.target.value);
+                // Reset to page 1 when text filter changes
+                setCurrentPage(1);
+                setPaginationKey(prev => prev + 1);
+              }}
             />
           </div>
           
@@ -326,9 +353,9 @@ export default function BrowsePage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3], marginBottom: spacing[3] }}>
           {currentItems.map(chunk => (
             <Card 
-              key={chunk.id} 
+              key={chunk.id || (chunk._id ? (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid) : Math.random().toString())} 
               style={{ padding: spacing[3], cursor: 'pointer' }} 
-              onClick={() => handleChunkClick(chunk.id)}
+              onClick={() => handleChunkClick(chunk)}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
                 <H3>{getChunkTitle(chunk)}</H3>
@@ -346,12 +373,21 @@ export default function BrowsePage() {
                   <Badge key={system} variant="blue">{system}</Badge>
                 ))}
                 
-                {chunk.safety_notices && chunk.safety_notices.length > 0 && (
-                  <Badge variant="red">Safety Notices ({chunk.safety_notices.length})</Badge>
+                {/* Safety notices - check both explicit notices and metadata flag */}
+                {((chunk.safety_notices && chunk.safety_notices.length > 0) || (chunk.metadata && chunk.metadata.has_safety === true)) && (
+                  <Badge variant="red">
+                    Safety Information
+                    {chunk.safety_notices && chunk.safety_notices.length > 0 && ` (${chunk.safety_notices.length})`}
+                  </Badge>
                 )}
                 
                 {chunk.procedural_steps && chunk.procedural_steps.length > 0 && (
                   <Badge variant="green">Procedural Steps ({chunk.procedural_steps.length})</Badge>
+                )}
+
+                {/* Related chunks badge */}
+                {chunk.related_chunks && chunk.related_chunks.length > 0 && (
+                  <Badge variant="yellow">Related Sections ({chunk.related_chunks.length})</Badge>
                 )}
               </div>
               
@@ -371,16 +407,32 @@ export default function BrowsePage() {
         {/* Pagination */}
         {filteredChunks.length > 0 && (
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: spacing[3] }}>
-            <Pagination
-              key={`pagination-${paginationKey}`}
-              currentPage={currentPage}
-              onForwardArrowClick={() => handlePageChange(currentPage + 1)}
-              onBackArrowClick={() => handlePageChange(currentPage - 1)}
-              shouldDisableForwardArrow={currentPage >= Math.ceil(filteredChunks.length / itemsPerPage)}
-              shouldDisableBackArrow={currentPage <= 1}
-              numTotalItems={filteredChunks.length}
-              itemsPerPage={itemsPerPage}
-            />
+            {/* Calculate max page and make sure currentPage is valid */}
+            {(() => {
+              const maxPage = Math.max(1, Math.ceil(filteredChunks.length / itemsPerPage));
+              const validCurrentPage = Math.min(maxPage, Math.max(1, currentPage));
+              
+              // If current page is invalid, adjust it silently
+              if (validCurrentPage !== currentPage) {
+                setTimeout(() => {
+                  setCurrentPage(validCurrentPage);
+                  setPaginationKey(prev => prev + 1);
+                }, 0);
+              }
+              
+              return (
+                <Pagination
+                  key={`pagination-${paginationKey}`}
+                  currentPage={validCurrentPage}
+                  onForwardArrowClick={() => handlePageChange(validCurrentPage + 1)}
+                  onBackArrowClick={() => handlePageChange(validCurrentPage - 1)}
+                  shouldDisableForwardArrow={validCurrentPage >= maxPage}
+                  shouldDisableBackArrow={validCurrentPage <= 1}
+                  numTotalItems={filteredChunks.length}
+                  itemsPerPage={itemsPerPage}
+                />
+              );
+            })()}
           </div>
         )}
         
@@ -403,6 +455,9 @@ export default function BrowsePage() {
                     hasProcedures: false
                   });
                   setTextFilter('');
+                  // Reset to page 1 when clearing filters
+                  setCurrentPage(1);
+                  setPaginationKey(prev => prev + 1);
                 }}
                 style={{ marginTop: spacing[3] }}
               >

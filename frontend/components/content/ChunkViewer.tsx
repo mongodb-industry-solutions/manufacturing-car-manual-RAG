@@ -29,8 +29,9 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
     ? `Pages ${chunk.page_numbers.join(', ')}` 
     : `Page ${chunk.page_numbers[0]}`;
   
-  // Check if there are safety notices
-  const hasSafetyNotices = chunk.safety_notices && chunk.safety_notices.length > 0;
+  // Check if there are safety notices (either from explicit notices or from metadata flag)
+  const hasSafetyNotices = (chunk.safety_notices && chunk.safety_notices.length > 0) || 
+                          (chunk.metadata && chunk.metadata.has_safety === true);
   
   // Check if there are procedural steps
   const hasProcedures = chunk.procedural_steps && chunk.procedural_steps.length > 0;
@@ -154,12 +155,35 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
             <Body size="small" weight="medium">Content Length:</Body>
             <Body size="small">{chunk.metadata.chunk_length} characters</Body>
             
+            {chunk.metadata.source_pages && (
+              <>
+                <Body size="small" weight="medium">Source Pages:</Body>
+                <Body size="small">{chunk.metadata.source_pages}</Body>
+              </>
+            )}
+            
+            {chunk.metadata.has_safety && (
+              <>
+                <Body size="small" weight="medium">Safety Information:</Body>
+                <Body size="small">
+                  <span style={{ 
+                    color: palette.red.base, 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    gap: spacing[1]
+                  }}>
+                    <Icon glyph="Warning" size="small" /> Present
+                  </span>
+                </Body>
+              </>
+            )}
+            
             <Body size="small" weight="medium">ID:</Body>
             <Body size="small" style={{ 
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis'
-            }}>{chunk.id}</Body>
+            }}>{chunk.id || (chunk._id && (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid))}</Body>
           </div>
         </Card>
         
@@ -211,9 +235,32 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
       {/* Safety notices section */}
       {hasSafetyNotices && (
         <div style={{ marginBottom: spacing[3] }}>
-          {chunk.safety_notices?.map((notice, index) => (
-            <SafetyNotice key={index} notice={notice} />
-          ))}
+          {chunk.safety_notices && chunk.safety_notices.length > 0 ? (
+            // Display explicit safety notices if available
+            chunk.safety_notices.map((notice, index) => (
+              <SafetyNotice key={index} notice={notice} />
+            ))
+          ) : (
+            // Display default safety notice if we only have the has_safety flag
+            <Card style={{ 
+              padding: spacing[3], 
+              borderLeft: `4px solid ${palette.red.base}`,
+              backgroundColor: palette.red.light3 
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                <Icon glyph="Warning" size="large" fill={palette.red.base} />
+                <div>
+                  <H3 style={{ color: palette.red.dark2, margin: 0, marginBottom: spacing[1] }}>
+                    Safety Information
+                  </H3>
+                  <Body>
+                    This section contains important safety information. Please read all warnings 
+                    and precautions carefully before proceeding with any operations described in this document.
+                  </Body>
+                </div>
+              </div>
+            </Card>
+          )}
         </div>
       )}
       
@@ -280,8 +327,8 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
         </ExpandableCard>
       )}
       
-      {/* Navigation links to prev/next chunks */}
-      {showNavigation && (chunk.prev_chunk_id || chunk.next_chunk_id) && (
+      {/* Navigation links to next chunk and related chunks */}
+      {showNavigation && (chunk.related_chunks?.length > 0 || chunk.next_chunk_id) && (
         <Card style={{ 
           marginTop: spacing[3],
           padding: spacing[3],
@@ -290,41 +337,20 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
         }}>
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            flexDirection: 'column',
+            gap: spacing[3],
           }}>
             <div>
               <Body size="small" weight="medium" style={{ marginBottom: spacing[1] }}>Document Navigation</Body>
             </div>
             
-            <div style={{ 
-              display: 'flex',
-              gap: spacing[2],
-            }}>
-              {chunk.prev_chunk_id ? (
-                <Link href={`/chunk/${chunk.prev_chunk_id}`}>
-                  <div style={{ display: 'inline-block' }}>
-                    <Button
-                      variant="default"
-                      size="small"
-                      leftGlyph={<Icon glyph="ChevronLeft" />}
-                    >
-                      Previous Section
-                    </Button>
-                  </div>
-                </Link>
-              ) : (
-                <Button
-                  variant="default"
-                  size="small"
-                  disabled
-                  leftGlyph={<Icon glyph="ChevronLeft" />}
-                >
-                  Previous Section
-                </Button>
-              )}
-              
-              {chunk.next_chunk_id ? (
+            {/* Next chunk navigation */}
+            {chunk.next_chunk_id && (
+              <div style={{ 
+                display: 'flex',
+                gap: spacing[2],
+                justifyContent: 'flex-end'
+              }}>
                 <Link href={`/chunk/${chunk.next_chunk_id}`}>
                   <div style={{ display: 'inline-block' }}>
                     <Button
@@ -336,17 +362,38 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
                     </Button>
                   </div>
                 </Link>
-              ) : (
-                <Button
-                  variant="default"
-                  size="small"
-                  disabled
-                  rightGlyph={<Icon glyph="ChevronRight" />}
-                >
-                  Next Section
-                </Button>
-              )}
-            </div>
+              </div>
+            )}
+            
+            {/* Related chunks section */}
+            {chunk.related_chunks && chunk.related_chunks.length > 0 && (
+              <div>
+                <Subtitle style={{ marginBottom: spacing[2] }}>Related Content</Subtitle>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
+                  {chunk.related_chunks.map(relatedChunkId => (
+                    <Link key={relatedChunkId} href={`/chunk/${relatedChunkId}`}>
+                      <div style={{ 
+                        padding: spacing[2],
+                        backgroundColor: palette.white,
+                        borderRadius: '4px',
+                        border: `1px solid ${palette.gray.light2}`,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: spacing[2],
+                        transition: 'background-color 0.2s',
+                        ':hover': {
+                          backgroundColor: palette.gray.light1
+                        }
+                      }}>
+                        <Icon glyph="Link" />
+                        <Body size="small">{relatedChunkId}</Body>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       )}

@@ -114,6 +114,19 @@ export const useChunks = (): UseChunksResult => {
     
     try {
       const response = await searchService.getChunk(id);
+      
+      // Ensure chunk has an id (if it comes with MongoDB _id but no id field)
+      if (!response.id && response._id && response._id.$oid) {
+        response.id = response._id.$oid;
+      }
+      
+      // For backward compatibility with any existing code looking for id
+      if (!response.id && response._id) {
+        response.id = typeof response._id === 'string' 
+          ? response._id 
+          : (response._id as any).$oid || String(response._id);
+      }
+      
       setChunk(response);
       
       // Cache the chunk
@@ -145,6 +158,26 @@ export const useChunks = (): UseChunksResult => {
     
     try {
       const response = await searchService.getChunks(skip, limit);
+      
+      // Process chunks to ensure proper id field
+      if (response.chunks && response.chunks.length > 0) {
+        response.chunks = response.chunks.map(chunk => {
+          // Ensure chunk has an id (if it comes with MongoDB _id but no id field)
+          if (!chunk.id && chunk._id && chunk._id.$oid) {
+            chunk.id = chunk._id.$oid;
+          }
+          
+          // For backward compatibility with any existing code looking for id
+          if (!chunk.id && chunk._id) {
+            chunk.id = typeof chunk._id === 'string' 
+              ? chunk._id 
+              : (chunk._id as any).$oid || String(chunk._id);
+          }
+          
+          return chunk;
+        });
+      }
+      
       setChunks(response);
       
       // Cache only the main chunks list (not paginated subsets)

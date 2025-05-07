@@ -48,19 +48,41 @@ class ChunkRepository:
         if not hasattr(self, 'collection') or self.collection is None:
             return None
             
-        # Try with original ID first
+        # Try with original ID first (new chunk_id format)
         result = self.collection.find_one({"id": chunk_id})
         
         # If not found, try with MongoDB ObjectId
         if not result and ObjectId.is_valid(chunk_id):
             result = self.collection.find_one({"_id": ObjectId(chunk_id)})
+            
+        # Maybe it's stored with a specific ID format or we need to access by MongoDB _id
+        if not result:
+            # Try a regex search for id that might be in a different format
+            result = self.collection.find_one({"id": {"$regex": f".*{chunk_id}.*"}})
         
         if result:
-            # Remove embedding vector and MongoDB ID before returning
-            if self.settings.VECTOR_FIELD_NAME in result:
-                del result[self.settings.VECTOR_FIELD_NAME]
+            # Keep _id as a string representation for debugging/reference
             if "_id" in result:
-                del result["_id"]
+                result["_id"] = str(result["_id"])
+            
+            # Ensure we don't return the embedding vector (but keep timestamp if available)
+            if self.settings.VECTOR_FIELD_NAME in result:
+                # Preserve embedding timestamp if it exists
+                embedding_timestamp = None
+                if "embedding_timestamp" in result:
+                    embedding_timestamp = result.get("embedding_timestamp")
+                    
+                # Remove the actual embedding vector
+                del result[self.settings.VECTOR_FIELD_NAME]
+                
+                # Add back the timestamp if it existed
+                if embedding_timestamp:
+                    result["embedding_timestamp"] = embedding_timestamp
+            
+            # Ensure the id is set for clients expecting it
+            if "id" not in result and "_id" in result:
+                result["id"] = result["_id"]
+                
             return Chunk(**result)
         return None
     
@@ -94,9 +116,12 @@ class ChunkRepository:
             if filters.get('vehicle_systems'):
                 query_filter['vehicle_systems'] = {'$in': filters['vehicle_systems']}
             
-            # Filter for chunks with safety notices
+            # Filter for chunks with safety notices - check both direct safety_notices and metadata.has_safety
             if filters.get('has_safety_notices'):
-                query_filter['safety_notices.0'] = {'$exists': True}
+                query_filter['$or'] = [
+                    {'safety_notices.0': {'$exists': True}},
+                    {'metadata.has_safety': True}
+                ]
             
             # Filter for chunks with procedural steps
             if filters.get('has_procedures'):
@@ -130,11 +155,36 @@ class ChunkRepository:
         # Process results
         chunks = []
         for doc in cursor:
-            # Remove embedding vector and MongoDB ID before returning
-            if self.settings.VECTOR_FIELD_NAME in doc:
-                del doc[self.settings.VECTOR_FIELD_NAME]
+            # Keep _id as a string representation for debugging/reference
             if "_id" in doc:
-                del doc["_id"]
+                doc["_id"] = str(doc["_id"])
+            
+            # Ensure we don't return the embedding vector (but keep timestamp if available)
+            if self.settings.VECTOR_FIELD_NAME in doc:
+                # Preserve embedding timestamp if it exists
+                embedding_timestamp = None
+                if "embedding_timestamp" in doc:
+                    embedding_timestamp = doc.get("embedding_timestamp")
+                    
+                # Remove the actual embedding vector
+                del doc[self.settings.VECTOR_FIELD_NAME]
+                
+                # Add back the timestamp if it existed
+                if embedding_timestamp:
+                    doc["embedding_timestamp"] = embedding_timestamp
+            
+            # Ensure the id is set for clients expecting it
+            if "id" not in doc and "_id" in doc:
+                doc["id"] = doc["_id"]
+                
+            # Handle has_safety metadata flag
+            if "metadata" in doc and isinstance(doc["metadata"], dict):
+                if doc["metadata"].get("has_safety") == True:
+                    # Make sure we properly indicate safety information in the response
+                    if "safety_notices" not in doc or not doc["safety_notices"]:
+                        # If we don't have explicit notices but know safety information is present
+                        doc["metadata"]["has_safety"] = True
+            
             chunks.append(Chunk(**doc))
         
         return ChunkList(total=total, chunks=chunks)
