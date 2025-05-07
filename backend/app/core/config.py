@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     # MongoDB configuration
     MONGODB_URI: str = Field(..., env="MONGODB_URI")
     DATABASE_NAME: str = Field(..., env="DATABASE_NAME")
+    MONGODB_DB: Optional[str] = Field(None, env="DATABASE_NAME")  # Optional alias for DATABASE_NAME
     CHUNKS_COLLECTION: str = Field("manual", env="CHUNKS_COLLECTION")
     
     # GCP Vertex AI configuration
@@ -23,9 +24,10 @@ class Settings(BaseSettings):
     EMBEDDINGS_MODEL_ID: str = Field("textembedding-gecko@001", env="EMBEDDINGS_MODEL_ID")
     CHATCOMPLETIONS_MODEL_ID: str = Field("gemini-1.0-pro", env="CHATCOMPLETIONS_MODEL_ID")
     
-    # Vector search configuration
+    # Search configuration
     VECTOR_DIMENSIONS: int = 768  # Default for text-embedding-gecko
-    VECTOR_INDEX_NAME: str = Field("manual_vector_index", env="VECTOR_INDEX_NAME")
+    VECTOR_INDEX_NAME: str = Field("manual_vector_search_index", env="VECTOR_INDEX_NAME")
+    TEXT_INDEX_NAME: str = Field("manual_text_search_index", env="TEXT_INDEX_NAME")
     VECTOR_FIELD_NAME: str = Field("embedding", env="VECTOR_FIELD_NAME")
     
     # AWS Bedrock configuration
@@ -44,7 +46,11 @@ class Settings(BaseSettings):
 
 def get_settings() -> Settings:
     """Return the settings object"""
-    return Settings()
+    settings = Settings()
+    # Make sure MONGODB_DB is set from DATABASE_NAME if it's None
+    if settings.MONGODB_DB is None and hasattr(settings, 'DATABASE_NAME'):
+        settings.MONGODB_DB = settings.DATABASE_NAME
+    return settings
 
 # Read configuration from JSON file
 def load_config_from_json(config_file_path: str = "config/config.json") -> Dict[str, Any]:
@@ -90,3 +96,14 @@ if config_values:
     
     if "CHATCOMPLETIONS_MODEL_ID" in config_values:
         settings.CHATCOMPLETIONS_MODEL_ID = config_values["CHATCOMPLETIONS_MODEL_ID"]
+        
+    # Override search index names if provided in config
+    if "VECTOR_INDEX_NAME" in config_values:
+        settings.VECTOR_INDEX_NAME = config_values["VECTOR_INDEX_NAME"]
+        
+    if "TEXT_INDEX_NAME" in config_values:
+        settings.TEXT_INDEX_NAME = config_values["TEXT_INDEX_NAME"]
+        
+    # Make sure MONGODB_DB is set from DATABASE_NAME
+    if settings.MONGODB_DB is None and hasattr(settings, 'DATABASE_NAME'):
+        settings.MONGODB_DB = settings.DATABASE_NAME

@@ -1,120 +1,291 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 
 from app.models.search import (
     SearchRequest, VectorSearchRequest, TextSearchRequest, HybridSearchRequest,
     SearchResponse, SearchResult
 )
 from app.services.embedding import EmbeddingService
-from app.db.repositories.search import SearchRepository
+# Import the new search repository
+from app.db.repositories.search_new import SearchRepository
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+def get_debug_flag(x_debug: Optional[str] = Header(None)) -> bool:
+    """Check if debug mode is enabled via header"""
+    return x_debug is not None and x_debug.lower() == "true"
+
 @router.post("/vector", response_model=SearchResponse)
-async def vector_search(request: VectorSearchRequest):
-    """Perform vector search using embedding similarity"""
+async def vector_search(request: VectorSearchRequest, x_debug: Optional[str] = Header(None)):
+    """
+    Perform vector search using embedding similarity
+    
+    - **query**: Text to search for
+    - **limit**: Maximum number of results to return (1-20)
+    - **num_candidates_multiplier**: Multiplier for numCandidates (default=10)
+    
+    For debug information, set the X-Debug header to "true"
+    """
+    debug_mode = get_debug_flag(x_debug)
+    debug_info = {} if debug_mode else None
+    
     try:
+        # Log the request parameters
+        logger.info(f"Vector search request: query='{request.query}', limit={request.limit}")
+        if debug_mode:
+            debug_info["request"] = {
+                "query": request.query,
+                "limit": request.limit,
+                "num_candidates_multiplier": request.num_candidates_multiplier
+            }
+        
         # Generate embedding for the query
         embedding_service = EmbeddingService()
         query_embedding = await embedding_service.generate_embedding(request.query)
         
-        # Perform vector search
-        search_repo = SearchRepository()
-        if not hasattr(search_repo, 'collection') or search_repo.collection is None:
-            logger.error("MongoDB collection is not available")
+        if not query_embedding:
+            error_message = "Failed to generate embedding for query"
+            logger.error(error_message)
+            if debug_mode:
+                debug_info["error"] = error_message
+                
             return SearchResponse(
                 query=request.query,
                 method="vector",
                 results=[],
-                total=0
+                total=0,
+                debug_info=debug_info
             )
-            
-        search_results = await search_repo.vector_search(query_embedding, request.limit)
+        
+        # Perform vector search with new implementation
+        search_repo = SearchRepository(debug_mode=debug_mode)
+        
+        if not hasattr(search_repo, 'collection') or search_repo.collection is None:
+            error_message = "MongoDB collection is not available"
+            logger.error(error_message)
+            if debug_mode:
+                debug_info["error"] = error_message
+                
+            return SearchResponse(
+                query=request.query,
+                method="vector",
+                results=[],
+                total=0,
+                debug_info=debug_info
+            )
+        
+        # Use new vectorSearch implementation
+        search_results = await search_repo.vector_search(
+            query_embedding=query_embedding, 
+            limit=request.limit,
+            num_candidates_multiplier=request.num_candidates_multiplier
+        )
         
         # Return formatted response
-        return SearchResponse(
+        response = SearchResponse(
             query=request.query,
             method="vector",
             results=search_results,
-            total=len(search_results)
+            total=len(search_results),
+            debug_info=debug_info
         )
+        
+        logger.info(f"Vector search completed: found {len(search_results)} results")
+        return response
+        
     except Exception as e:
-        logger.error(f"Error in vector search: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error in vector search: {str(e)}")
+        error_message = f"Error in vector search: {str(e)}"
+        logger.error(error_message)
+        if debug_mode:
+            debug_info["error"] = error_message
+            return SearchResponse(
+                query=request.query,
+                method="vector",
+                results=[],
+                total=0,
+                debug_info=debug_info
+            )
+        raise HTTPException(status_code=500, detail=error_message)
 
 @router.post("/text", response_model=SearchResponse)
-async def text_search(request: TextSearchRequest):
-    """Perform text search using keywords"""
+async def text_search(request: TextSearchRequest, x_debug: Optional[str] = Header(None)):
+    """
+    Perform text search using keywords
+    
+    - **query**: Text to search for
+    - **limit**: Maximum number of results to return (1-20)
+    - **fuzzy**: Whether to use fuzzy matching (default=true)
+    - **max_edits**: Maximum edit distance for fuzzy matching (0-2, default=1)
+    
+    For debug information, set the X-Debug header to "true"
+    """
+    debug_mode = get_debug_flag(x_debug)
+    debug_info = {} if debug_mode else None
+    
     try:
-        # Perform text search
-        search_repo = SearchRepository()
+        # Log the request parameters
+        logger.info(f"Text search request: query='{request.query}', limit={request.limit}")
+        if debug_mode:
+            debug_info["request"] = {
+                "query": request.query,
+                "limit": request.limit,
+                "fuzzy": request.fuzzy,
+                "max_edits": request.max_edits
+            }
+        
+        # Perform text search with new implementation
+        search_repo = SearchRepository(debug_mode=debug_mode)
+        
         if not hasattr(search_repo, 'collection') or search_repo.collection is None:
-            logger.error("MongoDB collection is not available")
+            error_message = "MongoDB collection is not available"
+            logger.error(error_message)
+            if debug_mode:
+                debug_info["error"] = error_message
+                
             return SearchResponse(
                 query=request.query,
                 method="text",
                 results=[],
-                total=0
+                total=0,
+                debug_info=debug_info
             )
-            
-        search_results = await search_repo.text_search(request.query, request.limit)
+        
+        # Use new text search implementation
+        search_results = await search_repo.text_search(
+            query_text=request.query,
+            limit=request.limit,
+            fuzzy=request.fuzzy,
+            max_edits=request.max_edits
+        )
         
         # Return formatted response
-        return SearchResponse(
+        response = SearchResponse(
             query=request.query,
             method="text",
             results=search_results,
-            total=len(search_results)
+            total=len(search_results),
+            debug_info=debug_info
         )
+        
+        logger.info(f"Text search completed: found {len(search_results)} results")
+        return response
+        
     except Exception as e:
-        logger.error(f"Error in text search: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error in text search: {str(e)}")
+        error_message = f"Error in text search: {str(e)}"
+        logger.error(error_message)
+        if debug_mode:
+            debug_info["error"] = error_message
+            return SearchResponse(
+                query=request.query,
+                method="text",
+                results=[],
+                total=0,
+                debug_info=debug_info
+            )
+        raise HTTPException(status_code=500, detail=error_message)
 
 @router.post("/hybrid", response_model=SearchResponse)
-async def hybrid_search(request: HybridSearchRequest):
-    """Perform hybrid search using both vector and text search with RRF"""
+async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = Header(None)):
+    """
+    Perform hybrid search using both vector and text search with explicit RRF
+    
+    - **query**: Text to search for
+    - **limit**: Maximum number of results to return (1-20)
+    - **rrf_k**: RRF constant for rank fusion (default=60)
+    - **vector_weight**: Weight for vector search scores (0.0-1.0, default=0.5)
+    - **text_weight**: Weight for text search scores (0.0-1.0, default=0.5)
+    - **num_candidates_multiplier**: Multiplier for candidates (default=15)
+    
+    For debug information, set the X-Debug header to "true"
+    """
+    debug_mode = get_debug_flag(x_debug)
+    debug_info = {} if debug_mode else None
+    
     try:
-        search_repo = SearchRepository()
+        # Log the request parameters
+        logger.info(f"Hybrid search request: query='{request.query}', limit={request.limit}")
+        if debug_mode:
+            debug_info["request"] = {
+                "query": request.query,
+                "limit": request.limit,
+                "rrf_k": request.rrf_k,
+                "vector_weight": request.vector_weight,
+                "text_weight": request.text_weight,
+                "num_candidates_multiplier": request.num_candidates_multiplier
+            }
+        
+        # Initialize search repository with debug mode
+        search_repo = SearchRepository(debug_mode=debug_mode)
         
         # Check if MongoDB collection is available
         if not hasattr(search_repo, 'collection') or search_repo.collection is None:
-            logger.error("MongoDB collection is not available")
+            error_message = "MongoDB collection is not available"
+            logger.error(error_message)
+            if debug_mode:
+                debug_info["error"] = error_message
+                
             return SearchResponse(
                 query=request.query,
                 method="hybrid_rrf",
                 results=[],
-                total=0
+                total=0,
+                debug_info=debug_info
             )
         
         # Generate embedding for the query
         embedding_service = EmbeddingService()
         query_embedding = await embedding_service.generate_embedding(request.query)
         
-        # Perform both search types
-        vector_results = await search_repo.vector_search(query_embedding, request.limit)
-        text_results = await search_repo.text_search(request.query, request.limit)
+        if not query_embedding:
+            error_message = "Failed to generate embedding for query"
+            logger.error(error_message)
+            if debug_mode:
+                debug_info["error"] = error_message
+                
+            return SearchResponse(
+                query=request.query,
+                method="hybrid_rrf",
+                results=[],
+                total=0,
+                debug_info=debug_info
+            )
         
-        # Combine results using RRF with real score calculations
-        combined_results = await search_repo.hybrid_search_rrf(
-            vector_results=vector_results, 
-            text_results=text_results,
-            query=request.query,
-            embedding=query_embedding
+        # Use new hybrid search implementation with explicit RRF calculation
+        search_results = await search_repo.hybrid_search_rrf(
+            query_text=request.query,
+            query_embedding=query_embedding,
+            limit=request.limit,
+            vector_weight=request.vector_weight,
+            text_weight=request.text_weight,
+            num_candidates_multiplier=request.num_candidates_multiplier,
+            rrf_k=request.rrf_k
         )
-        
-        # Limit results to requested number
-        combined_results = combined_results[:request.limit]
         
         # Return formatted response
-        return SearchResponse(
+        response = SearchResponse(
             query=request.query,
             method="hybrid_rrf",
-            results=combined_results,
-            total=len(combined_results)
+            results=search_results,
+            total=len(search_results),
+            debug_info=debug_info
         )
+        
+        logger.info(f"Hybrid search completed: found {len(search_results)} results")
+        return response
+        
     except Exception as e:
-        logger.error(f"Error in hybrid search: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error in hybrid search: {str(e)}")
+        error_message = f"Error in hybrid search: {str(e)}"
+        logger.error(error_message)
+        if debug_mode:
+            debug_info["error"] = error_message
+            return SearchResponse(
+                query=request.query,
+                method="hybrid_rrf",
+                results=[],
+                total=0,
+                debug_info=debug_info
+            )
+        raise HTTPException(status_code=500, detail=error_message)
 

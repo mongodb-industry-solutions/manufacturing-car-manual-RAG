@@ -10,7 +10,17 @@ export interface SearchResult {
   score: number;
   vector_score?: number;
   text_score?: number;
-  chunk: Chunk;
+  // Support new flattened structure
+  chunk_id?: string;
+  text?: string;
+  context?: string;
+  breadcrumb_trail?: string;
+  page_numbers?: number[];
+  content_type?: string[];
+  metadata?: any;
+  vehicle_systems?: string[];
+  // Backward compatibility with older structure
+  chunk?: Chunk;
 }
 
 export interface SearchResponse {
@@ -18,6 +28,7 @@ export interface SearchResponse {
   method: string;
   results: SearchResult[];
   total: number;
+  debug_info?: any;
 }
 
 export interface SearchRequest {

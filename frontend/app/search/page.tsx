@@ -32,13 +32,13 @@ function SearchPageContent() {
   
   // State
   const [query, setQuery] = useState('');
-  const [searchMethod, setSearchMethod] = useState<SearchMethod>('hybrid');
-  const [rrf_k] = useState(60); // Fixed RRF k parameter
+  const [searchMethod, setSearchMethod] = useState<SearchMethod>('text'); // Default to keyword (text) search
+  const [rrf_k, setRrf_k] = useState(60); // RRF k parameter with slider control
   const [activeTab] = useState<'search'>('search');
   const [searchPlaceholder, setSearchPlaceholder] = useState('How do I change a flat tire?');
   
   // Custom hooks
-  const { search, loading, error, results } = useSearch();
+  const { search, loading, error, results, clearCache } = useSearch();
   
   // Handle initial URL params only once on mount
   useEffect(() => {
@@ -51,16 +51,20 @@ function SearchPageContent() {
       setSearchMethod(methodParam as SearchMethod);
     }
     
-    // Perform search only if query exists
-    if (queryParam && queryParam.trim()) {
+    // Check if we have results already (from cache restoration in useSearch hook)
+    // Only perform the search if we don't have results yet
+    if (queryParam && queryParam.trim() && !results) {
       const method = methodParam && ['vector', 'text', 'hybrid'].includes(methodParam) 
         ? (methodParam as SearchMethod) 
         : 'hybrid';
-        
+      
       // Use a slight delay to ensure state is updated
       setTimeout(() => {
+        console.log('Performing initial search from URL params');
         performSearch(queryParam, method);
       }, 10);
+    } else if (results) {
+      console.log('Using cached results, no need to search again');
     }
     // Empty dependency array means this only runs once on mount
   }, []);
@@ -121,6 +125,28 @@ function SearchPageContent() {
       const params = new URLSearchParams();
       if (query) params.set('q', query);
       params.set('method', method);
+      
+      // Include rrf_k in URL for hybrid searches
+      if (method === 'hybrid') {
+        params.set('krf', rrf_k.toString());
+      }
+      
+      window.history.pushState({}, '', `/search?${params.toString()}`);
+    }
+  };
+  
+  // Handle RRF k-value change
+  const handleRrfKChange = (value: number) => {
+    setRrf_k(value);
+    console.log(`RRF k-value changed to: ${value}`);
+    
+    // If we have a query and we're using hybrid search, perform the search with the new k-value
+    if (query.trim() && searchMethod === 'hybrid') {
+      performSearch(query);
+      
+      // Update URL with new k-value
+      const params = new URLSearchParams(window.location.search);
+      params.set('krf', value.toString());
       window.history.pushState({}, '', `/search?${params.toString()}`);
     }
   };
@@ -211,8 +237,28 @@ function SearchPageContent() {
                 <SearchMethodSelector 
                   selectedMethod={searchMethod}
                   onChange={handleMethodChange}
+                  rrf_k={rrf_k}
+                  onRrfKChange={handleRrfKChange}
                 />
                 
+                {/* Advanced options */}
+                <div style={{ marginTop: spacing[3], borderTop: '1px solid #eee', paddingTop: spacing[3] }}>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: spacing[2] }}>Advanced</div>
+                  <Button
+                    size="small"
+                    variant="danger"
+                    onClick={() => {
+                      clearCache();
+                      // If we have a query, re-run the search to refresh results
+                      if (query) {
+                        performSearch(query, searchMethod);
+                      }
+                    }}
+                    leftGlyph={<Icon glyph="Refresh" />}
+                  >
+                    Clear Search Cache
+                  </Button>
+                </div>
               </Card>
             </div>
             
