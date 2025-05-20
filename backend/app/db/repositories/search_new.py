@@ -469,16 +469,28 @@ class SearchRepository:
                         "fts_score": {"$ifNull": ["$fts_score", 0.0]}
                     }
                 },
-                # Calculate the final combined RRF score
+                # Simplify scoring completely - sum the scores and scale to 0-100
                 {
                     "$addFields": {
-                        "score": {"$add": ["$fts_score", "$vs_score"]}
+                        # Save raw score for debugging
+                        "raw_score": {"$add": ["$fts_score", "$vs_score"]},
+                        
+                        # Create a simple score in 0-100 range by multiplying
+                        # The typical RRF score range is very small (0.01-0.03), so multiply by 3000
+                        # to get scores in 30-90 range
+                        "score": {"$multiply": [{"$add": ["$fts_score", "$vs_score"]}, 3000]}
                     }
                 },
-                # Sort by the final combined score
+                # Sort by the score (descending)
                 {"$sort": {"score": -1}},
-                # Limit to the final number of results
-                {"$limit": limit}
+                # Apply limit 
+                {"$limit": limit},
+                # Cap max score at 100
+                {
+                    "$addFields": {
+                        "score": {"$min": [100, "$score"]}
+                    }
+                }
             ]
             
             if self.debug_mode:
@@ -496,10 +508,19 @@ class SearchRepository:
             
             # Process results into SearchResult objects
             for result in results:
+                # Ensure score is properly rounded for consistency
+                score = round(result.get("score", 0.0), 0)  # Round to nearest whole number
+                
+                # Create helpful debug info for logging
+                logger.info(f"Result: score={score}, raw_score={result.get('raw_score', 0.0):.6f}, " +
+                            f"vs_score={result.get('vs_score', 0.0):.6f}, " +
+                            f"fts_score={result.get('fts_score', 0.0):.6f}")
+                
                 search_result = SearchResult(
-                    score=result.get("score", 0.0),
-                    vector_score=result.get("vs_score", 0.0),
-                    text_score=result.get("fts_score", 0.0),
+                    score=score,
+                    vector_score=result.get("vs_score", 0.0),  # Keep original raw scores
+                    text_score=result.get("fts_score", 0.0),   # Keep original raw scores
+                    raw_score=result.get("raw_score", 0.0),    # Include raw score for debugging
                     chunk_id=result.get("chunk_id"),
                     text=result.get("text", ""),
                     context=result.get("context"),

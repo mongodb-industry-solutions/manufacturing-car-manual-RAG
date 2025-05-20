@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { MyH1 as H1, MyBody as Body } from '@/components/ui/TypographyWrapper';
 import { MyButton as Button } from '@/components/ui/TypographyWrapper';
@@ -19,14 +19,41 @@ const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
 
 import { useChunks } from '@/hooks/useChunks';
 
+// Save the referrer in sessionStorage when navigating to chunk detail
+const STORAGE_KEY_REFERRER = 'car_manual_previous_search_url';
+
 export default function ChunkDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const chunkId = params.id as string;
   const { getChunk, chunk, loading, error } = useChunks();
 
   // State for toggling the ask question panel
   const [showAskQuestion, setShowAskQuestion] = useState(false);
+  // State to store the referrer URL
+  const [referrerUrl, setReferrerUrl] = useState('/search');
+
+  // Store referrer info when component mounts
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Try to get the referrer from sessionStorage
+      const storedReferrer = sessionStorage.getItem(STORAGE_KEY_REFERRER);
+      
+      // Check if we have a search source parameter
+      const searchSource = searchParams.get('source');
+      
+      if (searchSource === 'search' && document.referrer) {
+        // If we navigated from the search page, store the full referrer URL
+        const referrer = document.referrer;
+        sessionStorage.setItem(STORAGE_KEY_REFERRER, referrer);
+        setReferrerUrl(referrer);
+      } else if (storedReferrer) {
+        // Use previously stored referrer if available
+        setReferrerUrl(storedReferrer);
+      }
+    }
+  }, [searchParams]);
 
   // Fetch chunk data when the ID changes
   useEffect(() => {
@@ -104,10 +131,10 @@ export default function ChunkDetailPage() {
         <div style={{ marginBottom: spacing[3] }}>
           <Button
             variant="default"
-            onClick={() => router.back()}
+            onClick={() => router.push(referrerUrl)}
             leftGlyph={<Icon glyph="ArrowLeft" />}
           >
-            Back
+            Back to Search
           </Button>
         </div>
 
