@@ -72,10 +72,17 @@ export default function BrowsePage() {
   
   // Fetch chunks on initial load
   useEffect(() => {
+    // Skip if we already have chunks loaded
+    if (chunks && chunks.chunks && chunks.chunks.length > 0) {
+      console.log('Using existing chunks data');
+      return;
+    }
+
     const fetchChunks = async () => {
       try {
         console.log('Fetching initial chunks...');
-        const result = await getChunks(0, 100); // Get first 100 chunks
+        // Use a reasonable limit for performance - 500 chunks is still plenty for browsing
+        const result = await getChunks(0, 1000);
         console.log(`Successfully fetched ${result.chunks.length} chunks out of ${result.total} total`);
         
         // Debug: Log the first chunk to see its structure
@@ -89,11 +96,17 @@ export default function BrowsePage() {
     
     fetchChunks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Remove getChunks from dependencies to prevent infinite loops
+  }, []); // Keep the empty dependency array to run only once
   
   // Extract available filters from chunks
   useEffect(() => {
-    if (chunks && chunks.chunks) {
+    if (chunks && chunks.chunks && chunks.chunks.length > 0) {
+      // Avoid re-processing if we already have filter values
+      if (availableFilters.contentTypes.length > 0 || availableFilters.vehicleSystems.length > 0) {
+        return;
+      }
+
+      console.log('Extracting filter values from chunks...');
       const contentTypes = new Set();
       const vehicleSystems = new Set();
       
@@ -122,7 +135,7 @@ export default function BrowsePage() {
         vehicleSystems: Array.from(vehicleSystems)
       });
     }
-  }, [chunks]);
+  }, [chunks, availableFilters]);
   
   // Helper to check if chunk matches text filter
   const chunkMatchesText = (chunk: Chunk, text: string): boolean => {
@@ -158,7 +171,11 @@ export default function BrowsePage() {
     console.log(`Filtering ${chunks.chunks.length} chunks with filters:`, 
       JSON.stringify({...filters, textFilter}, null, 2));
     
-    const filtered = chunks.chunks.filter(chunk => {
+    // Limit the number of chunks we process to avoid performance issues
+    const chunksToProcess = chunks.chunks.slice(0, 1000);
+    console.log(`Processing ${chunksToProcess.length} chunks out of ${chunks.chunks.length} total`);
+    
+    const filtered = chunksToProcess.filter(chunk => {
       // For debugging specific chunks
       const isDebugging = false; // Set to true and specify chunk ID for detailed debugging
       const debugChunkId = 'chunk_00001';
@@ -331,10 +348,6 @@ export default function BrowsePage() {
   
   // Toggle filter value
   const toggleFilter = (type, value) => {
-    // Reset to page 1 whenever filters change
-    setCurrentPage(1);
-    setPaginationKey(prev => prev + 1);
-    
     console.log(`Toggling filter: ${type}${value ? ` (${value})` : ''}`);
     
     setFilters(prev => {
@@ -388,7 +401,7 @@ export default function BrowsePage() {
     if (typeof window === 'undefined') return;
     
     // If we don't have chunks yet or we're already at the end, don't observe
-    if (!filteredChunks || !hasMore) return;
+    if (!filteredChunks || filteredChunks.length === 0 || !hasMore) return;
     
     const observer = new IntersectionObserver(
       entries => {

@@ -26,6 +26,7 @@ import Banner from '@leafygreen-ui/banner';
 import Code from '@leafygreen-ui/code';
 import { Tabs, Tab } from '@leafygreen-ui/tabs';
 import { useState, useMemo } from 'react';
+import { useConfig, useAppConfig, useBrandingConfig, useIndustryConfig } from '@/contexts/ConfigContext';
 
 const MainLayout = dynamic(() =>
   import('@/components/layout/MainLayout')
@@ -34,6 +35,28 @@ const MainLayout = dynamic(() =>
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(0);
+  const { config } = useConfig();
+  const appConfig = useAppConfig();
+  const branding = useBrandingConfig();
+  const industry = useIndustryConfig();
+
+  // Convert hex color to rgb for lighter background
+  const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  };
+  
+  // Get the primary color or fallback to MongoDB green
+  const primaryColor = branding?.primaryColor || palette.green.base;
+  const secondaryColor = branding?.secondaryColor || palette.green.dark2;
+  const accentColor = branding?.accentColor || palette.blue.base;
+  
+  const rgbColor = hexToRgb(primaryColor);
+  const lightBgColor = rgbColor ? `rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.1)` : palette.green.light3;
 
   return (
     <MainLayout>
@@ -44,6 +67,27 @@ export default function Home() {
           padding: spacing[3],
         }}
       >
+        {/* Configuration Banner */}
+        <Banner 
+          variant="info"
+          style={{ marginBottom: spacing[4], backgroundColor: palette.blue.light2, border: `1px solid ${palette.blue.light1}` }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div>
+              <strong style={{ color: palette.blue.dark2 }}>Current Configuration:</strong> {appConfig.name} ({industry.name})
+            </div>
+            <Link href="/admin">
+              <Button
+                variant="default"
+                size="small"
+                leftGlyph={<Icon glyph="Settings" />}
+              >
+                Change Configuration
+              </Button>
+            </Link>
+          </div>
+        </Banner>
+
         {/* Hero section */}
         <div
           style={{
@@ -52,7 +96,7 @@ export default function Home() {
             alignItems: 'center',
             marginBottom: spacing[5],
             marginTop: spacing[2],
-            background: `linear-gradient(135deg, ${palette.green.light3}, ${palette.blue.light2})`,
+            background: `linear-gradient(135deg, ${lightBgColor}, ${palette.blue.light2})`,
             borderRadius: '12px',
             padding: `${spacing[5]}px ${spacing[4]}px`,
             boxShadow: '0 8px 16px rgba(0, 0, 0, 0.12)',
@@ -73,13 +117,13 @@ export default function Home() {
                 padding: spacing[3],
                 marginBottom: spacing[2],
                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                border: `1px solid ${palette.green.light1}`,
+                border: `1px solid ${primaryColor}`,
               }}
             >
               <Icon
-                glyph="Database"
+                glyph={industry.icon || "Database"}
                 size={60}
-                fill={palette.green.base}
+                fill={primaryColor}
               />
             </div>
           </div>
@@ -88,12 +132,12 @@ export default function Home() {
             style={{
               marginBottom: spacing[3],
               textAlign: 'center',
-              color: palette.green.dark3,
+              color: palette.blue.dark1,
               fontWeight: 'bold',
               fontSize: '36px',
             }}
           >
-            Technical Car Manual Explorer
+            {branding.title}
           </H1>
 
           <Subtitle
@@ -106,9 +150,7 @@ export default function Home() {
               color: palette.gray.dark1,
             }}
           >
-            An interactive demonstration showcasing how MongoDB's
-            Document Model, Vector Store and Hybrid Search powers
-            contextual retrieval on technical automotive documentation
+            {appConfig.description}
           </Subtitle>
 
           <div
@@ -173,7 +215,7 @@ export default function Home() {
           <H2
             style={{
               marginBottom: spacing[3],
-              color: palette.green.dark3,
+              color: palette.blue.dark1,
             }}
           >
             Technical Overview
@@ -184,8 +226,7 @@ export default function Home() {
               color: palette.gray.dark1,
             }}
           >
-            How MongoDB enables optimized RAG pipelines for technical
-            documentation
+            How MongoDB enables optimized RAG pipelines for {industry.name.toLowerCase()} documentation
           </Subtitle>
 
           <Tabs
@@ -206,7 +247,7 @@ export default function Home() {
                     <H3
                       style={{
                         marginBottom: spacing[2],
-                        color: palette.green.dark2,
+                        color: palette.blue.dark2,
                       }}
                     >
                       Intelligent Chunking Strategy
@@ -221,7 +262,7 @@ export default function Home() {
                       chunking approaches that preserve procedural
                       integrity, safety warnings, and semantic
                       relationships. Our chunking pipeline processes
-                      automotive manuals with:
+                      {industry.name.toLowerCase()} manuals with:
                     </Body>
                     <ul style={{ marginBottom: spacing[3] }}>
                       <li style={{ marginBottom: spacing[1] }}>
@@ -247,10 +288,10 @@ export default function Home() {
                   </div>
                   <div
                     style={{
-                      backgroundColor: palette.green.light3,
+                      backgroundColor: lightBgColor,
                       borderRadius: '8px',
                       padding: spacing[3],
-                      border: `1px solid ${palette.green.light1}`,
+                      border: `1px solid ${primaryColor}`,
                       minWidth: '300px',
                     }}
                   >
@@ -258,7 +299,7 @@ export default function Home() {
                       weight="medium"
                       style={{
                         marginBottom: spacing[2],
-                        color: palette.green.dark2,
+                        color: secondaryColor,
                       }}
                     >
                       MongoDB Document Structure
@@ -266,11 +307,11 @@ export default function Home() {
                     <Code language="javascript" copyable={true}>
                       {`{
   "_id": ObjectId("..."),
-  "text": "Replacing brake fluid...",
+  "text": "Replacing ${industry.name.toLowerCase()} components...",
   "metadata": {
-    "source": "maintenance",
-    "section": "brakes",
-    "type": "procedure"
+    "source": "${config.document.defaultType}",
+    "section": "${industry.metadata.systems[0] || "general"}",
+    "type": "${industry.metadata.contentTypes[0] || "procedure"}"
   },
   "embedding": [0.12, 0.35, ...]
 }`}
@@ -292,7 +333,7 @@ export default function Home() {
                     <H3
                       style={{
                         marginBottom: spacing[2],
-                        color: palette.green.dark2,
+                        color: palette.blue.dark2,
                       }}
                     >
                       MongoDB Vector Search
@@ -348,10 +389,10 @@ export default function Home() {
                       Vector Search Query
                     </Body>
                     <Code language="javascript" copyable={true}>
-                      {`db.chunks.aggregate([
+                      {`db.${config.database.collections.chunks}.aggregate([
   {
     $vectorSearch: {
-      index: "vector_index",
+      index: "${config.database.indices.vector}",
       path: "embedding",
       queryVector: [0.1, 0.2, ...],
       numCandidates: 100,
@@ -377,7 +418,7 @@ export default function Home() {
                     <H3
                       style={{
                         marginBottom: spacing[2],
-                        color: palette.green.dark2,
+                        color: palette.blue.dark2,
                       }}
                     >
                       Hybrid Search Techniques
@@ -459,7 +500,7 @@ const hybridResults = await
           <H2
             style={{
               marginBottom: spacing[3],
-              color: palette.green.dark3,
+              color: palette.blue.dark1,
               textAlign: 'center',
             }}
           >
@@ -500,12 +541,12 @@ const hybridResults = await
                   weight="medium"
                   style={{ color: palette.yellow.dark2 }}
                 >
-                  Technical Manual Chunking
+                  {industry.name} Manual Chunking
                 </Body>
               </div>
               <div style={{ padding: spacing[3], flex: 1 }}>
                 <Body>
-                  See how technical manuals are intelligently
+                  See how {industry.name.toLowerCase()} manuals are intelligently
                   segmented into semantically coherent chunks that
                   preserve procedural integrity and technical context.
                   Optimal chunking ensures both precise retrieval and
@@ -721,7 +762,7 @@ const hybridResults = await
             style={{
               padding: spacing[4],
               border: `1px solid ${palette.green.light2}`,
-              background: `linear-gradient(to right, white, ${palette.green.light3})`,
+              background: `linear-gradient(to right, white, ${lightBgColor})`,
             }}
           >
             <div
@@ -735,7 +776,7 @@ const hybridResults = await
               <div style={{ flex: '1', minWidth: '280px' }}>
                 <H2
                   style={{
-                    color: palette.green.dark3,
+                    color: palette.blue.dark1,
                     marginBottom: spacing[2],
                   }}
                 >
@@ -781,8 +822,8 @@ const hybridResults = await
                   }}
                 >
                   <img
-                    src="/mongo.png"
-                    alt="MongoDB Logo"
+                    src={branding.logoPath || "/mongo.png"}
+                    alt="Logo"
                     width={100}
                     height={100}
                     style={{ objectFit: 'contain' }}
@@ -806,14 +847,14 @@ const hybridResults = await
             style={{
               marginBottom: spacing[3],
               textAlign: 'center',
-              color: palette.green.dark3,
+              color: palette.blue.dark1,
             }}
           >
             Technical Implementation Details
           </H2>
 
           <ExpandableCard
-            title="Understanding Technical Manual Chunking"
+            title={`Understanding ${industry.name} Manual Chunking`}
             description="Learn how manuals are processed for optimal search"
             defaultOpen={false}
             style={{
@@ -823,9 +864,9 @@ const hybridResults = await
           >
             <Body style={{ marginBottom: spacing[3] }}>
               This application demonstrates how technical
-              documentation like car manuals can be chunked, indexed,
+              documentation like {industry.name.toLowerCase()} manuals can be chunked, indexed,
               and searched using various approaches. The chunks shown
-              here are extracted from real car manuals, processed into
+              here are extracted from real {industry.name.toLowerCase()} manuals, processed into
               optimal segments for search and retrieval.
             </Body>
             <Body style={{ marginBottom: spacing[3] }}>
@@ -906,7 +947,7 @@ const hybridResults = await
                 similarity even when exact keywords are missing.
               </Body>
               <InlineCode>
-                db.chunks.aggregate([{'{'}$vectorSearch: {'{'} ...{' '}
+                db.{config.database.collections.chunks}.aggregate([{'{'}$vectorSearch: {'{'} ...{' '}
                 {'}'}
                 {'}'} ])
               </InlineCode>
@@ -928,7 +969,7 @@ const hybridResults = await
                 misspellings and variations.
               </Body>
               <InlineCode>
-                db.chunks.aggregate([{'{'}$search: {'{'} ... {'}'}
+                db.{config.database.collections.chunks}.aggregate([{'{'}$search: {'{'} ... {'}'}
                 {'}'} ])
               </InlineCode>
             </div>
@@ -987,14 +1028,14 @@ const hybridResults = await
             marginTop: spacing[5],
             textAlign: 'center',
             padding: spacing[3],
-            backgroundColor: palette.gray.light3,
+            backgroundColor: palette.blue.light3,
             borderRadius: '4px',
-            border: `1px solid ${palette.gray.light2}`,
+            border: `1px solid ${palette.blue.light1}`,
           }}
         >
-          <Disclaimer>
+          <Disclaimer style={{ color: palette.blue.dark2 }}>
             This is a technical demonstration using MongoDB Atlas for
-            RAG applications on automotive manuals. The demonstration
+            RAG applications on {industry.name.toLowerCase()} manuals. The demonstration
             is intended for educational purposes only.
           </Disclaimer>
         </div>

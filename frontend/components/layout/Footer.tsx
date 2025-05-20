@@ -16,9 +16,10 @@ const Footer: React.FC = () => {
   return (
     <footer
       style={{
-        backgroundColor: palette.gray.dark3,
-        color: palette.gray.light2,
+        backgroundColor: palette.gray.dark2,
+        color: palette.gray.light3,
         padding: `${spacing[3]}px 0`,
+        borderTop: `3px solid ${palette.green.base}`,
       }}
     >
       <div
@@ -36,9 +37,19 @@ const Footer: React.FC = () => {
             gap: spacing[2],
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: spacing[1],
+              backgroundColor: palette.green.light3,
+              padding: `${spacing[1]}px ${spacing[2]}px`,
+              borderRadius: '4px',
+              border: `1px solid ${palette.green.light1}`
+            }}
+          >
             <Icon glyph="Database" size={24} fill={palette.green.base} />
-            <Body weight="medium">
+            <Body weight="medium" style={{ color: palette.green.dark2 }}>
               Car Manual RAG
             </Body>
           </div>
@@ -47,7 +58,17 @@ const Footer: React.FC = () => {
             Explore your vehicle&#39;s manual using advanced search and AI-powered answers
           </Body>
           
-          <Body size="small" style={{ marginTop: spacing[2] }}>
+          <Body
+            size="small"
+            style={{
+              marginTop: spacing[2],
+              color: palette.gray.light2,
+              backgroundColor: palette.gray.dark3,
+              padding: `${spacing[1]}px ${spacing[2]}px`,
+              borderRadius: '4px',
+              display: 'inline-block'
+            }}
+          >
             © {currentYear} MongoDB, Inc. All rights reserved.
           </Body>
           

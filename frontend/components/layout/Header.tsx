@@ -8,10 +8,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MyH3 as H3 } from '@/components/ui/TypographyWrapper';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import { MyH3 as H3, MyButton as Button, MyTooltip as Tooltip } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
-import Tooltip from '@leafygreen-ui/tooltip';
 import { useAppConfig, useBrandingConfig, useTerminology } from '@/contexts/ConfigContext';
 
 const Header: React.FC = () => {
@@ -44,7 +42,7 @@ const Header: React.FC = () => {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        borderBottom: `1px solid ${palette.gray.light2}`,
+        borderBottom: `3px solid ${palette.green.base}`,
       }}
     >
       <div
@@ -129,6 +127,20 @@ const Header: React.FC = () => {
                     leftGlyph={<Icon glyph="Table" />}
                   >
                     {terminology.browse || "Browse Chunks"}
+                  </Button>
+                </div>
+              </Link>
+            </li>
+
+            <li>
+              <Link href="/admin">
+                <div style={{ display: 'inline-block' }}>
+                  <Button
+                    variant={pathname?.startsWith('/admin') ? 'primary' : 'default'}
+                    size="large"
+                    leftGlyph={<Icon glyph="Settings" />}
+                  >
+                    Config
                   </Button>
                 </div>
               </Link>

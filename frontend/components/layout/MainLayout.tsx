@@ -6,9 +6,8 @@
 import React, { ReactNode, useEffect, useState } from 'react';
 import { palette } from '@leafygreen-ui/palette';
 import { spacing } from '@leafygreen-ui/tokens';
-import Banner from '@leafygreen-ui/banner';
 import Icon from '@leafygreen-ui/icon';
-import { MyBody as Body } from '@/components/ui/TypographyWrapper';
+import { MyBody as Body, MyBanner as Banner } from '@/components/ui/TypographyWrapper';
 import dynamic from 'next/dynamic';
 
 // Components
@@ -43,7 +42,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
-        backgroundColor: palette.gray.light3
+        backgroundColor: palette.gray.light3,
+        backgroundImage: `linear-gradient(to bottom, ${palette.green.light3}, ${palette.gray.light3} 300px)`
       }}
     >
       <Header />
