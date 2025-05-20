@@ -18,6 +18,7 @@ const Pagination = dynamic(() => import('@leafygreen-ui/pagination'), { ssr: fal
 const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
 const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
+const MongoDBFilterVisualization = dynamic(() => import('@/components/content/MongoDBFilterVisualization'));
 
 import { useChunks } from '@/hooks/useChunks';
 import { Chunk } from '@/types/Chunk';
@@ -73,7 +74,14 @@ export default function BrowsePage() {
   useEffect(() => {
     const fetchChunks = async () => {
       try {
-        await getChunks(0, 100); // Get first 100 chunks
+        console.log('Fetching initial chunks...');
+        const result = await getChunks(0, 100); // Get first 100 chunks
+        console.log(`Successfully fetched ${result.chunks.length} chunks out of ${result.total} total`);
+        
+        // Debug: Log the first chunk to see its structure
+        if (result.chunks && result.chunks.length > 0) {
+          console.log('Sample chunk structure:', JSON.stringify(result.chunks[0], null, 2));
+        }
       } catch (err) {
         console.error('Failed to fetch chunks:', err);
       }
@@ -90,13 +98,24 @@ export default function BrowsePage() {
       const vehicleSystems = new Set();
       
       chunks.chunks.forEach(chunk => {
-        if (chunk.content_type) {
+        // Extract content_type from the array
+        if (chunk.content_type && Array.isArray(chunk.content_type)) {
           chunk.content_type.forEach(type => contentTypes.add(type));
         }
-        if (chunk.vehicle_systems) {
+        
+        // Extract vehicle_systems from the array or metadata.systems if present
+        if (chunk.vehicle_systems && Array.isArray(chunk.vehicle_systems)) {
           chunk.vehicle_systems.forEach(system => vehicleSystems.add(system));
         }
+        // Also check metadata.systems as an alternative source
+        if (chunk.metadata && chunk.metadata.systems && Array.isArray(chunk.metadata.systems)) {
+          chunk.metadata.systems.forEach(system => vehicleSystems.add(system));
+        }
       });
+      
+      // Log the found filter values for debugging
+      console.log('Found content types:', Array.from(contentTypes));
+      console.log('Found vehicle systems:', Array.from(vehicleSystems));
       
       setAvailableFilters({
         contentTypes: Array.from(contentTypes),
@@ -108,10 +127,27 @@ export default function BrowsePage() {
   // Helper to check if chunk matches text filter
   const chunkMatchesText = (chunk: Chunk, text: string): boolean => {
     const lowerText = text.toLowerCase();
-    if (chunk.text.toLowerCase().includes(lowerText)) return true;
-    if (chunk.heading_level_1 && chunk.heading_level_1.toLowerCase().includes(lowerText)) return true;
-    if (chunk.heading_level_2 && chunk.heading_level_2.toLowerCase().includes(lowerText)) return true;
-    if (chunk.heading_level_3 && chunk.heading_level_3.toLowerCase().includes(lowerText)) return true;
+    
+    // Check in text content
+    if (chunk.text.toLowerCase().includes(lowerText)) {
+      console.debug(`Text match found in chunk text: "${chunk.id}"`);
+      return true;
+    }
+    
+    // Check in headings
+    if (chunk.heading_level_1 && chunk.heading_level_1.toLowerCase().includes(lowerText)) {
+      console.debug(`Text match found in heading_level_1: "${chunk.id}"`);
+      return true;
+    }
+    if (chunk.heading_level_2 && chunk.heading_level_2.toLowerCase().includes(lowerText)) {
+      console.debug(`Text match found in heading_level_2: "${chunk.id}"`);
+      return true;
+    }
+    if (chunk.heading_level_3 && chunk.heading_level_3.toLowerCase().includes(lowerText)) {
+      console.debug(`Text match found in heading_level_3: "${chunk.id}"`);
+      return true;
+    }
+    
     return false;
   };
   
@@ -119,42 +155,178 @@ export default function BrowsePage() {
   const filteredChunks = React.useMemo(() => {
     if (!chunks || !chunks.chunks) return [];
     
-    return chunks.chunks.filter(chunk => {
+    console.log(`Filtering ${chunks.chunks.length} chunks with filters:`, 
+      JSON.stringify({...filters, textFilter}, null, 2));
+    
+    const filtered = chunks.chunks.filter(chunk => {
+      // For debugging specific chunks
+      const isDebugging = false; // Set to true and specify chunk ID for detailed debugging
+      const debugChunkId = 'chunk_00001';
+      const isDebugChunk = isDebugging && chunk.id === debugChunkId;
+      
+      if (isDebugChunk) {
+        console.log(`Debugging chunk ${chunk.id}:`, chunk);
+      }
+      
       // Text filter
       if (textFilter && !chunkMatchesText(chunk, textFilter)) {
+        if (isDebugChunk) console.log(`${chunk.id} failed text filter`);
         return false;
       }
       
       // Content type filter
       if (filters.contentType.length > 0) {
-        if (!chunk.content_type || !chunk.content_type.some(type => filters.contentType.includes(type))) {
+        if (!chunk.content_type || !Array.isArray(chunk.content_type) || 
+            !chunk.content_type.some(type => filters.contentType.includes(type))) {
+          if (isDebugChunk) {
+            console.log(`${chunk.id} failed content_type filter`);
+            console.log(`  - chunk.content_type:`, chunk.content_type);
+            console.log(`  - filters.contentType:`, filters.contentType);
+          }
           return false;
+        } else if (isDebugChunk) {
+          console.log(`${chunk.id} passed content_type filter`);
+          console.log(`  - chunk.content_type:`, chunk.content_type);
+          console.log(`  - filters.contentType:`, filters.contentType);
         }
       }
       
-      // Vehicle systems filter
+      // Vehicle systems filter - check both vehicle_systems array and metadata.systems
       if (filters.vehicleSystems.length > 0) {
-        if (!chunk.vehicle_systems || !chunk.vehicle_systems.some(system => filters.vehicleSystems.includes(system))) {
+        const directMatch = chunk.vehicle_systems && Array.isArray(chunk.vehicle_systems) && 
+          chunk.vehicle_systems.some(system => filters.vehicleSystems.includes(system));
+          
+        const metadataMatch = chunk.metadata && chunk.metadata.systems && Array.isArray(chunk.metadata.systems) &&
+          chunk.metadata.systems.some(system => filters.vehicleSystems.includes(system));
+          
+        const hasMatchingSystem = directMatch || metadataMatch;
+        
+        if (isDebugChunk) {
+          console.log(`${chunk.id} vehicle_systems filter check:`);
+          console.log(`  - chunk.vehicle_systems:`, chunk.vehicle_systems);
+          console.log(`  - chunk.metadata?.systems:`, chunk.metadata?.systems);
+          console.log(`  - filters.vehicleSystems:`, filters.vehicleSystems);
+          console.log(`  - directMatch:`, directMatch);
+          console.log(`  - metadataMatch:`, metadataMatch);
+          console.log(`  - hasMatchingSystem:`, hasMatchingSystem);
+        }
+        
+        if (!hasMatchingSystem) {
+          if (isDebugChunk) console.log(`${chunk.id} failed vehicle_systems filter`);
           return false;
+        } else if (isDebugChunk) {
+          console.log(`${chunk.id} passed vehicle_systems filter`);
         }
       }
       
-      // Safety notices filter - check both explicit notices and metadata flag
+      // Safety notices filter - check all safety indicators
       if (filters.hasSafetyNotices) {
-        const hasSafetyNotices = (chunk.safety_notices && chunk.safety_notices.length > 0) || 
-                                (chunk.metadata && chunk.metadata.has_safety === true);
-        if (!hasSafetyNotices) {
+        // Check for safety notices in the content
+        const hasExplicitSafetyNotices = 
+          chunk.safety_notices && 
+          Array.isArray(chunk.safety_notices) && 
+          chunk.safety_notices.length > 0;
+        
+        // Check for safety flag in metadata
+        const hasSafetyMetadata = 
+          chunk.metadata && 
+          chunk.metadata.has_safety === true;
+        
+        // Check for safety notices in text (warning symbols)
+        const hasWarningSymbols = 
+          chunk.text && 
+          (chunk.text.includes('⚠️') || 
+           chunk.text.toLowerCase().includes('warning') || 
+           chunk.text.toLowerCase().includes('caution'));
+        
+        // Check if content_type includes 'safety'
+        const hasSafetyContentType = 
+          chunk.content_type && 
+          Array.isArray(chunk.content_type) && 
+          chunk.content_type.includes('safety');
+          
+        const hasSafety = hasExplicitSafetyNotices || hasSafetyMetadata || hasWarningSymbols || hasSafetyContentType;
+        
+        if (isDebugChunk) {
+          console.log(`${chunk.id} safety filter check:`);
+          console.log(`  - hasExplicitSafetyNotices:`, hasExplicitSafetyNotices);
+          console.log(`  - hasSafetyMetadata:`, hasSafetyMetadata);
+          console.log(`  - hasWarningSymbols:`, hasWarningSymbols);
+          console.log(`  - hasSafetyContentType:`, hasSafetyContentType);
+          console.log(`  - overall hasSafety:`, hasSafety);
+        }
+        
+        if (!hasSafety) {
+          if (isDebugChunk) console.log(`${chunk.id} failed safety filter`);
           return false;
+        } else if (isDebugChunk) {
+          console.log(`${chunk.id} passed safety filter`);
         }
       }
       
-      // Procedures filter
-      if (filters.hasProcedures && (!chunk.procedural_steps || chunk.procedural_steps.length === 0)) {
-        return false;
+      // Procedures filter - check for procedural steps and procedural content type
+      if (filters.hasProcedures) {
+        // Check for explicit procedural steps
+        const hasProceduralSteps = 
+          chunk.procedural_steps && 
+          Array.isArray(chunk.procedural_steps) && 
+          chunk.procedural_steps.length > 0;
+        
+        // Check if content_type includes 'procedure'
+        const hasProceduralContentType = 
+          chunk.content_type && 
+          Array.isArray(chunk.content_type) && 
+          chunk.content_type.some(type => 
+            type === 'procedure' || 
+            type === 'procedural' || 
+            type.includes('step')
+          );
+        
+        // Check for numbered steps in the text
+        const hasNumberedSteps = 
+          chunk.text && 
+          (chunk.text.match(/\d+\.\s+[A-Z]/) || // Matches patterns like "1. Do something"
+           chunk.text.match(/Step\s+\d+/i));     // Matches patterns like "Step 1"
+           
+        const hasProcedures = hasProceduralSteps || hasProceduralContentType || hasNumberedSteps;
+        
+        if (isDebugChunk) {
+          console.log(`${chunk.id} procedures filter check:`);
+          console.log(`  - hasProceduralSteps:`, hasProceduralSteps);
+          console.log(`  - hasProceduralContentType:`, hasProceduralContentType);
+          console.log(`  - hasNumberedSteps:`, hasNumberedSteps);
+          console.log(`  - overall hasProcedures:`, hasProcedures);
+          
+          if (hasNumberedSteps && chunk.text) {
+            console.log(`  - Matched pattern in text:`, 
+              chunk.text.match(/\d+\.\s+[A-Z]/) || chunk.text.match(/Step\s+\d+/i));
+          }
+        }
+        
+        if (!hasProcedures) {
+          if (isDebugChunk) console.log(`${chunk.id} failed procedures filter`);
+          return false;
+        } else if (isDebugChunk) {
+          console.log(`${chunk.id} passed procedures filter`);
+        }
       }
       
       return true;
     });
+    
+    console.log(`Filtering complete. Found ${filtered.length} matching chunks out of ${chunks.chunks.length} total`);
+    
+    // If we have very few matches, log them to help with debugging
+    if (filtered.length > 0 && filtered.length < 5) {
+      console.log('Matching chunks:', filtered.map(chunk => ({
+        id: chunk.id,
+        content_type: chunk.content_type,
+        vehicle_systems: chunk.vehicle_systems,
+        metadata: chunk.metadata
+      })));
+    }
+    
+    return filtered;
   }, [chunks, filters, textFilter]);
   
   // Toggle filter value
@@ -163,17 +335,31 @@ export default function BrowsePage() {
     setCurrentPage(1);
     setPaginationKey(prev => prev + 1);
     
+    console.log(`Toggling filter: ${type}${value ? ` (${value})` : ''}`);
+    
     setFilters(prev => {
+      let newFilters;
+      
       if (type === 'contentType' || type === 'vehicleSystems') {
         const index = prev[type].indexOf(value);
         if (index === -1) {
-          return { ...prev, [type]: [...prev[type], value] };
+          // Adding value to filter
+          newFilters = { ...prev, [type]: [...prev[type], value] };
+          console.log(`Added ${value} to ${type} filter`);
         } else {
-          return { ...prev, [type]: prev[type].filter(item => item !== value) };
+          // Removing value from filter
+          newFilters = { ...prev, [type]: prev[type].filter(item => item !== value) };
+          console.log(`Removed ${value} from ${type} filter`);
         }
       } else {
-        return { ...prev, [type]: !prev[type] };
+        // Toggling boolean filter
+        newFilters = { ...prev, [type]: !prev[type] };
+        console.log(`Toggled ${type} filter to ${!prev[type]}`);
       }
+      
+      // Log new filter state
+      console.log('New filter state:', newFilters);
+      return newFilters;
     });
   };
   
@@ -215,9 +401,41 @@ export default function BrowsePage() {
       (chunk._id ? (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid) : null);
     
     if (chunkId) {
-      router.push(`/chunk/${chunkId}`);
+      // Add source=browse parameter to track that we're coming from the browse page
+      console.log("Navigating to chunk with source=browse parameter");
+      
+      // Also save to sessionStorage directly in case URL parameters are lost
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('car_manual_previous_search_url', '/browse');
+        sessionStorage.setItem('car_manual_referrer_type', 'browse');
+      }
+      
+      router.push(`/chunk/${chunkId}?source=browse`);
     } else {
       console.error('Could not determine chunk ID for navigation');
+    }
+  };
+  
+  // Handle direct PDF page view
+  const handleViewPdf = (chunk: Chunk, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent the card click from triggering
+    
+    if (chunk.page_numbers && chunk.page_numbers.length > 0) {
+      // Get the chunk ID
+      const chunkId = chunk.id || 
+        (chunk._id ? (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid) : null);
+      
+      if (chunkId) {
+        console.log("Navigating to PDF view with source=browse parameter");
+        
+        // Also save to sessionStorage directly in case URL parameters are lost
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('car_manual_previous_search_url', '/browse');
+          sessionStorage.setItem('car_manual_referrer_type', 'browse');
+        }
+        
+        router.push(`/chunk/${chunkId}?source=browse&open_pdf=true`);
+      }
     }
   };
   
@@ -251,8 +469,11 @@ export default function BrowsePage() {
   return (
     <MainLayout>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: spacing[3] }}>
-        <div style={{ marginBottom: spacing[3], display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <H1 as="h1">Browse Car Manual Chunks</H1>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'flex-end', 
+          marginBottom: spacing[3]
+        }}>
           <div style={{ display: 'flex', gap: spacing[2] }}>
             <Button
               variant="primaryOutline"
@@ -278,18 +499,49 @@ export default function BrowsePage() {
         
         <Card style={{ padding: spacing[3], marginBottom: spacing[3] }}>
           <div style={{ marginBottom: spacing[3] }}>
-            <H3 style={{ marginBottom: spacing[2] }}>About Chunks</H3>
-            <Body>
-              This page displays all the chunks extracted from the car manual. Each chunk represents a semantically 
-              meaningful section of content that balances size, context, and coherence. You can filter chunks by 
-              various properties to explore how technical documentation is processed for search.
+            <H3 style={{ marginBottom: spacing[2], color: palette.green.dark2 }}>
+              <Icon glyph="Document" fill={palette.green.dark1} style={{ marginRight: spacing[1] }} /> 
+              MongoDB Document Collection
+            </H3>
+            <Body style={{ marginBottom: spacing[2] }}>
+              This page displays car manual chunks stored as MongoDB documents. Each chunk is a document in the MongoDB collection, 
+              representing a semantically meaningful section of content that balances size, context, and coherence.
             </Body>
+            <div style={{ 
+              backgroundColor: palette.green.light3, 
+              padding: spacing[2], 
+              borderRadius: '4px',
+              marginBottom: spacing[2],
+              borderLeft: `4px solid ${palette.green.base}`
+            }}>
+              <Body size="small" style={{ color: palette.green.dark2 }}>
+                <strong>MongoDB Advantage:</strong> MongoDB's flexible document model is perfect for storing semi-structured 
+                content like these chunks, with varying fields, nested arrays, and different content types - all without 
+                requiring complex table joins or schema migrations.
+              </Body>
+            </div>
           </div>
           
           <div style={{ marginBottom: spacing[4], width: '95%', paddingBottom: spacing[2] }}>
+            <div style={{ marginBottom: spacing[1] }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                <Icon glyph="MagnifyingGlass" size="small" fill={palette.green.base} />
+                <span style={{ fontWeight: 'bold', color: palette.green.dark2 }}>MongoDB Text Search</span>
+                <div style={{ 
+                  fontSize: '12px', 
+                  marginLeft: spacing[1], 
+                  padding: `0 ${spacing[1]}px`, 
+                  backgroundColor: palette.green.light3, 
+                  borderRadius: '4px', 
+                  color: palette.green.dark2 
+                }}>
+                  $regex operator
+                </div>
+              </div>
+            </div>
             <TextInput
               label="Filter Chunks"
-              description="Search within chunk titles and content"
+              description="Search within chunk titles and content using MongoDB regex matching"
               placeholder="Enter keywords to filter chunks"
               value={textFilter}
               onChange={e => {
@@ -302,7 +554,20 @@ export default function BrowsePage() {
           </div>
           
           <div style={{ marginBottom: spacing[3] }}>
-            <Subtitle style={{ marginBottom: spacing[2] }}>Content Type</Subtitle>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], marginBottom: spacing[2] }}>
+              <Icon glyph="Filter" size="small" fill={palette.blue.base} />
+              <Subtitle style={{ color: palette.blue.dark2, margin: 0 }}>Content Type Filter</Subtitle>
+              <div style={{ 
+                fontSize: '12px', 
+                marginLeft: spacing[1], 
+                padding: `0 ${spacing[1]}px`, 
+                backgroundColor: palette.blue.light3, 
+                borderRadius: '4px', 
+                color: palette.blue.dark2 
+              }}>
+                MongoDB $match
+              </div>
+            </div>
             <div>
               {availableFilters.contentTypes.map(type => (
                 <FilterChip
@@ -316,7 +581,20 @@ export default function BrowsePage() {
           </div>
           
           <div style={{ marginBottom: spacing[3] }}>
-            <Subtitle style={{ marginBottom: spacing[2] }}>Vehicle Systems</Subtitle>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], marginBottom: spacing[2] }}>
+              <Icon glyph="Filter" size="small" fill={palette.green.base} />
+              <Subtitle style={{ color: palette.green.dark2, margin: 0 }}>Vehicle Systems Filter</Subtitle>
+              <div style={{ 
+                fontSize: '12px', 
+                marginLeft: spacing[1], 
+                padding: `0 ${spacing[1]}px`, 
+                backgroundColor: palette.green.light3, 
+                borderRadius: '4px', 
+                color: palette.green.dark2 
+              }}>
+                MongoDB $match
+              </div>
+            </div>
             <div>
               {availableFilters.vehicleSystems.map(system => (
                 <FilterChip
@@ -329,24 +607,69 @@ export default function BrowsePage() {
             </div>
           </div>
           
-          <div style={{ marginBottom: spacing[3], display: 'flex', gap: spacing[3] }}>
-            <FilterChip
-              label="Has Safety Notices"
-              selected={filters.hasSafetyNotices}
-              onClick={() => toggleFilter('hasSafetyNotices', null)}
-            />
-            <FilterChip
-              label="Has Procedural Steps"
-              selected={filters.hasProcedures}
-              onClick={() => toggleFilter('hasProcedures', null)}
-            />
+          <div style={{ marginBottom: spacing[3] }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1], marginBottom: spacing[2] }}>
+              <Icon glyph="Filter" size="small" fill={palette.purple.base} />
+              <Subtitle style={{ color: palette.purple.dark2, margin: 0 }}>Special Content Filters</Subtitle>
+              <div style={{ 
+                fontSize: '12px', 
+                marginLeft: spacing[1], 
+                padding: `0 ${spacing[1]}px`, 
+                backgroundColor: palette.purple.light3, 
+                borderRadius: '4px', 
+                color: palette.purple.dark2 
+              }}>
+                MongoDB $exists operator
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: spacing[3] }}>
+              <FilterChip
+                label="Has Safety Notices"
+                selected={filters.hasSafetyNotices}
+                onClick={() => toggleFilter('hasSafetyNotices', null)}
+              />
+              <FilterChip
+                label="Has Procedural Steps"
+                selected={filters.hasProcedures}
+                onClick={() => toggleFilter('hasProcedures', null)}
+              />
+            </div>
           </div>
         </Card>
         
-        <div style={{ marginBottom: spacing[3] }}>
-          <Subtitle>
-            Showing {filteredChunks.length} of {chunks?.total || 0} total chunks
-          </Subtitle>
+        {/* MongoDB Filter Visualization */}
+        <MongoDBFilterVisualization
+          filters={filters}
+          textFilter={textFilter}
+          totalResults={chunks?.total || 0}
+          filteredResults={filteredChunks.length}
+        />
+        
+        <div style={{ 
+          marginBottom: spacing[3],
+          padding: spacing[2],
+          borderRadius: '4px',
+          backgroundColor: palette.gray.light3,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+            <Icon glyph="Checkmark" fill={palette.green.base} />
+            <Subtitle style={{ margin: 0 }}>
+              Showing {filteredChunks.length} of {chunks?.total || 0} total chunks
+            </Subtitle>
+          </div>
+          <div style={{ 
+            backgroundColor: palette.green.light3, 
+            padding: `${spacing[1]}px ${spacing[2]}px`,
+            borderRadius: '4px',
+            color: palette.green.dark2,
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}>
+            MongoDB Document Collection
+          </div>
         </div>
         
         {/* Chunk list */}
@@ -359,9 +682,21 @@ export default function BrowsePage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
                 <H3>{getChunkTitle(chunk)}</H3>
-                <Body size="small" style={{ color: palette.gray.dark1 }}>
-                  Page {chunk.page_numbers.join(', ')}
-                </Body>
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                  <Body size="small" style={{ color: palette.gray.dark1 }}>
+                    Page {chunk.page_numbers.join(', ')}
+                  </Body>
+                  {chunk.page_numbers && chunk.page_numbers.length > 0 && (
+                    <Button
+                      size="small"
+                      variant="primaryOutline"
+                      onClick={(e) => handleViewPdf(chunk, e)}
+                      leftGlyph={<Icon glyph="Document" size="small" />}
+                    >
+                      PDF
+                    </Button>
+                  )}
+                </div>
               </div>
               
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2], marginBottom: spacing[3] }}>
@@ -369,21 +704,93 @@ export default function BrowsePage() {
                   <Badge key={type} variant="darkgray">{type}</Badge>
                 ))}
                 
-                {chunk.vehicle_systems?.map(system => (
-                  <Badge key={system} variant="blue">{system}</Badge>
-                ))}
+                {/* Display vehicle systems from both potential sources */}
+                {chunk.vehicle_systems && Array.isArray(chunk.vehicle_systems) && 
+                  chunk.vehicle_systems.map(system => (
+                    <Badge key={`vs-${system}`} variant="blue">{system}</Badge>
+                  ))
+                }
+                {chunk.metadata?.systems && Array.isArray(chunk.metadata.systems) && 
+                  chunk.metadata.systems
+                    // Filter out duplicates that might already be shown from vehicle_systems
+                    .filter(system => !chunk.vehicle_systems || !chunk.vehicle_systems.includes(system))
+                    .map(system => (
+                      <Badge key={`ms-${system}`} variant="blue">{system}</Badge>
+                    ))
+                }
                 
-                {/* Safety notices - check both explicit notices and metadata flag */}
-                {((chunk.safety_notices && chunk.safety_notices.length > 0) || (chunk.metadata && chunk.metadata.has_safety === true)) && (
-                  <Badge variant="red">
-                    Safety Information
-                    {chunk.safety_notices && chunk.safety_notices.length > 0 && ` (${chunk.safety_notices.length})`}
-                  </Badge>
-                )}
+                {/* Safety notices - check all potential sources of safety information */}
+                {(() => {
+                  // Check for explicit safety notices
+                  const hasExplicitSafetyNotices = 
+                    chunk.safety_notices && 
+                    Array.isArray(chunk.safety_notices) && 
+                    chunk.safety_notices.length > 0;
+                  
+                  // Check for safety flag in metadata
+                  const hasSafetyMetadata = 
+                    chunk.metadata && 
+                    chunk.metadata.has_safety === true;
+                  
+                  // Check for warning symbols in text
+                  const hasWarningSymbols = 
+                    chunk.text && 
+                    (chunk.text.includes('⚠️') || 
+                     chunk.text.toLowerCase().includes('warning') || 
+                     chunk.text.toLowerCase().includes('caution'));
+                  
+                  // Check if content_type includes 'safety'
+                  const hasSafetyContentType = 
+                    chunk.content_type && 
+                    Array.isArray(chunk.content_type) && 
+                    chunk.content_type.includes('safety');
+                  
+                  if (hasExplicitSafetyNotices || hasSafetyMetadata || hasWarningSymbols || hasSafetyContentType) {
+                    return (
+                      <Badge variant="red">
+                        Safety Information
+                        {hasExplicitSafetyNotices && ` (${chunk.safety_notices.length})`}
+                        {!hasExplicitSafetyNotices && hasWarningSymbols && " (⚠️)"}
+                      </Badge>
+                    );
+                  }
+                  return null;
+                })()}
                 
-                {chunk.procedural_steps && chunk.procedural_steps.length > 0 && (
-                  <Badge variant="green">Procedural Steps ({chunk.procedural_steps.length})</Badge>
-                )}
+                {/* Procedural steps - check all potential sources */}
+                {(() => {
+                  // Check for explicit procedural steps
+                  const hasProceduralSteps = 
+                    chunk.procedural_steps && 
+                    Array.isArray(chunk.procedural_steps) && 
+                    chunk.procedural_steps.length > 0;
+                  
+                  // Check if content_type includes 'procedure'
+                  const hasProceduralContentType = 
+                    chunk.content_type && 
+                    Array.isArray(chunk.content_type) && 
+                    chunk.content_type.some(type => 
+                      type === 'procedure' || 
+                      type === 'procedural' || 
+                      type.includes('step')
+                    );
+                  
+                  // Check for numbered steps in the text
+                  const hasNumberedSteps = 
+                    chunk.text && 
+                    (chunk.text.match(/\d+\.\s+[A-Z]/) || // Matches patterns like "1. Do something"
+                     chunk.text.match(/Step\s+\d+/i));     // Matches patterns like "Step 1"
+                  
+                  if (hasProceduralSteps || hasProceduralContentType || hasNumberedSteps) {
+                    return (
+                      <Badge variant="green">
+                        Procedural Steps
+                        {hasProceduralSteps ? ` (${chunk.procedural_steps.length})` : ''}
+                      </Badge>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* Related chunks badge */}
                 {chunk.related_chunks && chunk.related_chunks.length > 0 && (

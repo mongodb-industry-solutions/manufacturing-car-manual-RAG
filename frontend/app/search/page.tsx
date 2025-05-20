@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MyH1 as H1, MyH2 as H2, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
 import { MyCard as Card } from '@/components/ui/TypographyWrapper';
@@ -19,6 +19,7 @@ const SearchResultList = dynamic(() => import('@/components/search/SearchResultL
 const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
 const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
+const QueryVisualizationPanel = dynamic(() => import('@/components/content/QueryVisualizationPanel'));
 
 import { useSearch } from '@/hooks/useSearch';
 import { SearchMethod, HybridMethod } from '@/types/Search';
@@ -41,39 +42,62 @@ function SearchPageContent() {
   // Custom hooks
   const { search, loading, error, results, clearCache } = useSearch();
   
-  // Handle initial URL params only once on mount
+  // This ref helps us keep track of previous searches to avoid duplicates
+  const prevSearchRef = useRef({ query: '', method: '' });
+  
+  // Handle search based on URL parameters
   useEffect(() => {
-    // Set initial state from URL
-    if (queryParam) {
-      setQuery(queryParam);
+    // Skip if no query parameter is present
+    if (!queryParam) {
+      return;
     }
+
+    // Update local state from URL params
+    setQuery(queryParam);
     
     if (methodParam && ['vector', 'text', 'hybrid'].includes(methodParam)) {
       setSearchMethod(methodParam as SearchMethod);
     }
     
-    // Check if we have results already (from cache restoration in useSearch hook)
-    // Only perform the search if we don't have results yet
-    if (queryParam && queryParam.trim() && !results) {
-      const method = methodParam && ['vector', 'text', 'hybrid'].includes(methodParam) 
-        ? (methodParam as SearchMethod) 
-        : 'hybrid';
-      
-      // Use a slight delay to ensure state is updated
-      setTimeout(() => {
-        console.log('Performing initial search from URL params');
-        performSearch(queryParam, method);
-      }, 10);
-    } else if (results) {
-      console.log('Using cached results, no need to search again');
+    // Always save the full URL with parameters in sessionStorage for navigation back to this page
+    if (typeof window !== 'undefined') {
+      console.log('Saving search URL to sessionStorage:', window.location.href);
+      sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
+      sessionStorage.setItem('car_manual_referrer_type', 'search');
     }
     
-    // Save in sessionStorage that we're on the search page with active results
-    if (typeof window !== 'undefined' && queryParam) {
-      sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
+    // Determine method to use for search
+    const method = methodParam && ['vector', 'text', 'hybrid'].includes(methodParam) 
+      ? (methodParam as SearchMethod) 
+      : 'hybrid';
+    
+    // Check if this is a new search (different from the last search we performed)
+    const isNewSearch = 
+      queryParam !== prevSearchRef.current.query || 
+      method !== prevSearchRef.current.method ||
+      (method === 'hybrid' && searchParams.get('krf') && 
+       parseInt(searchParams.get('krf') || '60', 10) !== rrf_k);
+    
+    // Update the ref with current search parameters
+    prevSearchRef.current = { query: queryParam, method };
+      
+    // Check if we have results already (from cache restoration in useSearch hook)
+    if (isNewSearch || !results) {
+      console.log('Performing search from URL params, new search or no results');
+      
+      // Use the direct search function without URL manipulation to avoid loops
+      if (method === 'hybrid') {
+        const krfValue = searchParams.get('krf') ? parseInt(searchParams.get('krf') || '60', 10) : rrf_k;
+        search(method, queryParam, 10, { rrf_k: krfValue });
+      } else {
+        search(method, queryParam, 10);
+      }
+    } else {
+      console.log('Using existing results, no need to search again');
     }
-    // Empty dependency array means this only runs once on mount
-  }, []);
+    
+  // Be selective about which parameters to watch to avoid excessive rerenders
+  }, [queryParam, methodParam, searchParams.get('krf'), search, results]);
   
   const updateSearchParams = () => {
     const params = new URLSearchParams();
@@ -86,58 +110,67 @@ function SearchPageContent() {
     }
   };
   
-  const performSearch = async (searchQuery: string = query, explicitMethod?: SearchMethod) => {
-    if (!searchQuery.trim()) return;
+  // This is a helper function to create URLs only, not for performing searches directly
+  // We use this for constructing URLs for router.push() calls
+  const performSearch = (searchQuery: string = query, explicitMethod?: SearchMethod) => {
+    if (!searchQuery.trim()) return '';
     
-    try {
-      // Use explicitly provided method if available, otherwise use state
-      const methodToUse = explicitMethod || searchMethod;
-      
-      console.log(`Performing search with method: ${methodToUse}`);
-      
-      if (methodToUse === 'hybrid') {
-        await search('hybrid', searchQuery, 10, {
-          rrf_k: rrf_k
-        });
-      } else {
-        await search(methodToUse, searchQuery, 10);
-      }
-    } catch (err) {
-      console.error('Search error:', err);
+    // Use explicitly provided method if available, otherwise use state
+    const methodToUse = explicitMethod || searchMethod;
+    
+    // Create URL params
+    const params = new URLSearchParams();
+    params.set('q', searchQuery);
+    params.set('method', methodToUse);
+    
+    // Include rrf_k parameter for hybrid searches
+    if (methodToUse === 'hybrid') {
+      params.set('krf', rrf_k.toString());
     }
+    
+    return `/search?${params.toString()}`;
   };
   
   const handleSearch = (newQuery: string) => {
+    if (!newQuery.trim()) return;
+    
+    // Update local state
     setQuery(newQuery);
     setSearchPlaceholder(newQuery); // Update placeholder to match current query
-    performSearch(newQuery, searchMethod);
     
-    // Update URL
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('q', newQuery);
-    router.push(`/search?${params.toString()}`);
+    // Get the search URL
+    const searchUrl = performSearch(newQuery, searchMethod);
+    
+    // Save to sessionStorage before navigation
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
+      sessionStorage.setItem('car_manual_referrer_type', 'search');
+    }
+    
+    // Use router.push for client-side navigation - this will trigger a re-render
+    // which will then call the useEffect, which performs the search
+    router.push(searchUrl);
   };
   
   const handleMethodChange = (method: SearchMethod) => {
     console.log(`Method changed to: ${method}`);
-    setSearchMethod(method);
     
-    // If we have a query, perform the search with the new method
+    // Only update the URL if we have a query
     if (query.trim()) {
-      // Use the explicitly provided method to avoid race conditions with state updates
-      performSearch(query, method);
+      // Get the search URL with the new method
+      const searchUrl = performSearch(query, method);
       
-      // Update URL
-      const params = new URLSearchParams();
-      if (query) params.set('q', query);
-      params.set('method', method);
-      
-      // Include rrf_k in URL for hybrid searches
-      if (method === 'hybrid') {
-        params.set('krf', rrf_k.toString());
+      // Save to sessionStorage before navigation
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
+        sessionStorage.setItem('car_manual_referrer_type', 'search');
       }
       
-      window.history.pushState({}, '', `/search?${params.toString()}`);
+      // Use router.push to navigate, which will trigger useEffect to perform the search
+      router.push(searchUrl);
+    } else {
+      // If no query, just update the state without navigation
+      setSearchMethod(method);
     }
   };
   
@@ -146,14 +179,25 @@ function SearchPageContent() {
     setRrf_k(value);
     console.log(`RRF k-value changed to: ${value}`);
     
-    // If we have a query and we're using hybrid search, perform the search with the new k-value
+    // If we have a query and we're using hybrid search, trigger a new search
     if (query.trim() && searchMethod === 'hybrid') {
-      performSearch(query);
-      
-      // Update URL with new k-value
-      const params = new URLSearchParams(window.location.search);
+      // Get search URL with current query and method, but the updated rrf_k value
+      // We need to set the rrf_k state before calling performSearch
+      // so we manually construct the URL here
+      const params = new URLSearchParams();
+      params.set('q', query);
+      params.set('method', searchMethod);
       params.set('krf', value.toString());
-      window.history.pushState({}, '', `/search?${params.toString()}`);
+      const searchUrl = `/search?${params.toString()}`;
+      
+      // Save to sessionStorage before navigation
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
+        sessionStorage.setItem('car_manual_referrer_type', 'search');
+      }
+      
+      // Use router.push to navigate, which will trigger useEffect to perform the search
+      router.push(searchUrl);
     }
   };
   
@@ -413,6 +457,12 @@ function SearchPageContent() {
                       Found {results.total} results for &quot;{results.query}&quot; using MongoDB Atlas {results.method} search
                     </Subtitle>
                   </Card>
+                  
+                  {/* MongoDB Query Visualization Panel */}
+                  <QueryVisualizationPanel
+                    searchMethod={results.method as SearchMethod}
+                    query={results.query}
+                  />
                   
                   <SearchResultList 
                     results={results.results}
