@@ -68,31 +68,13 @@ export default function ChunkDetailPage() {
           setReferrerType('browse');
         } 
         else if (source === 'search') {
-          // If we navigated from search page, use full search URL with query params
+          // If we navigated from search page, use search URL
           console.log("Setting search as referrer source");
-          
-          // Get the search URL from sessionStorage if available, otherwise default to /search
-          let searchUrl = sessionStorage.getItem(STORAGE_KEY_REFERRER) || '/search';
-          
-          // Make sure the URL includes query parameters
-          if (searchUrl === '/search' && window.location.search) {
-            // Extract the q and method parameters from the current URL to pass back to search
-            const currentParams = new URLSearchParams(window.location.search);
-            const q = currentParams.get('q');
-            const method = currentParams.get('method');
-            
-            if (q) {
-              const searchParams = new URLSearchParams();
-              searchParams.set('q', q);
-              if (method) searchParams.set('method', method);
-              searchUrl = `/search?${searchParams.toString()}`;
-            }
-          }
-          
-          console.log("Using search URL:", searchUrl);
-          sessionStorage.setItem(STORAGE_KEY_REFERRER, searchUrl);
+          // Default to /search if referrer isn't available
+          const referrer = document.referrer || '/search';
+          sessionStorage.setItem(STORAGE_KEY_REFERRER, referrer);
           sessionStorage.setItem('car_manual_referrer_type', 'search');
-          setReferrerUrl(searchUrl);
+          setReferrerUrl(referrer);
           setReferrerType('search');
         }
       } 

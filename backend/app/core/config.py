@@ -1,14 +1,19 @@
 import os
 import json
-from typing import Dict, Any, Optional
-from pydantic import Field
+from typing import Dict, Any, Optional, List
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # API configuration
     API_V1_STR: str = "/api/v1"
-    PROJECT_NAME: str = "Car Manual RAG API"
+    PROJECT_NAME: str = "Technical Manual RAG API"
     ORIGINS: str = Field("http://localhost:3000", env="ORIGINS")
+    
+    # Application configuration
+    INDUSTRY: str = Field("automotive", env="INDUSTRY")
+    APP_NAME: str = Field("Technical Manual Explorer", env="APP_NAME")
+    APP_DESCRIPTION: str = Field("Explore technical manuals with vector search and RAG", env="APP_DESCRIPTION")
     
     # MongoDB configuration
     MONGODB_URI: str = Field(..., env="MONGODB_URI")
@@ -30,6 +35,10 @@ class Settings(BaseSettings):
     TEXT_INDEX_NAME: str = Field("manual_text_index", env="TEXT_INDEX_NAME")
     VECTOR_FIELD_NAME: str = Field("embedding", env="VECTOR_FIELD_NAME")
     
+    # Document configuration
+    DOCUMENT_TYPES: List[str] = Field(["manual", "guide", "specification"], env="DOCUMENT_TYPES")
+    DEFAULT_DOCUMENT_TYPE: str = Field("manual", env="DEFAULT_DOCUMENT_TYPE")
+    
     # AWS Bedrock configuration
     AWS_REGION: str = Field("us-east-1", env="AWS_REGION")
     AWS_ACCESS_KEY_ID: Optional[str] = Field(None, env="AWS_ACCESS_KEY_ID")
@@ -43,6 +52,14 @@ class Settings(BaseSettings):
         "case_sensitive": True,
         "extra": "ignore"
     }
+    
+    @model_validator(mode='after')
+    def populate_project_name(self):
+        # Set the project name based on the industry and app name if not directly specified
+        if hasattr(self, 'INDUSTRY') and hasattr(self, 'APP_NAME'):
+            industry = self.INDUSTRY.capitalize()
+            self.PROJECT_NAME = f"{industry} {self.APP_NAME} API"
+        return self
 
 def get_settings() -> Settings:
     """Return the settings object"""

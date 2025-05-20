@@ -1,0 +1,76 @@
+{
+  "application": {
+    "name": "Aviation Manual Explorer",
+    "industry": "aviation",
+    "description": "Explore aircraft maintenance manuals with MongoDB's vector search and RAG capabilities"
+  },
+  "branding": {
+    "title": "Aircraft Technical Manual Explorer",
+    "subtitle": "Powered by MongoDB Atlas",
+    "primaryColor": "#0078D4",
+    "secondaryColor": "#2B5797",
+    "accentColor": "#FF5722",
+    "logoPath": "/public/aviation-logo.png"
+  },
+  "document": {
+    "types": ["maintenance", "operations", "flight", "service"],
+    "defaultType": "maintenance",
+    "path": "/public/documents",
+    "defaultDocument": "aircraft-maintenance-manual.pdf"
+  },
+  "industry": {
+    "name": "Aviation",
+    "icon": "Airplane",
+    "terminology": {
+      "manual": "Aircraft Manual",
+      "chunk": "ATA Section",
+      "document": "AMM",
+      "search": "Search Manuals",
+      "browse": "Browse ATA Sections"
+    },
+    "metadata": {
+      "contentTypes": [
+        "procedure", 
+        "warning", 
+        "specification",
+        "troubleshooting",
+        "scheduled_maintenance",
+        "reference",
+        "inspection"
+      ],
+      "systems": [
+        "airframe",
+        "propulsion",
+        "hydraulics",
+        "electrical",
+        "avionics",
+        "environmental",
+        "fuel",
+        "landing_gear"
+      ]
+    }
+  },
+  "features": {
+    "search": {
+      "methods": ["vector", "text", "hybrid"],
+      "defaultMethod": "hybrid"
+    },
+    "chunks": {
+      "displayLimit": 20,
+      "infiniteScroll": true
+    },
+    "pdfViewer": {
+      "enabled": true,
+      "defaultScale": 1.2
+    }
+  },
+  "database": {
+    "collections": {
+      "chunks": "aviation_manual"
+    },
+    "indices": {
+      "vector": "aviation_vector_index",
+      "text": "aviation_text_search_index"
+    }
+  }
+}
