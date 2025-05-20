@@ -53,14 +53,19 @@ export const useSearch = (): UseSearchResult => {
       const methodParam = urlParams.get('method') as SearchMethod | null;
       const krfParam = urlParams.get('krf');
       
-      if (queryParam && methodParam) {
+      if (queryParam) {
+        // Use method from URL or default to hybrid if not specified
+        const method = (methodParam && ['vector', 'text', 'hybrid'].includes(methodParam)) 
+          ? methodParam as SearchMethod 
+          : 'hybrid';
+        
         // Get rrf_k value from URL or use default
-        const rrf_k = methodParam === 'hybrid' ? 
+        const rrf_k = method === 'hybrid' ? 
           (krfParam ? parseInt(krfParam, 10) : 60) : undefined;
           
         // Create a cache key  
-        const cacheKey = getCacheKey(methodParam, queryParam, 10, 
-          methodParam === 'hybrid' ? { rrf_k } : undefined);
+        const cacheKey = getCacheKey(method, queryParam, 10, 
+          method === 'hybrid' ? { rrf_k } : undefined);
         
         // Check if we have cached results
         if (GLOBAL_SEARCH_CACHE[cacheKey]) {
@@ -68,6 +73,7 @@ export const useSearch = (): UseSearchResult => {
           setResults(GLOBAL_SEARCH_CACHE[cacheKey]);
         } else {
           console.log('No cached results found for key:', cacheKey);
+          // Don't auto-search here; the component will handle this
         }
       }
     }

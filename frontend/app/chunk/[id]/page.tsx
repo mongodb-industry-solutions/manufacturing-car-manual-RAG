@@ -10,12 +10,14 @@ import Icon from '@leafygreen-ui/icon';
 import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
 import { MySpinner as Spinner } from '@/components/ui/TypographyWrapper';
+import { palette } from '@leafygreen-ui/palette';
 
 const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const ChunkViewer = dynamic(() => import('@/components/content/ChunkViewer'));
 const AskQuestion = dynamic(() => import('@/components/search/AskQuestion'));
 const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
 const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
+const PDFViewerModal = dynamic(() => import('@/components/content/PDFViewerModal'), { ssr: false });
 
 import { useChunks } from '@/hooks/useChunks';
 
@@ -31,26 +33,88 @@ export default function ChunkDetailPage() {
 
   // State for toggling the ask question panel
   const [showAskQuestion, setShowAskQuestion] = useState(false);
-  // State to store the referrer URL
+  // State to store the referrer URL and type - default to search
   const [referrerUrl, setReferrerUrl] = useState('/search');
+  const [referrerType, setReferrerType] = useState('search');
+  // State for toggling the PDF viewer
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  // Path to your PDF - update this to the actual path where you've stored your PDF
+  const pdfPath = '/car-manual.pdf'; // This should be in the public directory
 
-  // Store referrer info when component mounts
+  // Store referrer info when component mounts and check for PDF open param
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      console.log("Checking referrer information...");
+      
       // Try to get the referrer from sessionStorage
       const storedReferrer = sessionStorage.getItem(STORAGE_KEY_REFERRER);
+      console.log("Stored referrer:", storedReferrer);
       
-      // Check if we have a search source parameter
-      const searchSource = searchParams.get('source');
+      // Check if we have a source parameter (search or browse)
+      const source = searchParams.get('source');
+      console.log("Source parameter:", source);
       
-      if (searchSource === 'search' && document.referrer) {
-        // If we navigated from the search page, store the full referrer URL
-        const referrer = document.referrer;
-        sessionStorage.setItem(STORAGE_KEY_REFERRER, referrer);
-        setReferrerUrl(referrer);
-      } else if (storedReferrer) {
-        // Use previously stored referrer if available
+      // Check for explicit source parameter in URL
+      if (source) {
+        console.log("URL has explicit source parameter:", source);
+        
+        if (source === 'browse') {
+          console.log("Setting browse as referrer source");
+          // When coming from browse page, always use the browse page URL
+          const browseUrl = '/browse';
+          sessionStorage.setItem(STORAGE_KEY_REFERRER, browseUrl);
+          sessionStorage.setItem('car_manual_referrer_type', 'browse');
+          setReferrerUrl(browseUrl);
+          setReferrerType('browse');
+        } 
+        else if (source === 'search') {
+          // If we navigated from search page, use full search URL with query params
+          console.log("Setting search as referrer source");
+          
+          // Get the search URL from sessionStorage if available, otherwise default to /search
+          let searchUrl = sessionStorage.getItem(STORAGE_KEY_REFERRER) || '/search';
+          
+          // Make sure the URL includes query parameters
+          if (searchUrl === '/search' && window.location.search) {
+            // Extract the q and method parameters from the current URL to pass back to search
+            const currentParams = new URLSearchParams(window.location.search);
+            const q = currentParams.get('q');
+            const method = currentParams.get('method');
+            
+            if (q) {
+              const searchParams = new URLSearchParams();
+              searchParams.set('q', q);
+              if (method) searchParams.set('method', method);
+              searchUrl = `/search?${searchParams.toString()}`;
+            }
+          }
+          
+          console.log("Using search URL:", searchUrl);
+          sessionStorage.setItem(STORAGE_KEY_REFERRER, searchUrl);
+          sessionStorage.setItem('car_manual_referrer_type', 'search');
+          setReferrerUrl(searchUrl);
+          setReferrerType('search');
+        }
+      } 
+      // Fallback to stored referrer if no source parameter
+      else if (storedReferrer) {
+        console.log("No source parameter, using stored referrer");
         setReferrerUrl(storedReferrer);
+        const storedType = sessionStorage.getItem('car_manual_referrer_type') || 'search';
+        setReferrerType(storedType);
+        console.log("Stored referrer type:", storedType);
+      }
+      // Default fallback to search if nothing else
+      else {
+        console.log("No source or stored referrer, defaulting to search");
+        setReferrerUrl('/search');
+        setReferrerType('search');
+      }
+      
+      // Check if we should open the PDF viewer automatically
+      const openPdf = searchParams.get('open_pdf');
+      if (openPdf === 'true') {
+        setShowPdfViewer(true);
       }
     }
   }, [searchParams]);
@@ -127,14 +191,21 @@ export default function ChunkDetailPage() {
   return (
     <MainLayout>
       <div style={{ maxWidth: '1000px', margin: '0 auto', padding: spacing[3] }}>
-        {/* Back to search button */}
+        {/* Back navigation button */}
         <div style={{ marginBottom: spacing[3] }}>
           <Button
             variant="default"
-            onClick={() => router.push(referrerUrl)}
+            onClick={() => {
+              console.log("Navigating back to:", referrerUrl, "with type:", referrerType);
+              // Ensure we use the correct referrer URL
+              const targetUrl = referrerType === 'browse' ? '/browse' : referrerUrl;
+              router.push(targetUrl);
+            }}
             leftGlyph={<Icon glyph="ArrowLeft" />}
           >
-            Back to Search
+            {referrerType === 'browse' 
+              ? 'Back to Browse Chunks' 
+              : 'Back to Search'}
           </Button>
         </div>
 
@@ -142,6 +213,45 @@ export default function ChunkDetailPage() {
         <div style={{ marginBottom: spacing[4] }}>
           {chunk && <ChunkViewer chunk={chunk} showNavigation={true} />}
         </div>
+
+        {/* PDF Viewer Button */}
+        {chunk && chunk.page_numbers && chunk.page_numbers.length > 0 && (
+          <div style={{ 
+            marginTop: spacing[4],
+            padding: spacing[3],
+            backgroundColor: palette.blue.light1,
+            borderRadius: '4px',
+            borderLeft: `4px solid ${palette.blue.base}`
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <Body weight="medium">Original Source Reference</Body>
+                <Body>
+                  This content appears on page{chunk.page_numbers.length > 1 ? 's' : ''}{' '}
+                  <strong>{chunk.page_numbers.join(', ')}</strong> of the original manual.
+                </Body>
+              </div>
+              
+              <Button
+                variant="primary"
+                onClick={() => setShowPdfViewer(true)}
+                leftGlyph={<Icon glyph="Document" />}
+              >
+                View in Original PDF
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* PDF Viewer Modal */}
+        {showPdfViewer && chunk && chunk.page_numbers && chunk.page_numbers.length > 0 && (
+          <PDFViewerModal
+            isOpen={showPdfViewer}
+            onClose={() => setShowPdfViewer(false)}
+            pdfPath={pdfPath}
+            pageNumber={chunk.page_numbers[0]}
+          />
+        )}
       </div> 
     </MainLayout>
   );

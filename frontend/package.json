@@ -19,6 +19,7 @@
     "@leafygreen-ui/icon": "^13.2.1",
     "@leafygreen-ui/leafygreen-provider": "^4.0.6",
     "@leafygreen-ui/loading-indicator": "^3.0.9",
+    "@leafygreen-ui/modal": "^17.1.7",
     "@leafygreen-ui/pagination": "^3.0.10",
     "@leafygreen-ui/palette": "^4.1.4",
     "@leafygreen-ui/radio-group": "^12.0.9",
@@ -34,8 +35,10 @@
     "geist": "^1.3.1",
     "mongodb": "^6.15.0",
     "next": "^15.2.4",
+    "pdfjs-dist": "^5.2.133",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-pdf": "^9.2.1",
     "tailwind-merge": "^3.1.0"
   },
   "devDependencies": {
