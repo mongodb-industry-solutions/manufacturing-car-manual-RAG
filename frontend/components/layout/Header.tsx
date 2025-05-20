@@ -12,9 +12,28 @@ import { MyH3 as H3 } from '@/components/ui/TypographyWrapper';
 import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import Tooltip from '@leafygreen-ui/tooltip';
+import { useAppConfig, useBrandingConfig, useTerminology } from '@/contexts/ConfigContext';
 
 const Header: React.FC = () => {
   const pathname = usePathname();
+  const appConfig = useAppConfig();
+  const branding = useBrandingConfig();
+  const terminology = useTerminology();
+  
+  // Convert hex color to rgb for lighter background
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  };
+  
+  // Get the primary color or fallback to MongoDB green
+  const primaryColor = branding?.primaryColor || palette.green.base;
+  const rgbColor = hexToRgb(primaryColor);
+  const bgColor = rgbColor ? `rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.1)` : palette.green.light2;
   
   return (
     <header
@@ -42,14 +61,14 @@ const Header: React.FC = () => {
             <Tooltip
               trigger={
                 <div style={{ 
-                  backgroundColor: palette.green.light2, 
+                  backgroundColor: bgColor, 
                   borderRadius: '50%', 
                   padding: spacing[1], 
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <Icon glyph="Database" size={30} fill={palette.green.base} />
+                  <Icon glyph="Database" size={30} fill={primaryColor} />
                 </div>
               }
               triggerEvent="hover"
@@ -59,7 +78,7 @@ const Header: React.FC = () => {
           </Link>
           
           <H3 style={{ margin: 0, color: palette.gray.dark2, fontWeight: 'bold' }}>
-            Technical Manual Explorer
+            {branding?.title || "Technical Manual Explorer"}
           </H3>
         </div>
         
@@ -95,7 +114,7 @@ const Header: React.FC = () => {
                     size="large"
                     leftGlyph={<Icon glyph="MagnifyingGlass" />}
                   >
-                    Search
+                    {terminology.search || "Search"}
                   </Button>
                 </div>
               </Link>
@@ -109,7 +128,7 @@ const Header: React.FC = () => {
                     size="large"
                     leftGlyph={<Icon glyph="Table" />}
                   >
-                    Browse Chunks
+                    {terminology.browse || "Browse Chunks"}
                   </Button>
                 </div>
               </Link>

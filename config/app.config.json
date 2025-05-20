@@ -1,0 +1,73 @@
+{
+  "application": {
+    "name": "Technical Manual Explorer",
+    "industry": "automotive",
+    "description": "An interactive demonstration showcasing how MongoDB's Document Model, Vector Store and Hybrid Search powers contextual retrieval on technical documentation"
+  },
+  "branding": {
+    "title": "Technical Manual Explorer",
+    "subtitle": "Powered by MongoDB Atlas",
+    "primaryColor": "#00ED64",
+    "secondaryColor": "#13AA52",
+    "accentColor": "#3D89F5",
+    "logoPath": "/public/mongo.png"
+  },
+  "document": {
+    "types": ["manual", "guide", "specification"],
+    "defaultType": "manual",
+    "path": "/public/documents",
+    "defaultDocument": "car-manual.pdf"
+  },
+  "industry": {
+    "name": "Automotive",
+    "icon": "CarAlt",
+    "terminology": {
+      "manual": "Car Manual",
+      "chunk": "Section",
+      "document": "Manual",
+      "search": "Search Manual",
+      "browse": "Browse Sections"
+    },
+    "metadata": {
+      "contentTypes": [
+        "procedure", 
+        "warning", 
+        "specification",
+        "troubleshooting",
+        "reference"
+      ],
+      "systems": [
+        "engine",
+        "transmission",
+        "brakes",
+        "suspension",
+        "electrical",
+        "climate",
+        "body"
+      ]
+    }
+  },
+  "features": {
+    "search": {
+      "methods": ["vector", "text", "hybrid"],
+      "defaultMethod": "hybrid"
+    },
+    "chunks": {
+      "displayLimit": 20,
+      "infiniteScroll": true
+    },
+    "pdfViewer": {
+      "enabled": true,
+      "defaultScale": 1.2
+    }
+  },
+  "database": {
+    "collections": {
+      "chunks": "manual"
+    },
+    "indices": {
+      "vector": "manual_vector_index",
+      "text": "manual_text_search_index"
+    }
+  }
+}

@@ -12,8 +12,7 @@ import { palette } from '@leafygreen-ui/palette';
 import Badge from '@leafygreen-ui/badge';
 import TextInput from '@leafygreen-ui/text-input';
 
-// Dynamically import problematic components that might use document/window
-const Pagination = dynamic(() => import('@leafygreen-ui/pagination'), { ssr: false });
+// No longer needed as we're using infinite scroll instead of pagination
 
 const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
@@ -49,12 +48,13 @@ export default function BrowsePage() {
   const router = useRouter();
   const { getChunks, chunks, loading, error, clearCache } = useChunks();
   
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  // Infinite scroll state
+  const [displayLimit, setDisplayLimit] = useState(20);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   
-  // This ensures we rerender when the page changes
-  const [paginationKey, setPaginationKey] = useState(0);
+  // Scroll observer reference
+  const observerTarget = React.useRef(null);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -363,22 +363,65 @@ export default function BrowsePage() {
     });
   };
   
-  // Handle page change properly
-  const handlePageChange = useCallback((newPage: number) => {
-    console.log("Changing to page:", newPage);
-    setCurrentPage(newPage);
-    // Force re-render with a new key for the pagination component
-    setPaginationKey(prev => prev + 1);
-    // Scroll to top of the page for better UX
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, []);
+  // Function to load more items - defined BEFORE the useEffect that uses it
+  const loadMoreItems = useCallback(() => {
+    if (isLoadingMore || !hasMore) return;
+    
+    setIsLoadingMore(true);
+    console.log(`Loading more chunks, current limit: ${displayLimit}`);
+    
+    // Simulate a small delay for smoother UX
+    setTimeout(() => {
+      setDisplayLimit(prev => prev + 20);
+      setIsLoadingMore(false);
+      
+      // Check if we've shown all items
+      if (displayLimit + 20 >= filteredChunks.length) {
+        setHasMore(false);
+      }
+    }, 500);
+  }, [displayLimit, filteredChunks.length, hasMore, isLoadingMore]);
   
-  // Get current page items
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredChunks.slice(indexOfFirstItem, indexOfLastItem);
+  // Setup intersection observer for infinite scroll
+  useEffect(() => {
+    // Only run on client-side
+    if (typeof window === 'undefined') return;
+    
+    // If we don't have chunks yet or we're already at the end, don't observe
+    if (!filteredChunks || !hasMore) return;
+    
+    const observer = new IntersectionObserver(
+      entries => {
+        // If the target element is intersecting (visible)
+        if (entries[0].isIntersecting && !isLoadingMore) {
+          console.log("Loading more chunks...");
+          loadMoreItems();
+        }
+      },
+      { threshold: 0.1 } // Trigger when 10% of the element is visible
+    );
+    
+    // Start observing the target element
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [filteredChunks, hasMore, isLoadingMore, loadMoreItems]);
+  
+  // Reset display limit and hasMore when filters change
+  useEffect(() => {
+    setDisplayLimit(20);
+    setHasMore(true);
+  }, [filters, textFilter]);
+  
+  // Get current items to display based on displayLimit
+  const currentItems = filteredChunks.slice(0, displayLimit);
   
   // Get chunk title
   const getChunkTitle = (chunk: Chunk): string => {
@@ -546,9 +589,9 @@ export default function BrowsePage() {
               value={textFilter}
               onChange={e => {
                 setTextFilter(e.target.value);
-                // Reset to page 1 when text filter changes
-                setCurrentPage(1);
-                setPaginationKey(prev => prev + 1);
+                // Reset infinite scroll state when filter changes
+                setDisplayLimit(20);
+                setHasMore(true);
               }}
             />
           </div>
@@ -811,35 +854,31 @@ export default function BrowsePage() {
           ))}
         </div>
         
-        {/* Pagination */}
+        {/* Infinite scroll loading indicator */}
         {filteredChunks.length > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: spacing[3] }}>
-            {/* Calculate max page and make sure currentPage is valid */}
-            {(() => {
-              const maxPage = Math.max(1, Math.ceil(filteredChunks.length / itemsPerPage));
-              const validCurrentPage = Math.min(maxPage, Math.max(1, currentPage));
-              
-              // If current page is invalid, adjust it silently
-              if (validCurrentPage !== currentPage) {
-                setTimeout(() => {
-                  setCurrentPage(validCurrentPage);
-                  setPaginationKey(prev => prev + 1);
-                }, 0);
-              }
-              
-              return (
-                <Pagination
-                  key={`pagination-${paginationKey}`}
-                  currentPage={validCurrentPage}
-                  onForwardArrowClick={() => handlePageChange(validCurrentPage + 1)}
-                  onBackArrowClick={() => handlePageChange(validCurrentPage - 1)}
-                  shouldDisableForwardArrow={validCurrentPage >= maxPage}
-                  shouldDisableBackArrow={validCurrentPage <= 1}
-                  numTotalItems={filteredChunks.length}
-                  itemsPerPage={itemsPerPage}
-                />
-              );
-            })()}
+          <div 
+            ref={observerTarget}
+            style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              padding: spacing[4],
+              marginTop: spacing[3],
+              textAlign: 'center'
+            }}
+          >
+            {isLoadingMore ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing[2] }}>
+                <Icon glyph="Refresh" fill={palette.green.base} />
+                <Body>Loading more chunks...</Body>
+              </div>
+            ) : hasMore ? (
+              <Body style={{ color: palette.gray.dark1 }}>Scroll to load more</Body>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing[2] }}>
+                <Icon glyph="Checkmark" fill={palette.green.base} />
+                <Body>All {filteredChunks.length} chunks loaded</Body>
+              </div>
+            )}
           </div>
         )}
         
@@ -862,9 +901,9 @@ export default function BrowsePage() {
                     hasProcedures: false
                   });
                   setTextFilter('');
-                  // Reset to page 1 when clearing filters
-                  setCurrentPage(1);
-                  setPaginationKey(prev => prev + 1);
+                  // Reset infinite scroll state
+                  setDisplayLimit(20);
+                  setHasMore(true);
                 }}
                 style={{ marginTop: spacing[3] }}
               >

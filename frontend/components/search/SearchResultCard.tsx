@@ -13,6 +13,7 @@ import { palette } from '@leafygreen-ui/palette';
 import { SearchResult } from '../../types/Search';
 import Link from 'next/link';
 import Badge from '@leafygreen-ui/badge';
+import { useBrandingConfig, useTerminology, useDocumentConfig } from '@/contexts/ConfigContext';
 
 interface SearchResultCardProps {
   result: SearchResult;
@@ -20,6 +21,14 @@ interface SearchResultCardProps {
 }
 
 const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }) => {
+  // Get configuration
+  const branding = useBrandingConfig();
+  const terminology = useTerminology();
+  const documentConfig = useDocumentConfig();
+  
+  // Use primary color from branding, or default to MongoDB green
+  const primaryColor = branding?.primaryColor || palette.green.base;
+  
   // Use new flattened result format if available, fall back to legacy chunk format
   const { score, vector_score, text_score } = result;
   
@@ -99,10 +108,10 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
             <Tooltip
               trigger={
                 <Badge variant={
-                  scorePercent >= 90 ? "green" :
-                  scorePercent >= 70 ? "lightgray" :
-                  scorePercent >= 50 ? "yellow" :
-                  scorePercent > 0 ? "red" : "darkgray"
+                  scorePercent >= 25 ? "green" :
+                  scorePercent >= 20 ? "lightgray" :
+                  scorePercent >= 15 ? "yellow" :
+                  scorePercent > 10 ? "red" : "darkgray"
                 }>
                   <span style={{ fontWeight: 'bold' }}>
                     {score > 0 ? `${scorePercent}%` : "0%"}
@@ -283,8 +292,8 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
           </div>
           
           <div style={{ display: 'flex', gap: spacing[2] }}>
-            {/* PDF Viewer Button - only show if page numbers exist */}
-            {page_numbers && page_numbers.length > 0 && (
+            {/* PDF Viewer Button - only show if page numbers exist and PDF viewer is enabled */}
+            {page_numbers && page_numbers.length > 0 && documentConfig.pdfViewer?.enabled !== false && (
               <Link href={`/chunk/${chunk_id}?source=search&open_pdf=true`}>
                 <div style={{ display: 'inline-block' }}>
                   <Button 
@@ -294,12 +303,14 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                     onClick={() => {
                       // Save current search URL with parameters to sessionStorage before navigation
                       if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
-                        sessionStorage.setItem('car_manual_referrer_type', 'search');
+                        // Use a configurable key prefix for session storage
+                        const keyPrefix = terminology.manual?.toLowerCase().replace(/\s+/g, '_') || 'technical_manual';
+                        sessionStorage.setItem(`${keyPrefix}_previous_search_url`, window.location.href);
+                        sessionStorage.setItem(`${keyPrefix}_referrer_type`, 'search');
                       }
                     }}
                   >
-                    PDF
+                    {terminology.document?.slice(0, 3)?.toUpperCase() || "PDF"}
                   </Button>
                 </div>
               </Link>

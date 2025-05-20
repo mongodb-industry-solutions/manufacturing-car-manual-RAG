@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
-from app.api.routes import chunks, search, health
+from app.api.routes import chunks, search, health, configuration
 
 # Configure logging
 logging.basicConfig(
@@ -42,6 +42,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(chunks.router, prefix=f"{settings.API_V1_STR}/chunks", tags=["chunks"])
 app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["search"])
+app.include_router(configuration.router, prefix=f"{settings.API_V1_STR}/config", tags=["configuration"])
 
 # Allow redirects for slash handling (default behavior)
 # Our frontend will consistently use trailing slashes
@@ -49,7 +50,13 @@ app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=[
 # Root endpoint
 @app.get("/")
 async def root():
-    return {"message": "Car Manual RAG API is running. See /docs for API documentation."}
+    settings = get_settings()
+    industry = settings.INDUSTRY.capitalize()
+    return {
+        "message": f"{industry} {settings.APP_NAME} API is running. See /docs for API documentation.",
+        "industry": settings.INDUSTRY,
+        "version": "1.0.0"
+    }
 
 if __name__ == "__main__":
     # Run the application with uvicorn
