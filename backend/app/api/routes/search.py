@@ -205,7 +205,7 @@ async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = H
     
     try:
         # Log the request parameters
-        logger.info(f"Hybrid search request: query='{request.query}', limit={request.limit}")
+        logger.info(f"Hybrid search request: query='{request.query}', limit={request.limit}, rrf_k={request.rrf_k}")
         if debug_mode:
             debug_info["request"] = {
                 "query": request.query,
@@ -215,6 +215,9 @@ async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = H
                 "text_weight": request.text_weight,
                 "num_candidates_multiplier": request.num_candidates_multiplier
             }
+            
+        # Enable debugging to see more details
+        debug_mode = True
         
         # Initialize search repository with debug mode
         search_repo = SearchRepository(debug_mode=debug_mode)
@@ -273,13 +276,29 @@ async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = H
         )
         
         logger.info(f"Hybrid search completed: found {len(search_results)} results")
+        
+        # Log more details about the response for debugging
+        if debug_mode and search_results:
+            for i, result in enumerate(search_results[:3]):  # Log first 3 results
+                logger.info(f"Result {i+1}: score={result.score}, " + 
+                           f"raw_score={getattr(result, 'raw_score', 0)}, " +
+                           f"vs_score={result.vector_score}, " +
+                           f"text_score={result.text_score}")
+        elif not search_results:
+            logger.warning("No results returned from hybrid search!")
+            
         return response
         
     except Exception as e:
         error_message = f"Error in hybrid search: {str(e)}"
         logger.error(error_message)
+        # Print full stack trace for debugging
+        import traceback
+        traceback.print_exc()
+        
         if debug_mode:
             debug_info["error"] = error_message
+            debug_info["traceback"] = traceback.format_exc()
             return SearchResponse(
                 query=request.query,
                 method="hybrid_rrf",

@@ -4,9 +4,10 @@ from .chunks import Chunk
 
 class SearchResult(BaseModel):
     """A single search result with score and chunk data"""
-    score: float = Field(..., description="Relevance score (0.0 to 1.0)")
+    score: float = Field(..., description="Relevance score (0.0 to 100.0, percentile-based)")
     vector_score: Optional[float] = Field(None, description="Vector search component score")
     text_score: Optional[float] = Field(None, description="Text search component score")
+    raw_score: Optional[float] = Field(None, description="Raw unprocessed score for debugging")
     chunk_id: Optional[str] = Field(None, description="ID of the matching chunk")
     text: str = Field(..., description="Text content of the chunk")
     context: Optional[str] = Field(None, description="Context string for the chunk")

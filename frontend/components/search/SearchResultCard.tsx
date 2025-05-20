@@ -41,9 +41,8 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
   const heading_level_3 = result.heading_level_3 || chunk.heading_level_3;
   const chunk_id = result.chunk_id || chunk.id;
   
-  // Format score as percentage, ensure score is between 0-1
-  const normalizedScore = Math.max(0, Math.min(1, score));
-  const scorePercent = Math.round(normalizedScore * 100);
+  // Score is already in 0-100 range with percentile-based normalization
+  const scorePercent = Math.round(Math.max(0, Math.min(100, score)));
   
   // Get heading hierarchy for result
   const title = heading_level_1 || breadcrumb_trail?.split(' > ')[0] || 'Document Section';
@@ -113,13 +112,13 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
               triggerEvent="hover"
             >
               {vector_score !== undefined && text_score !== undefined 
-                ? `RRF score (expected to be low, typically under 5%). These low scores are mathematically correct due to the RRF formula: 1/(k+rank).` 
+                ? `Percentile rank score: This result is better than ${scorePercent}% of all other results.` 
                 : `Overall match score`}
             </Tooltip>
           )}
           
-          {/* Only show vector score with proper formatting */}
-          {vector_score !== undefined && (
+          {/* Only show vector score for pure vector search (not hybrid) */}
+          {vector_score !== undefined && text_score === undefined && (
             <Tooltip
               trigger={
                 <Badge variant="lightgray">
@@ -133,14 +132,12 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
               }
               triggerEvent="hover"
             >
-              {text_score !== undefined 
-                ? `Vector component of RRF score (naturally low due to the 1/(k+rank) formula)`
-                : `Semantic vector search score`}
+              Semantic vector search score
             </Tooltip>
           )}
           
-          {/* Only show text score with proper formatting */}
-          {text_score !== undefined && (
+          {/* Only show text score for pure text search (not hybrid) */}
+          {text_score !== undefined && vector_score === undefined && (
             <Tooltip
               trigger={
                 <Badge variant="lightgray">
@@ -154,9 +151,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
               }
               triggerEvent="hover"
             >
-              {vector_score !== undefined 
-                ? `Text component of RRF score (naturally low due to the 1/(k+rank) formula)`
-                : `Keyword text search score`}
+              Keyword text search score
             </Tooltip>
           )}
         </div>
@@ -287,7 +282,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
             )}
           </div>
           
-          <Link href={`/chunk/${chunk_id}`}>
+          <Link href={`/chunk/${chunk_id}?source=search`}>
             <div style={{ display: 'inline-block' }}>
               <Button 
                 variant="primary"

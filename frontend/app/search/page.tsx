@@ -7,6 +7,7 @@ import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 import Banner from '@leafygreen-ui/banner';
 import { ParagraphSkeleton } from '@leafygreen-ui/skeleton-loader';
 import { spacing } from '@leafygreen-ui/tokens';
+import { palette } from '@leafygreen-ui/palette';
 import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
 import Tabs from '@leafygreen-ui/tabs';
@@ -65,6 +66,11 @@ function SearchPageContent() {
       }, 10);
     } else if (results) {
       console.log('Using cached results, no need to search again');
+    }
+    
+    // Save in sessionStorage that we're on the search page with active results
+    if (typeof window !== 'undefined' && queryParam) {
+      sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
     }
     // Empty dependency array means this only runs once on mount
   }, []);
@@ -167,60 +173,180 @@ function SearchPageContent() {
         </Card>
         
         
-        {/* Search Suggestions */}
+        {/* Keyword Search Suggestions */}
+        <div style={{ marginBottom: spacing[2] }}>
+          <div style={{ 
+            marginBottom: spacing[1],
+            paddingLeft: spacing[1]
+          }}>
+            <span style={{ 
+              fontWeight: 'bold', 
+              fontSize: '14px',
+              color: palette.gray.dark2 
+            }}>
+              Popular Topics (Keyword Search)
+            </span>
+          </div>
+          
+          <div style={{ 
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: spacing[2],
+            paddingBottom: spacing[2]
+          }}>
+            <Button 
+              size="small"
+              variant="primaryOutline"
+              onClick={() => handleSearch("Oil change procedure")}
+              leftGlyph={<Icon glyph="Wrench" size="small" />}
+            >
+              Oil change procedure
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="primaryOutline"
+              onClick={() => handleSearch("Check engine light")}
+              leftGlyph={<Icon glyph="Warning" size="small" />}
+            >
+              Check engine light
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="primaryOutline"
+              onClick={() => handleSearch("Tire pressure")}
+              leftGlyph={<Icon glyph="Plus" size="small" />}
+            >
+              Tire pressure
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="primaryOutline"
+              onClick={() => handleSearch("Battery replacement")}
+              leftGlyph={<Icon glyph="LightningBolt" size="small" />}
+            >
+              Battery replacement
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="primaryOutline"
+              onClick={() => handleSearch("Brake maintenance")}
+              leftGlyph={<Icon glyph="Settings" size="small" />}
+            >
+              Brake maintenance
+            </Button>
+          </div>
+        </div>
+        
+        {/* Natural Language Search Suggestions */}
         <div style={{ 
           marginBottom: spacing[3],
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: spacing[2],
           borderBottom: '1px solid #E1E1E1',
           paddingBottom: spacing[2]
         }}>
+          <div style={{ 
+            marginBottom: spacing[1],
+            paddingLeft: spacing[1]
+          }}>
+            <span style={{ 
+              fontWeight: 'bold', 
+              fontSize: '14px',
+              color: palette.gray.dark2 
+            }}>
+              Natural Language Queries (Vector Search)
+            </span>
+          </div>
           
-          <Button 
-            size="small"
-            variant="primaryOutline"
-            onClick={() => handleSearch("Oil change procedure")}
-            leftGlyph={<Icon glyph="Wrench" size="small" />}
-          >
-            Oil change procedure
-          </Button>
-          
-          <Button 
-            size="small" 
-            variant="primaryOutline"
-            onClick={() => handleSearch("Check engine light")}
-            leftGlyph={<Icon glyph="Warning" size="small" />}
-          >
-            Check engine light
-          </Button>
-          
-          <Button 
-            size="small" 
-            variant="primaryOutline"
-            onClick={() => handleSearch("Tire pressure")}
-            leftGlyph={<Icon glyph="Plus" size="small" />}
-          >
-            Tire pressure
-          </Button>
-          
-          <Button 
-            size="small" 
-            variant="primaryOutline"
-            onClick={() => handleSearch("Battery replacement")}
-            leftGlyph={<Icon glyph="LightningBolt" size="small" />}
-          >
-            Battery replacement
-          </Button>
-          
-          <Button 
-            size="small" 
-            variant="primaryOutline"
-            onClick={() => handleSearch("Brake maintenance")}
-            leftGlyph={<Icon glyph="Settings" size="small" />}
-          >
-            Brake maintenance
-          </Button>
+          <div style={{ 
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: spacing[2],
+            paddingBottom: spacing[2]
+          }}>
+            <Button 
+              size="small"
+              variant="default"
+              onClick={() => handleSearch("What should I do if my car won't start on a cold morning?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              Car won't start on cold morning
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="default"
+              onClick={() => handleSearch("How can I improve my car's fuel efficiency?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              Improve fuel efficiency
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="default"
+              onClick={() => handleSearch("What's the best way to clean the interior of my car?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              Best way to clean interior
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="default"
+              onClick={() => handleSearch("What noise indicates a problem with the transmission?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              Noise indicating transmission problem
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="default"
+              onClick={() => handleSearch("How do I know when it's time to replace my brakes?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              When to replace brakes
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="default"
+              onClick={() => handleSearch("Why does my steering wheel shake when I brake?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              Steering wheel shakes during braking
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="default"
+              onClick={() => handleSearch("What causes my car to pull to one side when driving?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              Car pulls to one side
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="default"
+              onClick={() => handleSearch("How do driving habits affect my car's lifespan?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              Driving habits impact on car lifespan
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="default"
+              onClick={() => handleSearch("What maintenance should I do before a long road trip?")}
+              leftGlyph={<Icon glyph="Bulb" size="small" />}
+            >
+              Maintenance before road trip
+            </Button>
+          </div>
         </div>
         
         {/* Search Results */}
