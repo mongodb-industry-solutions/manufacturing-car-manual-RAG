@@ -43,7 +43,7 @@ async def get_available_filters():
 @router.get("/", response_model=ChunkList)
 async def get_chunks(
     skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
+    limit: int = Query(10, ge=1, le=10000),
     content_types: Optional[List[str]] = Query(None),
     vehicle_systems: Optional[List[str]] = Query(None),
     has_safety_notices: Optional[bool] = Query(None),

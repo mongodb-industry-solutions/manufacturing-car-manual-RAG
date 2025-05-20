@@ -1,0 +1,59 @@
+{
+  "application": {
+    "name": "Technical Manual Explorer",
+    "industry": "general",
+    "description": "Technical documentation explorer powered by MongoDB Atlas"
+  },
+  "branding": {
+    "title": "Technical Manual Explorer",
+    "subtitle": "Powered by MongoDB Atlas",
+    "primaryColor": "#3D89F5",
+    "secondaryColor": "#001E2B",
+    "accentColor": "#00ED64",
+    "logoPath": "/mongo.png"
+  },
+  "document": {
+    "types": ["manual", "specification", "guide"],
+    "defaultType": "manual",
+    "path": "/public",
+    "defaultDocument": "document.pdf"
+  },
+  "industry": {
+    "name": "Technical",
+    "icon": "Document",
+    "terminology": {
+      "manual": "Manual",
+      "chunk": "Section",
+      "document": "Document",
+      "search": "Search",
+      "browse": "Browse"
+    },
+    "metadata": {
+      "contentTypes": ["general", "reference", "procedure"],
+      "systems": ["general", "technical", "operational"]
+    }
+  },
+  "features": {
+    "search": {
+      "methods": ["vector", "text", "hybrid"],
+      "defaultMethod": "hybrid"
+    },
+    "chunks": {
+      "displayLimit": 20,
+      "infiniteScroll": true
+    },
+    "pdfViewer": {
+      "enabled": true,
+      "defaultScale": 1.2
+    }
+  },
+  "database": {
+    "collections": {
+      "chunks": "technical_documents"
+    },
+    "indices": {
+      "vector": "vector_index",
+      "text": "text_search_index"
+    }
+  }
+}

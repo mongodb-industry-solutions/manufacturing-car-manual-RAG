@@ -13,12 +13,7 @@
     "logoPath": "/mongo.png"
   },
   "document": {
-    "types": [
-      "manual",
-      "maintenance",
-      "troubleshooting",
-      "specifications"
-    ],
+    "types": ["manual", "maintenance", "troubleshooting", "specifications"],
     "defaultType": "manual",
     "path": "/public",
     "defaultDocument": "car-manual.pdf"
@@ -35,8 +30,8 @@
     },
     "metadata": {
       "contentTypes": [
-        "procedure",
-        "warning",
+        "procedure", 
+        "warning", 
         "specification",
         "troubleshooting",
         "maintenance",
@@ -59,11 +54,7 @@
   },
   "features": {
     "search": {
-      "methods": [
-        "vector",
-        "text",
-        "hybrid"
-      ],
+      "methods": ["vector", "text", "hybrid"],
       "defaultMethod": "hybrid"
     },
     "chunks": {

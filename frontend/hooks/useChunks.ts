@@ -142,12 +142,12 @@ export const useChunks = (): UseChunksResult => {
     }
   }, []);
 
-  const getChunks = useCallback(async (skip: number = 0, limit: number = 100): Promise<ChunkList> => {
+  const getChunks = useCallback(async (skip: number = 0, limit: number = 1000): Promise<ChunkList> => {
     setLoading(true);
     setError(null);
     
     // Check cache first (only for the main chunks request)
-    if (skip === 0 && limit >= 100) {
+    if (skip === 0) {
       const cachedChunks = cacheManager.getCache<ChunkList>(CACHE_KEY_CHUNKS);
       if (cachedChunks) {
         setChunks(cachedChunks);
@@ -181,7 +181,7 @@ export const useChunks = (): UseChunksResult => {
       setChunks(response);
       
       // Cache only the main chunks list (not paginated subsets)
-      if (skip === 0 && limit >= 100) {
+      if (skip === 0) {
         cacheManager.setCache(CACHE_KEY_CHUNKS, response);
       }
       

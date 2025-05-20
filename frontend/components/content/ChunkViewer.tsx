@@ -13,6 +13,8 @@ import ExpandableCard from '@leafygreen-ui/expandable-card';
 import Tooltip from '@leafygreen-ui/tooltip';
 import Banner from '@leafygreen-ui/banner';
 import Link from 'next/link';
+import Code from '@leafygreen-ui/code';
+import { useState } from 'react';
 
 // Custom components
 import SafetyNotice from './SafetyNotice';
@@ -35,6 +37,28 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
   
   // Check if there are procedural steps
   const hasProcedures = chunk.procedural_steps && chunk.procedural_steps.length > 0;
+  
+  // State to toggle MongoDB document view
+  const [showMongoDoc, setShowMongoDoc] = useState(false);
+  
+  // Prepare MongoDB document representation
+  const mongoDoc = {
+    _id: chunk._id || chunk.id,
+    text: chunk.text,
+    page_numbers: chunk.page_numbers,
+    content_type: chunk.content_type,
+    metadata: chunk.metadata,
+    ...(chunk.breadcrumb_trail && { breadcrumb_trail: chunk.breadcrumb_trail }),
+    ...(chunk.heading_level_1 && { heading_level_1: chunk.heading_level_1 }),
+    ...(chunk.heading_level_2 && { heading_level_2: chunk.heading_level_2 }),
+    ...(chunk.heading_level_3 && { heading_level_3: chunk.heading_level_3 }),
+    ...(chunk.safety_notices && { safety_notices: chunk.safety_notices }),
+    ...(chunk.procedural_steps && { procedural_steps: chunk.procedural_steps }),
+    ...(chunk.vehicle_systems && { vehicle_systems: chunk.vehicle_systems }),
+    ...(chunk.part_numbers && { part_numbers: chunk.part_numbers }),
+    ...(chunk.next_chunk_id && { next_chunk_id: chunk.next_chunk_id }),
+    ...(chunk.related_chunks && { related_chunks: chunk.related_chunks })
+  };
   
   return (
     <div>
@@ -316,16 +340,38 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
         <Body style={{ lineHeight: '1.6' }}>{chunk.text}</Body>
       </Card>
       
-      {/* Additional context if available */}
-      {chunk.context && (
-        <ExpandableCard 
-          title="Additional Context" 
-          description="Supplementary information related to this content"
-          defaultOpen={false}
-        >
-          <Body>{chunk.context}</Body>
-        </ExpandableCard>
-      )}
+      {/* MongoDB Document View */}
+      <ExpandableCard
+        title={
+          <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+            <Icon glyph="Database" fill={palette.blue.base} size="small" />
+            <span style={{ color: palette.blue.base, fontSize: '16px' }}>{ '{' }</span>
+            <span style={{ fontSize: '13px', fontWeight: 'medium' }}>MongoDB Document</span>
+            <span style={{ color: palette.blue.base, fontSize: '16px' }}>{ '}' }</span>
+          </span>
+        }
+        description="View the raw MongoDB document structure"
+        defaultOpen={showMongoDoc}
+        onClick={() => setShowMongoDoc(!showMongoDoc)}
+        style={{ 
+          marginBottom: spacing[3],
+          border: `1px solid ${palette.blue.light1}`,
+          borderRadius: '4px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}
+      >
+        <div>
+          <Body size="small" style={{ marginBottom: spacing[2], color: palette.gray.dark1 }}>
+            This is the raw MongoDB document structure that contains all metadata and content for this chunk.
+            MongoDB's document model allows for flexible schemas and nested data structures.
+          </Body>
+          <div style={{ maxHeight: '400px', overflow: 'auto', backgroundColor: palette.gray.light3, borderRadius: '4px' }}>
+            <Code language="json" copyable={true}>
+              {JSON.stringify(mongoDoc, null, 2)}
+            </Code>
+          </div>
+        </div>
+      </ExpandableCard>
       
       {/* Navigation links to next chunk and related chunks */}
       {showNavigation && (chunk.related_chunks?.length > 0 || chunk.next_chunk_id) && (
