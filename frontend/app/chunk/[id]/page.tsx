@@ -217,7 +217,7 @@ export default function ChunkDetailPage() {
               <Button
                 variant="primary"
                 onClick={() => setShowPdfViewer(true)}
-                leftGlyph={<Icon glyph="Document" />}
+                leftGlyph={<Icon glyph="File" />}
               >
                 View in Original PDF
               </Button>

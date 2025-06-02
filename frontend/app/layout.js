@@ -1,11 +1,10 @@
 import { GeistSans } from 'geist/font/sans';
-import { ConfigProvider } from '@/contexts/ConfigContext';
 
-// Metadata will be dynamic, but we need to provide defaults for build time
+// Metadata hardcoded for Car Manual Explorer
 export const metadata = {
-  title: 'Technical Manual Explorer | MongoDB Demo',
-  description: 'Explore technical documentation with MongoDB vector search and RAG capabilities',
-  keywords: 'MongoDB, Vector Search, RAG, Technical Documentation',
+  title: 'Car Manual Explorer | MongoDB Demo',
+  description: 'AI-powered car manual search and exploration system with MongoDB vector search and RAG capabilities',
+  keywords: 'Car Manual, Automotive, MongoDB, Vector Search, RAG, Technical Documentation',
 };
 
 export default function RootLayout({ children }) {
@@ -18,9 +17,7 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body style={{ margin: 0, padding: 0 }}>
-        <ConfigProvider>
-          {children}
-        </ConfigProvider>
+        {children}
       </body>
     </html>
   );
