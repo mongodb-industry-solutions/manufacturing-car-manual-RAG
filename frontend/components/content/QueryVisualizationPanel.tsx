@@ -337,7 +337,7 @@ db.chunks.aggregate([
         <Tooltip
           key="agg-badge"
           trigger={
-            <Badge variant="purple">Aggregation Pipeline</Badge>
+            <Badge variant="blue">Aggregation Pipeline</Badge>
           }
           triggerEvent="hover"
         >
@@ -371,7 +371,7 @@ db.chunks.aggregate([
           </div>
           
           <div style={{ backgroundColor: palette.gray.light3, padding: spacing[2], borderRadius: '4px' }}>
-            <Code language="javascript" copyable="true">
+            <Code language="javascript">
               {getQueryExample(searchMethod, query)}
             </Code>
           </div>

@@ -1,4 +1,4 @@
-# Car Manual Explorer - AI-Powered Technical Documentation System
+# Car Manual Explorer - MongoDB-Powered Technical Explorer Documentation System
 
 ![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
@@ -301,23 +301,6 @@ The search interface provides three powerful methods to find information in car 
 > [!Note]
 > The search interface maintains your search state in the URL, making it easy to share specific searches.
 
-### Ask Questions (RAG)
-
-The RAG (Retrieval-Augmented Generation) feature allows you to ask natural language questions:
-
-1. On the search page, look for the "Ask a Question" section.
-
-2. Type your question in natural language, for example:
-
-   - "What are the steps to change my oil?"
-   - "How often should I rotate my tires?"
-   - "What does the check engine light mean?"
-
-3. The system will:
-   - Find the most relevant manual sections
-   - Generate a comprehensive answer using AI
-   - Provide source references for verification
-
 ### Browse Chunks
 
 To explore the manual content systematically:
@@ -418,7 +401,6 @@ Here are some common issues and their solutions:
 
 - **AI Service Errors**:
 
-  - For AWS: Verify Bedrock access and model permissions
   - For Google Cloud: Check service account permissions and API enablement
   - Ensure credentials are correctly formatted in `.env`
 
@@ -426,15 +408,6 @@ Here are some common issues and their solutions:
   - Verify backend is running on the expected port
   - Check CORS configuration includes your frontend URL
   - Ensure API base URL is correctly set in frontend `.env.local`
-
-## Performance Optimization
-
-For production deployments, consider:
-
-1. **Caching**: Implement Redis for frequently accessed chunks and search results
-2. **CDN**: Use a CDN for static assets and PDF files
-3. **Database Optimization**: Create compound indexes for common query patterns
-4. **Connection Pooling**: Configure MongoDB connection pool size based on load
 
 ## Additional Resources
 
@@ -444,13 +417,8 @@ Check additional and accompanying resources below:
 - [MongoDB Vector Search Tutorial](https://www.mongodb.com/docs/atlas/atlas-search/vector-search/)
 - [FastAPI Best Practices](https://fastapi.tiangolo.com/tutorial/)
 - [Next.js Production Deployment](https://nextjs.org/docs/deployment)
-- [AWS Bedrock Documentation](https://docs.aws.amazon.com/bedrock/)
 - [Google Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs)
 - [MongoDB Leafygreen UI Components](https://www.mongodb.design/)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 
