@@ -19,6 +19,9 @@ export interface SearchResult {
   content_type?: string[];
   metadata?: any;
   vehicle_systems?: string[];
+  heading_level_1?: string;
+  heading_level_2?: string;
+  heading_level_3?: string;
   // Backward compatibility with older structure
   chunk?: Chunk;
 }

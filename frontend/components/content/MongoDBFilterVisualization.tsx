@@ -185,7 +185,7 @@ const MongoDBFilterVisualization: React.FC<MongoDBFilterVisualizationProps> = ({
           {textFilter.trim().length > 0 && (
             <Tooltip
               trigger={
-                <Badge variant="darkGray">$match text search</Badge>
+                <Badge variant="darkgray">$match text search</Badge>
               }
               triggerEvent="hover"
             >
@@ -195,7 +195,7 @@ const MongoDBFilterVisualization: React.FC<MongoDBFilterVisualizationProps> = ({
         </div>
         
         <div style={{ backgroundColor: palette.gray.light3, padding: spacing[3], borderRadius: '4px' }}>
-          <Code language="javascript" copyable="true">
+          <Code language="javascript">
             {generatePipeline()}
           </Code>
         </div>

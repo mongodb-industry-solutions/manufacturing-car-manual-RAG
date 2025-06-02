@@ -11,9 +11,10 @@ import Tooltip from '@leafygreen-ui/tooltip';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import { SearchResult } from '../../types/Search';
+import { Chunk } from '../../types/Chunk';
 import Link from 'next/link';
 import Badge from '@leafygreen-ui/badge';
-import { BRANDING, TERMINOLOGY, DOCUMENT_CONFIG } from '@/constants/appConstants';
+import { BRANDING, TERMINOLOGY, DOCUMENT_CONFIG, FEATURES } from '@/constants/appConstants';
 
 interface SearchResultCardProps {
   result: SearchResult;
@@ -28,7 +29,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
   const { score, vector_score, text_score } = result;
   
   // Get either direct fields from result or from chunk object
-  const chunk = result.chunk || {}; // Fallback for backward compatibility
+  const chunk = result.chunk || {} as Partial<Chunk>; // Fallback for backward compatibility
   
   // Get the text content and other fields either directly from result or from chunk
   const text = result.text || chunk.text || '';
@@ -288,7 +289,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
           
           <div style={{ display: 'flex', gap: spacing[2] }}>
             {/* PDF Viewer Button - only show if page numbers exist and PDF viewer is enabled */}
-            {page_numbers && page_numbers.length > 0 && DOCUMENT_CONFIG.pdfViewer?.enabled !== false && (
+            {page_numbers && page_numbers.length > 0 && FEATURES.pdfViewer?.enabled !== false && (
               <Link href={`/chunk/${chunk_id}?source=search&open_pdf=true`}>
                 <div style={{ display: 'inline-block' }}>
                   <Button 

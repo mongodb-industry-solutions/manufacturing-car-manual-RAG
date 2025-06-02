@@ -157,8 +157,8 @@ export default function Home() {
             <Badge variant="yellow">Intelligent Chunking</Badge>
             <Badge variant="blue">Full-Text Search</Badge>
             <Badge variant="green">Vector Search</Badge>
-            <Badge variant="purple">Hybrid Search</Badge>
-            <Badge variant="darkGray">MongoDB Atlas</Badge>
+            <Badge variant="red">Hybrid Search</Badge>
+            <Badge variant="darkgray">MongoDB Atlas</Badge>
           </div>
         </div>
 
@@ -264,7 +264,7 @@ export default function Home() {
                     >
                       MongoDB Document Structure
                     </Body>
-                    <Code language="javascript" copyable="true">
+                    <Code language="javascript">
                       {`{
   "_id": ObjectId("..."),
   "text": "Replacing automotive components...",
@@ -348,7 +348,7 @@ export default function Home() {
                     >
                       Vector Search Query
                     </Body>
-                    <Code language="javascript" copyable="true">
+                    <Code language="javascript">
                       {`db.manual_chunks.aggregate([
   {
     $vectorSearch: {
@@ -435,7 +435,7 @@ export default function Home() {
                     >
                       Hybrid Pipeline
                     </Body>
-                    <Code language="javascript" copyable="true">
+                    <Code language="javascript">
                       {`// Combined approach
 const hybridResults = await 
   combineResults({
@@ -755,10 +755,10 @@ const hybridResults = await
                     flexWrap: 'wrap',
                   }}
                 >
-                  <Badge variant="darkGray">Document Database</Badge>
-                  <Badge variant="darkGray">Vector Search</Badge>
-                  <Badge variant="darkGray">Full-Text Search</Badge>
-                  <Badge variant="darkGray">
+                  <Badge variant="darkgray">Document Database</Badge>
+                  <Badge variant="darkgray">Vector Search</Badge>
+                  <Badge variant="darkgray">Full-Text Search</Badge>
+                  <Badge variant="darkgray">
                     Aggregation Framework
                   </Badge>
                 </div>

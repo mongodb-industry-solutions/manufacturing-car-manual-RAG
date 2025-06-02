@@ -1,7 +1,7 @@
 /**
  * Chunk viewer component for displaying detailed chunk content
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Chunk } from '../../types/Chunk';
 import { MyH1 as H1, MyH2 as H2, MyH3 as H3, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
@@ -14,7 +14,6 @@ import Tooltip from '@leafygreen-ui/tooltip';
 import Banner from '@leafygreen-ui/banner';
 import Link from 'next/link';
 import Code from '@leafygreen-ui/code';
-import { useState } from 'react';
 
 // Custom components
 import SafetyNotice from './SafetyNotice';
@@ -26,6 +25,9 @@ interface ChunkViewerProps {
 }
 
 const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true }) => {
+  // State for hover effects
+  const [hoveredChunk, setHoveredChunk] = useState<string | null>(null);
+  
   // Create page info text
   const pageInfo = chunk.page_numbers.length > 1 
     ? `Pages ${chunk.page_numbers.join(', ')}` 
@@ -366,7 +368,7 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
             MongoDB's document model allows for flexible schemas and nested data structures.
           </Body>
           <div style={{ maxHeight: '400px', overflow: 'auto', backgroundColor: palette.gray.light3, borderRadius: '4px' }}>
-            <Code language="json" copyable={true}>
+            <Code language="json">
               {JSON.stringify(mongoDoc, null, 2)}
             </Code>
           </div>
@@ -418,20 +420,20 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
                   {chunk.related_chunks.map(relatedChunkId => (
                     <Link key={relatedChunkId} href={`/chunk/${relatedChunkId}`}>
-                      <div style={{ 
-                        padding: spacing[2],
-                        backgroundColor: palette.white,
-                        borderRadius: '4px',
-                        border: `1px solid ${palette.gray.light2}`,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: spacing[2],
-                        transition: 'background-color 0.2s',
-                        ':hover': {
-                          backgroundColor: palette.gray.light1
-                        }
-                      }}>
+                      <div 
+                        onMouseEnter={() => setHoveredChunk(relatedChunkId)}
+                        onMouseLeave={() => setHoveredChunk(null)}
+                        style={{ 
+                          padding: spacing[2],
+                          backgroundColor: hoveredChunk === relatedChunkId ? palette.gray.light1 : palette.white,
+                          borderRadius: '4px',
+                          border: `1px solid ${palette.gray.light2}`,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: spacing[2],
+                          transition: 'background-color 0.2s'
+                        }}>
                         <Icon glyph="Link" />
                         <Body size="small">{relatedChunkId}</Body>
                       </div>

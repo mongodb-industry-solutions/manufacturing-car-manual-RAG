@@ -6,9 +6,8 @@ import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 import { palette } from '@leafygreen-ui/palette';
 import { spacing } from '@leafygreen-ui/tokens';
-import { MyBody as Body, MyH3 as H3 } from '@/components/ui/TypographyWrapper';
+import { MyBody as Body, MyH3 as H3, MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
-import Button from '@leafygreen-ui/button';
 
 // We'll dynamically import the worker in a useEffect to avoid SSR issues
 
@@ -96,7 +95,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ pdfPath, pageNumber, onClose }) =
           <Button
             onClick={zoomOut}
             disabled={scale <= 0.6}
-            leftGlyph={<Icon glyph="Subtract" />}
           >
             Zoom Out
           </Button>
