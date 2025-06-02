@@ -5,12 +5,9 @@ import {
   MyH2 as H2,
   MyH3 as H3,
   MyBody as Body,
-  MySubtitle as Subtitle
+  MySubtitle as Subtitle,
 } from '@/components/ui/TypographyWrapper';
-import {
-  InlineCode,
-  Disclaimer,
-} from '@leafygreen-ui/typography';
+import { InlineCode, Disclaimer } from '@leafygreen-ui/typography';
 import { MyCard as Card } from '@/components/ui/TypographyWrapper';
 import ExpandableCard from '@leafygreen-ui/expandable-card';
 import { spacing } from '@leafygreen-ui/tokens';
@@ -21,12 +18,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Badge from '@leafygreen-ui/badge';
 import dynamic from 'next/dynamic';
-import Callout from '@leafygreen-ui/callout';
-import Banner from '@leafygreen-ui/banner';
 import Code from '@leafygreen-ui/code';
 import { Tabs, Tab } from '@leafygreen-ui/tabs';
 import { useState, useMemo } from 'react';
-import { useConfig, useAppConfig, useBrandingConfig, useIndustryConfig } from '@/contexts/ConfigContext';
+import { APP_DESCRIPTION, BRANDING } from '@/constants/appConstants';
 
 const MainLayout = dynamic(() =>
   import('@/components/layout/MainLayout')
@@ -35,28 +30,30 @@ const MainLayout = dynamic(() =>
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState(0);
-  const { config } = useConfig();
-  const appConfig = useAppConfig();
-  const branding = useBrandingConfig();
-  const industry = useIndustryConfig();
 
   // Convert hex color to rgb for lighter background
   const hexToRgb = (hex) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : null;
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(
+      hex
+    );
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : null;
   };
-  
-  // Get the primary color or fallback to MongoDB green
-  const primaryColor = branding?.primaryColor || palette.green.base;
-  const secondaryColor = branding?.secondaryColor || palette.green.dark2;
-  const accentColor = branding?.accentColor || palette.blue.base;
-  
+
+  // Get the primary color from constants
+  const primaryColor = BRANDING.primaryColor;
+  const secondaryColor = BRANDING.secondaryColor;
+  const accentColor = BRANDING.accentColor;
+
   const rgbColor = hexToRgb(primaryColor);
-  const lightBgColor = rgbColor ? `rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.1)` : palette.green.light3;
+  const lightBgColor = rgbColor
+    ? `rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.1)`
+    : palette.green.light3;
 
   return (
     <MainLayout>
@@ -67,27 +64,6 @@ export default function Home() {
           padding: spacing[3],
         }}
       >
-        {/* Configuration Banner */}
-        <Banner 
-          variant="info"
-          style={{ marginBottom: spacing[4], backgroundColor: palette.blue.light2, border: `1px solid ${palette.blue.light1}` }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <div>
-              <strong style={{ color: palette.blue.dark2 }}>Current Configuration:</strong> {appConfig.name} ({industry.name})
-            </div>
-            <Link href="/admin">
-              <Button
-                variant="default"
-                size="small"
-                leftGlyph={<Icon glyph="Settings" />}
-              >
-                Change Configuration
-              </Button>
-            </Link>
-          </div>
-        </Banner>
-
         {/* Hero section */}
         <div
           style={{
@@ -109,24 +85,7 @@ export default function Home() {
               justifyContent: 'center',
               marginBottom: spacing[3],
             }}
-          >
-            <div
-              style={{
-                backgroundColor: 'white',
-                borderRadius: '50%',
-                padding: spacing[3],
-                marginBottom: spacing[2],
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                border: `1px solid ${primaryColor}`,
-              }}
-            >
-              <Icon
-                glyph={industry.icon || "Database"}
-                size={60}
-                fill={primaryColor}
-              />
-            </div>
-          </div>
+          ></div>
 
           <H1
             style={{
@@ -137,7 +96,7 @@ export default function Home() {
               fontSize: '36px',
             }}
           >
-            {branding.title}
+            {BRANDING.title}
           </H1>
 
           <Subtitle
@@ -150,7 +109,7 @@ export default function Home() {
               color: palette.gray.dark1,
             }}
           >
-            {appConfig.description}
+            {APP_DESCRIPTION}
           </Subtitle>
 
           <div
@@ -226,7 +185,8 @@ export default function Home() {
               color: palette.gray.dark1,
             }}
           >
-            How MongoDB enables optimized RAG pipelines for {industry.name.toLowerCase()} documentation
+            How MongoDB enables optimized RAG pipelines for automotive
+            documentation
           </Subtitle>
 
           <Tabs
@@ -262,7 +222,7 @@ export default function Home() {
                       chunking approaches that preserve procedural
                       integrity, safety warnings, and semantic
                       relationships. Our chunking pipeline processes
-                      {industry.name.toLowerCase()} manuals with:
+                      automotive manuals with:
                     </Body>
                     <ul style={{ marginBottom: spacing[3] }}>
                       <li style={{ marginBottom: spacing[1] }}>
@@ -304,14 +264,14 @@ export default function Home() {
                     >
                       MongoDB Document Structure
                     </Body>
-                    <Code language="javascript" copyable={true}>
+                    <Code language="javascript" copyable="true">
                       {`{
   "_id": ObjectId("..."),
-  "text": "Replacing ${industry.name.toLowerCase()} components...",
+  "text": "Replacing automotive components...",
   "metadata": {
-    "source": "${config.document.defaultType}",
-    "section": "${industry.metadata.systems[0] || "general"}",
-    "type": "${industry.metadata.contentTypes[0] || "procedure"}"
+    "source": "manual",
+    "section": "engine",
+    "type": "procedure"
   },
   "embedding": [0.12, 0.35, ...]
 }`}
@@ -388,11 +348,11 @@ export default function Home() {
                     >
                       Vector Search Query
                     </Body>
-                    <Code language="javascript" copyable={true}>
-                      {`db.${config.database.collections.chunks}.aggregate([
+                    <Code language="javascript" copyable="true">
+                      {`db.manual_chunks.aggregate([
   {
     $vectorSearch: {
-      index: "${config.database.indices.vector}",
+      index: "manual_vector_search_index",
       path: "embedding",
       queryVector: [0.1, 0.2, ...],
       numCandidates: 100,
@@ -475,7 +435,7 @@ export default function Home() {
                     >
                       Hybrid Pipeline
                     </Body>
-                    <Code language="javascript" copyable={true}>
+                    <Code language="javascript" copyable="true">
                       {`// Combined approach
 const hybridResults = await 
   combineResults({
@@ -541,12 +501,12 @@ const hybridResults = await
                   weight="medium"
                   style={{ color: palette.yellow.dark2 }}
                 >
-                  {industry.name} Manual Chunking
+                  Automotive Manual Chunking
                 </Body>
               </div>
               <div style={{ padding: spacing[3], flex: 1 }}>
                 <Body>
-                  See how {industry.name.toLowerCase()} manuals are intelligently
+                  See how automotive manuals are intelligently
                   segmented into semantically coherent chunks that
                   preserve procedural integrity and technical context.
                   Optimal chunking ensures both precise retrieval and
@@ -822,7 +782,7 @@ const hybridResults = await
                   }}
                 >
                   <img
-                    src={branding.logoPath || "/mongo.png"}
+                    src={BRANDING.logoPath}
                     alt="Logo"
                     width={100}
                     height={100}
@@ -854,7 +814,7 @@ const hybridResults = await
           </H2>
 
           <ExpandableCard
-            title={`Understanding ${industry.name} Manual Chunking`}
+            title="Understanding Automotive Manual Chunking"
             description="Learn how manuals are processed for optimal search"
             defaultOpen={false}
             style={{
@@ -864,10 +824,11 @@ const hybridResults = await
           >
             <Body style={{ marginBottom: spacing[3] }}>
               This application demonstrates how technical
-              documentation like {industry.name.toLowerCase()} manuals can be chunked, indexed,
-              and searched using various approaches. The chunks shown
-              here are extracted from real {industry.name.toLowerCase()} manuals, processed into
-              optimal segments for search and retrieval.
+              documentation like automotive manuals can be chunked,
+              indexed, and searched using various approaches. The
+              chunks shown here are extracted from real automotive
+              manuals, processed into optimal segments for search and
+              retrieval.
             </Body>
             <Body style={{ marginBottom: spacing[3] }}>
               <strong>What are chunks?</strong> Chunks are
@@ -947,8 +908,8 @@ const hybridResults = await
                 similarity even when exact keywords are missing.
               </Body>
               <InlineCode>
-                db.{config.database.collections.chunks}.aggregate([{'{'}$vectorSearch: {'{'} ...{' '}
-                {'}'}
+                db.manual_chunks.aggregate([
+                {'{'}$vectorSearch: {'{'} ... {'}'}
                 {'}'} ])
               </InlineCode>
             </div>
@@ -969,7 +930,8 @@ const hybridResults = await
                 misspellings and variations.
               </Body>
               <InlineCode>
-                db.{config.database.collections.chunks}.aggregate([{'{'}$search: {'{'} ... {'}'}
+                db.manual_chunks.aggregate([
+                {'{'}$search: {'{'} ... {'}'}
                 {'}'} ])
               </InlineCode>
             </div>
@@ -1035,7 +997,7 @@ const hybridResults = await
         >
           <Disclaimer style={{ color: palette.blue.dark2 }}>
             This is a technical demonstration using MongoDB Atlas for
-            RAG applications on {industry.name.toLowerCase()} manuals. The demonstration
+            RAG applications on automotive manuals. The demonstration
             is intended for educational purposes only.
           </Disclaimer>
         </div>
@@ -1070,22 +1032,6 @@ function ExampleCard({ title, description, href, icon, color }) {
             marginBottom: spacing[1],
           }}
         >
-          <div
-            style={{
-              backgroundColor: color.light3,
-              borderRadius: '50%',
-              width: '36px',
-              height: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            {icon !== 'CarAlt' && (
-              <Icon glyph={icon} fill={color.dark1} />
-            )}
-          </div>
           <Body weight="medium">{title}</Body>
         </div>
         <Body>{description}</Body>

@@ -10,13 +10,10 @@ import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import { MyH3 as H3, MyButton as Button, MyTooltip as Tooltip } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
-import { useAppConfig, useBrandingConfig, useTerminology } from '@/contexts/ConfigContext';
+import { BRANDING, TERMINOLOGY } from '@/constants/appConstants';
 
 const Header: React.FC = () => {
   const pathname = usePathname();
-  const appConfig = useAppConfig();
-  const branding = useBrandingConfig();
-  const terminology = useTerminology();
   
   // Convert hex color to rgb for lighter background
   const hexToRgb = (hex: string) => {
@@ -28,8 +25,8 @@ const Header: React.FC = () => {
     } : null;
   };
   
-  // Get the primary color or fallback to MongoDB green
-  const primaryColor = branding?.primaryColor || palette.green.base;
+  // Get the primary color from constants
+  const primaryColor = BRANDING.primaryColor;
   const rgbColor = hexToRgb(primaryColor);
   const bgColor = rgbColor ? `rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.1)` : palette.green.light2;
   
@@ -76,7 +73,7 @@ const Header: React.FC = () => {
           </Link>
           
           <H3 style={{ margin: 0, color: palette.gray.dark2, fontWeight: 'bold' }}>
-            {branding?.title || "Technical Manual Explorer"}
+            {BRANDING.title}
           </H3>
         </div>
         
@@ -112,7 +109,7 @@ const Header: React.FC = () => {
                     size="large"
                     leftGlyph={<Icon glyph="MagnifyingGlass" />}
                   >
-                    {terminology.search || "Search"}
+                    {TERMINOLOGY.search}
                   </Button>
                 </div>
               </Link>
@@ -126,25 +123,12 @@ const Header: React.FC = () => {
                     size="large"
                     leftGlyph={<Icon glyph="Table" />}
                   >
-                    {terminology.browse || "Browse Chunks"}
+                    {TERMINOLOGY.browse}
                   </Button>
                 </div>
               </Link>
             </li>
 
-            <li>
-              <Link href="/admin">
-                <div style={{ display: 'inline-block' }}>
-                  <Button
-                    variant={pathname?.startsWith('/admin') ? 'primary' : 'default'}
-                    size="large"
-                    leftGlyph={<Icon glyph="Settings" />}
-                  >
-                    Config
-                  </Button>
-                </div>
-              </Link>
-            </li>
           </ul>
         </nav>
       </div>

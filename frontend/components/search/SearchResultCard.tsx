@@ -13,7 +13,7 @@ import { palette } from '@leafygreen-ui/palette';
 import { SearchResult } from '../../types/Search';
 import Link from 'next/link';
 import Badge from '@leafygreen-ui/badge';
-import { useBrandingConfig, useTerminology, useDocumentConfig } from '@/contexts/ConfigContext';
+import { BRANDING, TERMINOLOGY, DOCUMENT_CONFIG } from '@/constants/appConstants';
 
 interface SearchResultCardProps {
   result: SearchResult;
@@ -21,13 +21,8 @@ interface SearchResultCardProps {
 }
 
 const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }) => {
-  // Get configuration
-  const branding = useBrandingConfig();
-  const terminology = useTerminology();
-  const documentConfig = useDocumentConfig();
-  
-  // Use primary color from branding, or default to MongoDB green
-  const primaryColor = branding?.primaryColor || palette.green.base;
+  // Use primary color from constants
+  const primaryColor = BRANDING.primaryColor;
   
   // Use new flattened result format if available, fall back to legacy chunk format
   const { score, vector_score, text_score } = result;
@@ -293,24 +288,22 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
           
           <div style={{ display: 'flex', gap: spacing[2] }}>
             {/* PDF Viewer Button - only show if page numbers exist and PDF viewer is enabled */}
-            {page_numbers && page_numbers.length > 0 && documentConfig.pdfViewer?.enabled !== false && (
+            {page_numbers && page_numbers.length > 0 && DOCUMENT_CONFIG.pdfViewer?.enabled !== false && (
               <Link href={`/chunk/${chunk_id}?source=search&open_pdf=true`}>
                 <div style={{ display: 'inline-block' }}>
                   <Button 
                     variant="primaryOutline"
                     size="small"
-                    leftGlyph={<Icon glyph="Document" size="small" />}
+                    leftGlyph={<Icon glyph="File" size="small" />}
                     onClick={() => {
                       // Save current search URL with parameters to sessionStorage before navigation
                       if (typeof window !== 'undefined') {
-                        // Use a configurable key prefix for session storage
-                        const keyPrefix = terminology.manual?.toLowerCase().replace(/\s+/g, '_') || 'technical_manual';
-                        sessionStorage.setItem(`${keyPrefix}_previous_search_url`, window.location.href);
-                        sessionStorage.setItem(`${keyPrefix}_referrer_type`, 'search');
+                        sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
+                        sessionStorage.setItem('car_manual_referrer_type', 'search');
                       }
                     }}
                   >
-                    {terminology.document?.slice(0, 3)?.toUpperCase() || "PDF"}
+                    PDF
                   </Button>
                 </div>
               </Link>

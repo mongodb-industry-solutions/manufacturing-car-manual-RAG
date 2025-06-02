@@ -556,7 +556,7 @@ export default function BrowsePage() {
         <Card style={{ padding: spacing[3], marginBottom: spacing[3] }}>
           <div style={{ marginBottom: spacing[3] }}>
             <H3 style={{ marginBottom: spacing[2], color: palette.green.dark2 }}>
-              <Icon glyph="Document" fill={palette.green.dark1} style={{ marginRight: spacing[1] }} /> 
+              <Icon glyph="File" fill={palette.green.dark1} style={{ marginRight: spacing[1] }} /> 
               MongoDB Document Collection
             </H3>
             <Body style={{ marginBottom: spacing[2] }}>
@@ -747,7 +747,7 @@ export default function BrowsePage() {
                       size="small"
                       variant="primaryOutline"
                       onClick={(e) => handleViewPdf(chunk, e)}
-                      leftGlyph={<Icon glyph="Document" size="small" />}
+                      leftGlyph={<Icon glyph="File" size="small" />}
                     >
                       PDF
                     </Button>
