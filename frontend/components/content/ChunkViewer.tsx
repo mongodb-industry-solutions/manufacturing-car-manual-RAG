@@ -43,6 +43,16 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
   // State to toggle MongoDB document view
   const [showMongoDoc, setShowMongoDoc] = useState(false);
   
+  // Generate realistic fake embedding for display purposes
+  const generateFakeEmbedding = () => {
+    const embedding = [];
+    // Create 768-dimensional vector with realistic values between -0.08 and 0.08
+    for (let i = 0; i < 768; i++) {
+      embedding.push(parseFloat((Math.random() * 0.16 - 0.08).toFixed(6)));
+    }
+    return embedding;
+  };
+  
   // Prepare MongoDB document representation
   const mongoDoc = {
     _id: chunk._id || chunk.id,
@@ -50,6 +60,7 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
     page_numbers: chunk.page_numbers,
     content_type: chunk.content_type,
     metadata: chunk.metadata,
+    ...(chunk.embedding_timestamp && { embedding_timestamp: chunk.embedding_timestamp }),
     ...(chunk.breadcrumb_trail && { breadcrumb_trail: chunk.breadcrumb_trail }),
     ...(chunk.heading_level_1 && { heading_level_1: chunk.heading_level_1 }),
     ...(chunk.heading_level_2 && { heading_level_2: chunk.heading_level_2 }),
@@ -59,7 +70,8 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
     ...(chunk.vehicle_systems && { vehicle_systems: chunk.vehicle_systems }),
     ...(chunk.part_numbers && { part_numbers: chunk.part_numbers }),
     ...(chunk.next_chunk_id && { next_chunk_id: chunk.next_chunk_id }),
-    ...(chunk.related_chunks && { related_chunks: chunk.related_chunks })
+    ...(chunk.related_chunks && { related_chunks: chunk.related_chunks }),
+    embedding: generateFakeEmbedding()
   };
   
   return (

@@ -40,7 +40,11 @@ export interface Chunk {
   metadata: ChunkMetadata;
   next_chunk_id?: string;
   related_chunks?: string[];
-  embedding?: number[] | { $numberDouble: string }[];
+  embedding?: number[] | { $numberDouble: string }[] | {
+    values: string;
+    dimensions: number;
+    note: string;
+  };
   embedding_timestamp?: string;
 }
 

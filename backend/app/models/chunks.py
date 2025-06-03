@@ -39,6 +39,7 @@ class Chunk(BaseModel):
     metadata: ChunkMetadata = Field(..., description="Additional metadata about the chunk")
     next_chunk_id: Optional[str] = Field(None, description="ID of the next chunk in sequence")
     related_chunks: Optional[List[str]] = Field(None, description="IDs of related chunks")
+    embedding: Optional[Dict[str, Any]] = Field(None, description="Truncated embedding representation for display")
     embedding_timestamp: Optional[str] = Field(None, description="Timestamp when embedding was generated")
     
     model_config = {
@@ -64,6 +65,11 @@ class Chunk(BaseModel):
                     "page_count": 2, 
                     "chunk_length": 523,
                     "has_safety": True
+                },
+                "embedding": {
+                    "values": "[-0.046, 0.005, -0.012, -0.018, -0.003, ...]",
+                    "dimensions": 768,
+                    "note": "Truncated for display - showing first 5 of 768 dimensions"
                 },
                 "embedding_timestamp": "2025-04-25T11:49:11.496929"
             }
