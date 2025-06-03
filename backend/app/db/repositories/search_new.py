@@ -65,7 +65,7 @@ class SearchRepository:
                 "page_numbers": 1,
                 "content_type": 1,
                 "metadata": 1,
-                "vehicle_systems": 1,
+                "vehicle_systems": 1
             }
         }
     

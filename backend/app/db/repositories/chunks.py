@@ -1,10 +1,13 @@
 from typing import List, Dict, Any, Optional
+import logging
 from bson import ObjectId
 from pymongo.collection import Collection
 
 from app.db.mongodb import get_mongodb
 from app.core.config import get_settings
 from app.models.chunks import Chunk, ChunkList
+
+logger = logging.getLogger(__name__)
 
 class ChunkRepository:
     """Repository for managing document chunks in MongoDB"""
@@ -65,23 +68,49 @@ class ChunkRepository:
             if "_id" in result:
                 result["_id"] = str(result["_id"])
             
-            # Ensure we don't return the embedding vector (but keep timestamp if available)
+            # Transform the embedding vector to a truncated representation for display
+            logger.info(f"Checking for embedding field: {self.settings.VECTOR_FIELD_NAME}")
+            logger.info(f"Fields in result: {list(result.keys())}")
+            
             if self.settings.VECTOR_FIELD_NAME in result:
+                logger.info(f"Found embedding field in result")
                 # Preserve embedding timestamp if it exists
                 embedding_timestamp = None
                 if "embedding_timestamp" in result:
                     embedding_timestamp = result.get("embedding_timestamp")
                     
-                # Remove the actual embedding vector
-                del result[self.settings.VECTOR_FIELD_NAME]
+                # Get the full embedding vector
+                full_embedding = result[self.settings.VECTOR_FIELD_NAME]
+                logger.info(f"Embedding type: {type(full_embedding)}, length: {len(full_embedding) if isinstance(full_embedding, list) else 'N/A'}")
+                
+                # Create a truncated representation showing first 5 values and total dimensions
+                if isinstance(full_embedding, list) and len(full_embedding) > 0:
+                    truncated_values = [round(float(val), 3) for val in full_embedding[:5]]
+                    result[self.settings.VECTOR_FIELD_NAME] = {
+                        "values": f"[{', '.join(map(str, truncated_values))}, ...]",
+                        "dimensions": len(full_embedding),
+                        "note": "Truncated for display - showing first 5 of 768 dimensions"
+                    }
+                    logger.info(f"Created truncated embedding representation")
+                else:
+                    # Remove if invalid
+                    logger.warning(f"Invalid embedding format, removing field")
+                    del result[self.settings.VECTOR_FIELD_NAME]
                 
                 # Add back the timestamp if it existed
                 if embedding_timestamp:
                     result["embedding_timestamp"] = embedding_timestamp
+            else:
+                logger.warning(f"No embedding field found in result")
             
             # Ensure the id is set for clients expecting it
             if "id" not in result and "_id" in result:
                 result["id"] = result["_id"]
+            
+            # Log final result structure
+            logger.info(f"Final result fields before return: {list(result.keys())}")
+            if self.settings.VECTOR_FIELD_NAME in result:
+                logger.info(f"Embedding field is present in final result: {result[self.settings.VECTOR_FIELD_NAME]}")
                 
             return Chunk(**result)
         return None
@@ -159,15 +188,27 @@ class ChunkRepository:
             if "_id" in doc:
                 doc["_id"] = str(doc["_id"])
             
-            # Ensure we don't return the embedding vector (but keep timestamp if available)
+            # Transform the embedding vector to a truncated representation for display
             if self.settings.VECTOR_FIELD_NAME in doc:
                 # Preserve embedding timestamp if it exists
                 embedding_timestamp = None
                 if "embedding_timestamp" in doc:
                     embedding_timestamp = doc.get("embedding_timestamp")
                     
-                # Remove the actual embedding vector
-                del doc[self.settings.VECTOR_FIELD_NAME]
+                # Get the full embedding vector
+                full_embedding = doc[self.settings.VECTOR_FIELD_NAME]
+                
+                # Create a truncated representation showing first 5 values and total dimensions
+                if isinstance(full_embedding, list) and len(full_embedding) > 0:
+                    truncated_values = [round(float(val), 3) for val in full_embedding[:5]]
+                    doc[self.settings.VECTOR_FIELD_NAME] = {
+                        "values": f"[{', '.join(map(str, truncated_values))}, ...]",
+                        "dimensions": len(full_embedding),
+                        "note": "Truncated for display - showing first 5 of 768 dimensions"
+                    }
+                else:
+                    # Remove if invalid
+                    del doc[self.settings.VECTOR_FIELD_NAME]
                 
                 # Add back the timestamp if it existed
                 if embedding_timestamp:

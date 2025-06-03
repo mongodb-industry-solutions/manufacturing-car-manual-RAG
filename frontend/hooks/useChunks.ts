@@ -107,6 +107,7 @@ export const useChunks = (): UseChunksResult => {
     const cachedChunk = cacheManager.getCache<Chunk>(cacheKey);
     
     if (cachedChunk) {
+      console.log('Using cached chunk:', id, 'Has embedding:', !!cachedChunk.embedding);
       setChunk(cachedChunk);
       setLoading(false);
       return cachedChunk;
@@ -125,6 +126,11 @@ export const useChunks = (): UseChunksResult => {
         response.id = typeof response._id === 'string' 
           ? response._id 
           : (response._id as any).$oid || String(response._id);
+      }
+      
+      console.log('Fetched chunk from API:', id, 'Has embedding:', !!response.embedding);
+      if (response.embedding) {
+        console.log('Embedding data:', response.embedding);
       }
       
       setChunk(response);
