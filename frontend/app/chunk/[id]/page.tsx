@@ -17,7 +17,6 @@ const ChunkViewer = dynamic(() => import('@/components/content/ChunkViewer'));
 const AskQuestion = dynamic(() => import('@/components/search/AskQuestion'));
 const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
 const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
-const PDFViewerModal = dynamic(() => import('@/components/content/PDFViewerModal'), { ssr: false });
 
 import { useChunks } from '@/hooks/useChunks';
 
@@ -36,12 +35,8 @@ export default function ChunkDetailPage() {
   // State to store the referrer URL and type - default to search
   const [referrerUrl, setReferrerUrl] = useState('/search');
   const [referrerType, setReferrerType] = useState('search');
-  // State for toggling the PDF viewer
-  const [showPdfViewer, setShowPdfViewer] = useState(false);
-  // Path to your PDF - update this to the actual path where you've stored your PDF
-  const pdfPath = '/car-manual.pdf'; // This should be in the public directory
 
-  // Store referrer info when component mounts and check for PDF open param
+  // Store referrer info when component mounts
   useEffect(() => {
     if (typeof window !== 'undefined') {
       console.log("Checking referrer information...");
@@ -93,11 +88,6 @@ export default function ChunkDetailPage() {
         setReferrerType('search');
       }
       
-      // Check if we should open the PDF viewer automatically
-      const openPdf = searchParams.get('open_pdf');
-      if (openPdf === 'true') {
-        setShowPdfViewer(true);
-      }
     }
   }, [searchParams]);
 
@@ -196,7 +186,6 @@ export default function ChunkDetailPage() {
           {chunk && <ChunkViewer chunk={chunk} showNavigation={true} />}
         </div>
 
-        {/* PDF Viewer Button */}
         {chunk && chunk.page_numbers && chunk.page_numbers.length > 0 && (
           <div style={{ 
             marginTop: spacing[4],
@@ -214,26 +203,10 @@ export default function ChunkDetailPage() {
                 </Body>
               </div>
               
-              <Button
-                variant="primary"
-                onClick={() => setShowPdfViewer(true)}
-                leftGlyph={<Icon glyph="File" />}
-              >
-                View in Original PDF
-              </Button>
             </div>
           </div>
         )}
 
-        {/* PDF Viewer Modal */}
-        {showPdfViewer && chunk && chunk.page_numbers && chunk.page_numbers.length > 0 && (
-          <PDFViewerModal
-            isOpen={showPdfViewer}
-            onClose={() => setShowPdfViewer(false)}
-            pdfPath={pdfPath}
-            pageNumber={chunk.page_numbers[0]}
-          />
-        )}
       </div> 
     </MainLayout>
   );

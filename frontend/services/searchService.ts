@@ -124,7 +124,10 @@ export const searchService = {
    * Get a list of chunks with pagination
    */
   getChunks: async (skip: number = 0, limit: number = 100): Promise<ChunkList> => {
-    return apiGet<ChunkList>('/chunks', { skip, limit });
+    console.log(`[API] Fetching chunks with skip=${skip}, limit=${limit}`);
+    const response = await apiGet<ChunkList>('/chunks', { skip, limit });
+    console.log(`[API] Received ${response.chunks?.length || 0} chunks`);
+    return response;
   },
 
   /**

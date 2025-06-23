@@ -410,25 +410,6 @@ function SearchPageContent() {
                   rrf_k={rrf_k}
                   onRrfKChange={handleRrfKChange}
                 />
-                
-                {/* Advanced options */}
-                <div style={{ marginTop: spacing[3], borderTop: '1px solid #eee', paddingTop: spacing[3] }}>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: spacing[2] }}>Advanced</div>
-                  <Button
-                    size="small"
-                    variant="danger"
-                    onClick={() => {
-                      clearCache();
-                      // If we have a query, re-run the search to refresh results
-                      if (query) {
-                        performSearch(query, searchMethod);
-                      }
-                    }}
-                    leftGlyph={<Icon glyph="Refresh" />}
-                  >
-                    Clear Search Cache
-                  </Button>
-                </div>
               </Card>
             </div>
             
