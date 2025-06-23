@@ -288,28 +288,6 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
           </div>
           
           <div style={{ display: 'flex', gap: spacing[2] }}>
-            {/* PDF Viewer Button - only show if page numbers exist and PDF viewer is enabled */}
-            {page_numbers && page_numbers.length > 0 && FEATURES.pdfViewer?.enabled !== false && (
-              <Link href={`/chunk/${chunk_id}?source=search&open_pdf=true`}>
-                <div style={{ display: 'inline-block' }}>
-                  <Button 
-                    variant="primaryOutline"
-                    size="small"
-                    leftGlyph={<Icon glyph="File" size="small" />}
-                    onClick={() => {
-                      // Save current search URL with parameters to sessionStorage before navigation
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
-                        sessionStorage.setItem('car_manual_referrer_type', 'search');
-                      }
-                    }}
-                  >
-                    PDF
-                  </Button>
-                </div>
-              </Link>
-            )}
-            
             <Link href={`/chunk/${chunk_id}?source=search`}>
               <div style={{ display: 'inline-block' }}>
                 <Button 

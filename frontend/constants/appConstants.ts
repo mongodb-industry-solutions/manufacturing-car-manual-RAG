@@ -54,8 +54,7 @@ export const INDUSTRY_METADATA = {
 export const DOCUMENT_CONFIG = {
   types: ["manual", "maintenance", "troubleshooting", "specifications"],
   defaultType: "manual",
-  path: "/public",
-  defaultDocument: "car-manual.pdf"
+  path: "/public"
 };
 
 // Features configuration
@@ -67,10 +66,6 @@ export const FEATURES = {
   chunks: {
     displayLimit: 20,
     infiniteScroll: true
-  },
-  pdfViewer: {
-    enabled: true,
-    defaultScale: 1.2
   }
 };
 

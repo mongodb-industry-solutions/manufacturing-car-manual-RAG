@@ -58,7 +58,7 @@ const cacheManager = {
 
 export interface UseChunksResult {
   getChunk: (id: string) => Promise<Chunk>;
-  getChunks: (skip?: number, limit?: number) => Promise<ChunkList>;
+  getChunks: (skip?: number, limit?: number, append?: boolean) => Promise<ChunkList>;
   chunk: Chunk | null;
   chunks: ChunkList | null;
   loading: boolean;
@@ -148,12 +148,15 @@ export const useChunks = (): UseChunksResult => {
     }
   }, []);
 
-  const getChunks = useCallback(async (skip: number = 0, limit: number = 1000): Promise<ChunkList> => {
-    setLoading(true);
+  const getChunks = useCallback(async (skip: number = 0, limit: number = 1000, append: boolean = false): Promise<ChunkList> => {
+    // Only set loading to true if this is the initial load
+    if (!append) {
+      setLoading(true);
+    }
     setError(null);
     
-    // Check cache first (only for the main chunks request)
-    if (skip === 0) {
+    // Check cache first (only for the initial request)
+    if (skip === 0 && !append) {
       const cachedChunks = cacheManager.getCache<ChunkList>(CACHE_KEY_CHUNKS);
       if (cachedChunks) {
         setChunks(cachedChunks);
@@ -184,10 +187,20 @@ export const useChunks = (): UseChunksResult => {
         });
       }
       
-      setChunks(response);
+      // If append is true, merge with existing chunks
+      if (append && chunks) {
+        const mergedResponse = {
+          ...response,
+          chunks: [...(chunks.chunks || []), ...response.chunks]
+        };
+        setChunks(mergedResponse);
+        return mergedResponse;
+      } else {
+        setChunks(response);
+      }
       
-      // Cache only the main chunks list (not paginated subsets)
-      if (skip === 0) {
+      // Cache only the initial load (50 chunks)
+      if (skip === 0 && limit === 50 && !append) {
         cacheManager.setCache(CACHE_KEY_CHUNKS, response);
       }
       
@@ -197,9 +210,11 @@ export const useChunks = (): UseChunksResult => {
       setError(message);
       throw err;
     } finally {
-      setLoading(false);
+      if (!append) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [chunks]);
 
   return { getChunk, getChunks, chunk, chunks, loading, error, clearCache };
 };

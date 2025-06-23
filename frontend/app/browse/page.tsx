@@ -48,10 +48,15 @@ export default function BrowsePage() {
   const router = useRouter();
   const { getChunks, chunks, loading, error, clearCache } = useChunks();
   
-  // Infinite scroll state
-  const [displayLimit, setDisplayLimit] = useState(20);
+  // Pagination state for API calls
+  const [currentOffset, setCurrentOffset] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMoreInAPI, setHasMoreInAPI] = useState(true);
+  const [totalChunks, setTotalChunks] = useState(0);
+  
+  // Display state for filtered results
+  const [displayLimit, setDisplayLimit] = useState(20);
+  const [hasMoreToDisplay, setHasMoreToDisplay] = useState(true);
   
   // Scroll observer reference
   const observerTarget = React.useRef(null);
@@ -70,20 +75,27 @@ export default function BrowsePage() {
     vehicleSystems: []
   });
   
-  // Fetch chunks on initial load
+  // Fetch initial chunks on load
   useEffect(() => {
-    // Skip if we already have chunks loaded
+    // Skip if we already have chunks loaded from cache
     if (chunks && chunks.chunks && chunks.chunks.length > 0) {
-      console.log('Using existing chunks data');
+      console.log('Using existing chunks data from cache');
+      setTotalChunks(chunks.total);
+      setCurrentOffset(chunks.chunks.length);
+      setHasMoreInAPI(chunks.chunks.length < chunks.total);
       return;
     }
 
-    const fetchChunks = async () => {
+    const fetchInitialChunks = async () => {
       try {
-        console.log('Fetching initial chunks...');
-        // Use a reasonable limit for performance - 500 chunks is still plenty for browsing
-        const result = await getChunks(0, 1000);
+        console.log('Fetching initial 50 chunks...');
+        // Load only 50 chunks initially for fast page load
+        const result = await getChunks(0, 50);
         console.log(`Successfully fetched ${result.chunks.length} chunks out of ${result.total} total`);
+        
+        setTotalChunks(result.total);
+        setCurrentOffset(result.chunks.length);
+        setHasMoreInAPI(result.chunks.length < result.total);
         
         // Debug: Log the first chunk to see its structure
         if (result.chunks && result.chunks.length > 0) {
@@ -94,7 +106,7 @@ export default function BrowsePage() {
       }
     };
     
-    fetchChunks();
+    fetchInitialChunks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Keep the empty dependency array to run only once
   
@@ -171,11 +183,8 @@ export default function BrowsePage() {
     console.log(`Filtering ${chunks.chunks.length} chunks with filters:`, 
       JSON.stringify({...filters, textFilter}, null, 2));
     
-    // Limit the number of chunks we process to avoid performance issues
-    const chunksToProcess = chunks.chunks.slice(0, 1000);
-    console.log(`Processing ${chunksToProcess.length} chunks out of ${chunks.chunks.length} total`);
-    
-    const filtered = chunksToProcess.filter(chunk => {
+    // Process all loaded chunks (no artificial limit since we're loading progressively)
+    const filtered = chunks.chunks.filter(chunk => {
       // For debugging specific chunks
       const isDebugging = false; // Set to true and specify chunk ID for detailed debugging
       const debugChunkId = 'chunk_00001';
@@ -376,24 +385,55 @@ export default function BrowsePage() {
     });
   };
   
-  // Function to load more items - defined BEFORE the useEffect that uses it
-  const loadMoreItems = useCallback(() => {
-    if (isLoadingMore || !hasMore) return;
+  // Function to load more items from API
+  const loadMoreChunksFromAPI = useCallback(async () => {
+    if (isLoadingMore || !hasMoreInAPI) return;
     
     setIsLoadingMore(true);
-    console.log(`Loading more chunks, current limit: ${displayLimit}`);
+    console.log(`Loading more chunks from API, current offset: ${currentOffset}`);
     
-    // Simulate a small delay for smoother UX
-    setTimeout(() => {
-      setDisplayLimit(prev => prev + 20);
-      setIsLoadingMore(false);
+    try {
+      // Load 200 more chunks from the API
+      const result = await getChunks(currentOffset, 200, true);
+      console.log(`Loaded ${result.chunks.length} more chunks. Total now: ${currentOffset + result.chunks.length}`);
       
-      // Check if we've shown all items
-      if (displayLimit + 20 >= filteredChunks.length) {
-        setHasMore(false);
+      const newOffset = currentOffset + result.chunks.length;
+      setCurrentOffset(newOffset);
+      
+      // Check if we've loaded all chunks from the API
+      if (newOffset >= totalChunks || result.chunks.length < 200) {
+        setHasMoreInAPI(false);
+        console.log('All chunks loaded from API');
       }
-    }, 500);
-  }, [displayLimit, filteredChunks.length, hasMore, isLoadingMore]);
+    } catch (err) {
+      console.error('Failed to load more chunks:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentOffset, hasMoreInAPI, isLoadingMore, getChunks, totalChunks]);
+  
+  // Function to handle display pagination (for filtered results)
+  const loadMoreItemsToDisplay = useCallback(() => {
+    if (isLoadingMore) return;
+    
+    console.log(`Current display limit: ${displayLimit}, filtered chunks: ${filteredChunks.length}`);
+    
+    // If we need more chunks from API and we're close to the end of loaded chunks
+    if (hasMoreInAPI && displayLimit + 40 >= filteredChunks.length) {
+      console.log('Need to load more chunks from API');
+      loadMoreChunksFromAPI();
+    }
+    
+    // Update display limit
+    setDisplayLimit(prev => {
+      const newLimit = prev + 20;
+      // Check if we've shown all filtered items
+      if (newLimit >= filteredChunks.length) {
+        setHasMoreToDisplay(false);
+      }
+      return newLimit;
+    });
+  }, [displayLimit, filteredChunks.length, hasMoreInAPI, isLoadingMore, loadMoreChunksFromAPI]);
   
   // Setup intersection observer for infinite scroll
   useEffect(() => {
@@ -401,14 +441,14 @@ export default function BrowsePage() {
     if (typeof window === 'undefined') return;
     
     // If we don't have chunks yet or we're already at the end, don't observe
-    if (!filteredChunks || filteredChunks.length === 0 || !hasMore) return;
+    if (!filteredChunks || filteredChunks.length === 0 || (!hasMoreToDisplay && !hasMoreInAPI)) return;
     
     const observer = new IntersectionObserver(
       entries => {
         // If the target element is intersecting (visible)
         if (entries[0].isIntersecting && !isLoadingMore) {
-          console.log("Loading more chunks...");
-          loadMoreItems();
+          console.log("Loading more items...");
+          loadMoreItemsToDisplay();
         }
       },
       { threshold: 0.1 } // Trigger when 10% of the element is visible
@@ -425,12 +465,12 @@ export default function BrowsePage() {
         observer.unobserve(observerTarget.current);
       }
     };
-  }, [filteredChunks, hasMore, isLoadingMore, loadMoreItems]);
+  }, [filteredChunks, hasMoreToDisplay, hasMoreInAPI, isLoadingMore, loadMoreItemsToDisplay]);
   
-  // Reset display limit and hasMore when filters change
+  // Reset display limit when filters change
   useEffect(() => {
     setDisplayLimit(20);
-    setHasMore(true);
+    setHasMoreToDisplay(true);
   }, [filters, textFilter]);
   
   // Get current items to display based on displayLimit
@@ -472,28 +512,6 @@ export default function BrowsePage() {
     }
   };
   
-  // Handle direct PDF page view
-  const handleViewPdf = (chunk: Chunk, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent the card click from triggering
-    
-    if (chunk.page_numbers && chunk.page_numbers.length > 0) {
-      // Get the chunk ID
-      const chunkId = chunk.id || 
-        (chunk._id ? (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid) : null);
-      
-      if (chunkId) {
-        console.log("Navigating to PDF view with source=browse parameter");
-        
-        // Also save to sessionStorage directly in case URL parameters are lost
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('car_manual_previous_search_url', '/browse');
-          sessionStorage.setItem('car_manual_referrer_type', 'browse');
-        }
-        
-        router.push(`/chunk/${chunkId}?source=browse&open_pdf=true`);
-      }
-    }
-  };
   
   // Render loading state
   if (loading && !chunks) {
@@ -713,7 +731,7 @@ export default function BrowsePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
             <Icon glyph="Checkmark" fill={palette.green.base} />
             <Subtitle style={{ margin: 0 }}>
-              Showing {filteredChunks.length} of {chunks?.total || 0} total chunks
+              Showing {currentItems.length} of {filteredChunks.length} filtered ({totalChunks || chunks?.total || 0} total in database)
             </Subtitle>
           </div>
           <div style={{ 
@@ -742,16 +760,6 @@ export default function BrowsePage() {
                   <Body size="small" style={{ color: palette.gray.dark1 }}>
                     Page {chunk.page_numbers.join(', ')}
                   </Body>
-                  {chunk.page_numbers && chunk.page_numbers.length > 0 && (
-                    <Button
-                      size="small"
-                      variant="primaryOutline"
-                      onClick={(e) => handleViewPdf(chunk, e)}
-                      leftGlyph={<Icon glyph="File" size="small" />}
-                    >
-                      PDF
-                    </Button>
-                  )}
                 </div>
               </div>
               
@@ -882,14 +890,14 @@ export default function BrowsePage() {
             {isLoadingMore ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing[2] }}>
                 <Icon glyph="Refresh" fill={palette.green.base} />
-                <Body>Loading more chunks...</Body>
+                <Body>Loading more chunks from database...</Body>
               </div>
-            ) : hasMore ? (
+            ) : (hasMoreToDisplay || hasMoreInAPI) ? (
               <Body style={{ color: palette.gray.dark1 }}>Scroll to load more</Body>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing[2] }}>
                 <Icon glyph="Checkmark" fill={palette.green.base} />
-                <Body>All {filteredChunks.length} chunks loaded</Body>
+                <Body>All {filteredChunks.length} chunks displayed</Body>
               </div>
             )}
           </div>
@@ -916,7 +924,7 @@ export default function BrowsePage() {
                   setTextFilter('');
                   // Reset infinite scroll state
                   setDisplayLimit(20);
-                  setHasMore(true);
+                  setHasMoreToDisplay(true);
                 }}
                 style={{ marginTop: spacing[3] }}
               >
