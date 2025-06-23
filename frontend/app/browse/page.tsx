@@ -622,7 +622,7 @@ export default function BrowsePage() {
                 setTextFilter(e.target.value);
                 // Reset infinite scroll state when filter changes
                 setDisplayLimit(20);
-                setHasMore(true);
+                setHasMoreToDisplay(true);
               }}
             />
           </div>
