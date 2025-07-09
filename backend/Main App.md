@@ -10,7 +10,7 @@ import uvicorn
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="API for Car Manual RAG Demo showcasing technical manual chunking and hybrid search"
+    description="API for Car Manual RAG Demo showcasing technical manual chunking and MongoDB $rankFusion hybrid search"
 )
 
 # Add CORS middleware

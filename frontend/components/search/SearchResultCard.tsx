@@ -28,6 +28,11 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
   // Use new flattened result format if available, fall back to legacy chunk format
   const { score, vector_score, text_score } = result;
   
+  // Calculate combined score and percentages for hybrid search
+  const combinedScore = (vector_score || 0) + (text_score || 0);
+  const vectorPercentage = combinedScore > 0 ? ((vector_score || 0) / combinedScore) * 100 : 0;
+  const textPercentage = combinedScore > 0 ? ((text_score || 0) / combinedScore) * 100 : 0;
+  
   // Get either direct fields from result or from chunk object
   const chunk = result.chunk || {} as Partial<Chunk>; // Fallback for backward compatibility
   
@@ -46,8 +51,8 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
   const heading_level_3 = result.heading_level_3 || chunk.heading_level_3;
   const chunk_id = result.chunk_id || chunk.id;
   
-  // Score is already in 0-100 range with percentile-based normalization
-  const scorePercent = Math.round(Math.max(0, Math.min(100, score)));
+  // Raw score from $rankFusion (typically 0-1 range)
+  const displayScore = score;
   
   // Get heading hierarchy for result
   const title = heading_level_1 || breadcrumb_trail?.split(' > ')[0] || 'Document Section';
@@ -83,9 +88,9 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
       {/* Header section with color bar based on score */}
       <div style={{ 
         borderTop: `4px solid ${
-          scorePercent >= 90 ? palette.green.base : 
-          scorePercent >= 70 ? palette.green.light1 : 
-          scorePercent >= 50 ? palette.yellow.base : 
+          displayScore >= 0.05 ? palette.green.base : 
+          displayScore >= 0.03 ? palette.green.light1 : 
+          displayScore >= 0.02 ? palette.yellow.base : 
           palette.red.base
         }`,
         padding: `${spacing[3]}px ${spacing[3]}px ${spacing[2]}px`
@@ -94,69 +99,133 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
         <div style={{ 
           float: 'right',
           display: 'flex',
-          gap: spacing[1],
+          gap: spacing[2],
           alignItems: 'center',
           marginLeft: spacing[2],
-          marginBottom: spacing[2]
+          marginBottom: spacing[2],
+          flexDirection: 'column'
         }}>
-          {/* For hybrid search: always show overall score with proper formatting */}
+          {/* For hybrid search: show combined score and percentage breakdown */}
           {(vector_score !== undefined && text_score !== undefined) && (
-            <Tooltip
-              trigger={
-                <Badge variant={
-                  scorePercent >= 25 ? "green" :
-                  scorePercent >= 20 ? "lightgray" :
-                  scorePercent >= 15 ? "yellow" :
-                  scorePercent > 10 ? "red" : "darkgray"
-                }>
-                  <span style={{ fontWeight: 'bold' }}>
-                    {score > 0 ? `${scorePercent}%` : "0%"}
-                  </span>
-                </Badge>
-              }
-              triggerEvent="hover"
-            >
-              {vector_score !== undefined && text_score !== undefined 
-                ? `Percentile rank score: This result is better than ${scorePercent}% of all other results.` 
-                : `Overall match score`}
-            </Tooltip>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1], alignItems: 'flex-end' }}>
+              {/* Combined Score */}
+              <Tooltip
+                trigger={
+                  <Badge variant="lightgray">
+                    <span style={{ fontWeight: 'bold' }}>
+                      {combinedScore.toFixed(4)}
+                    </span>
+                  </Badge>
+                }
+                triggerEvent="hover"
+              >
+                Combined RRF score (vector + text contributions)
+              </Tooltip>
+              
+              {/* Percentage Slider */}
+              {combinedScore > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1], alignItems: 'flex-end' }}>
+                  <div style={{
+                    width: '120px',
+                    height: '20px',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    border: `1px solid ${palette.gray.light1}`,
+                    display: 'flex'
+                  }}>
+                    {/* Text portion (green) - left side */}
+                    <div style={{
+                      width: `${textPercentage}%`,
+                      height: '100%',
+                      backgroundColor: palette.green.base,
+                      transition: 'width 0.3s ease'
+                    }} />
+                    {/* Vector portion (blue) - right side */}
+                    <div style={{
+                      width: `${vectorPercentage}%`,
+                      height: '100%',
+                      backgroundColor: palette.blue.base,
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                  
+                  {/* Percentage labels */}
+                  <div style={{ 
+                    display: 'flex', 
+                    gap: spacing[2], 
+                    fontSize: '12px',
+                    color: palette.gray.dark1
+                  }}>
+                    <Tooltip
+                      trigger={
+                        <span style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: spacing[1],
+                          color: palette.green.base
+                        }}>
+                          <Icon glyph="String" size="small" />
+                          {textPercentage.toFixed(1)}%
+                        </span>
+                      }
+                      triggerEvent="hover"
+                    >
+                      Text search contribution: {text_score?.toFixed(4)}
+                    </Tooltip>
+                    
+                    <Tooltip
+                      trigger={
+                        <span style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: spacing[1],
+                          color: palette.blue.base
+                        }}>
+                          <Icon glyph="Diagram" size="small" />
+                          {vectorPercentage.toFixed(1)}%
+                        </span>
+                      }
+                      triggerEvent="hover"
+                    >
+                      Vector search contribution: {vector_score?.toFixed(4)}
+                    </Tooltip>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           
-          {/* Only show vector score for pure vector search (not hybrid) */}
-          {vector_score !== undefined && text_score === undefined && (
+          {/* Show vector score only for pure vector search */}
+          {vector_score !== undefined && vector_score > 0 && text_score === undefined && (
             <Tooltip
               trigger={
                 <Badge variant="lightgray">
                   <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
                     <Icon glyph="Diagram" size="small" /> 
-                    {vector_score > 0 
-                      ? `${Math.round(Math.min(1, Math.max(0, vector_score)) * 100)}%` 
-                      : "0%"}
+                    {vector_score.toFixed(4)}
                   </span>
                 </Badge>
               }
               triggerEvent="hover"
             >
-              Semantic vector search score
+              Vector search score
             </Tooltip>
           )}
           
-          {/* Only show text score for pure text search (not hybrid) */}
-          {text_score !== undefined && vector_score === undefined && (
+          {/* Show text score only for pure text search */}
+          {text_score !== undefined && text_score > 0 && vector_score === undefined && (
             <Tooltip
               trigger={
                 <Badge variant="lightgray">
                   <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
                     <Icon glyph="String" size="small" /> 
-                    {text_score > 0 
-                      ? `${Math.round(Math.min(1, Math.max(0, text_score)) * 100)}%` 
-                      : "0%"}
+                    {text_score.toFixed(4)}
                   </span>
                 </Badge>
               }
               triggerEvent="hover"
             >
-              Keyword text search score
+              Full-text search score
             </Tooltip>
           )}
         </div>

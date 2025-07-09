@@ -6,7 +6,7 @@ The backend implements a sophisticated search functionality for a car manual sys
 
 1. **Vector Search**: Uses embedding similarity to find semantically similar content
 2. **Text Search**: Performs keyword-based search using MongoDB's text indexing
-3. **Hybrid Search**: Combines vector and text search using Reciprocal Rank Fusion (RRF)
+3. **Hybrid Search**: Combines vector and text search using MongoDB's native $rankFusion aggregation stage
 
 ## Architecture Components
 
@@ -20,7 +20,7 @@ The backend implements a sophisticated search functionality for a car manual sys
 
 - **SearchRequest**: Base model with query string and result limit
 - **VectorSearchRequest/TextSearchRequest**: Specific search type models
-- **HybridSearchRequest**: Adds RRF k-parameter configuration
+- **HybridSearchRequest**: Adds weight parameters for vector and text components
 - **SearchResponse**: Standard response format with results
 - **SearchResult**: Individual result with relevance scores and chunk data
 
@@ -147,96 +147,158 @@ Key points:
 
 ## Hybrid Search Method
 
-### RRF (Reciprocal Rank Fusion)
+### MongoDB $rankFusion Implementation
 
 ```python
-async def hybrid_search_rrf(self, vector_results: List[SearchResult], text_results: List[SearchResult], k: int = 60) -> List[SearchResult]:
-    """Combine vector and text search results using Reciprocal Rank Fusion"""
-    # Create a map of chunk_id to search result for easy lookup
-    result_map = {}
+async def hybrid_search_rrf(
+    self,
+    query_text: str,
+    query_embedding: List[float],
+    limit: int = 5,
+    vector_weight: float = 0.5,
+    text_weight: float = 0.5,
+    num_candidates_multiplier: int = 15
+) -> List[SearchResult]:
+    """Combine vector and text search results using MongoDB's native $rankFusion"""
     
-    # Process vector results
-    for i, result in enumerate(vector_results):
-        chunk_id = result.chunk.id
-        # RRF formula: 1 / (k + rank), where rank is 0-based
-        rrf_score = 1.0 / (k + i)
-        result_map[chunk_id] = {
-            "chunk": result.chunk,
-            "vector_score": result.vector_score,
-            "text_score": 0.0,  # Initialize text_score to 0 for vector-only results
-            "rrf_score": rrf_score
-        }
-    
-    # Process text results and combine scores
-    for i, result in enumerate(text_results):
-        chunk_id = result.chunk.id
-        rrf_score = 1.0 / (k + i)
-        
-        if chunk_id in result_map:
-            # Update existing entry
-            result_map[chunk_id]["text_score"] = result.text_score
-            result_map[chunk_id]["rrf_score"] += rrf_score
-        else:
-            # Add new entry
-            result_map[chunk_id] = {
-                "chunk": result.chunk,
-                "text_score": result.text_score,
-                "vector_score": 0.0,  # Initialize vector_score to 0 for text-only results
-                "rrf_score": rrf_score
+    # Calculate intermediate limit for robustness
+    intermediate_limit = limit * 2
+    num_candidates = limit * num_candidates_multiplier
+
+    # Build the $rankFusion aggregation pipeline
+    rank_fusion_pipeline = [
+        {
+            "$rankFusion": {
+                "input": {
+                    "pipelines": {
+                        "vector": [
+                            {
+                                "$vectorSearch": {
+                                    "index": self.vector_index_name,
+                                    "path": self.vector_field_name,
+                                    "queryVector": query_embedding,
+                                    "numCandidates": num_candidates,
+                                    "limit": intermediate_limit
+                                }
+                            }
+                        ],
+                        "text": [
+                            {
+                                "$search": {
+                                    "index": self.text_index_name,
+                                    "text": {
+                                        "query": query_text,
+                                        "path": ["text", "context", "breadcrumb_trail"],
+                                        "fuzzy": {"maxEdits": 1, "prefixLength": 3}
+                                    }
+                                }
+                            },
+                            {"$limit": intermediate_limit}
+                        ]
+                    }
+                },
+                "combination": {
+                    "weights": {
+                        "vector": vector_weight,
+                        "text": text_weight
+                    }
+                },
+                "scoreDetails": True
             }
+        },
+        {"$limit": limit},
+        {
+            "$addFields": {
+                "score": {"$meta": "score"},
+                "score_details": {"$meta": "scoreDetails"}
+            }
+        },
+        {
+            "$project": {
+                "_id": 0,
+                "score": 1,
+                "score_details": 1,
+                "chunk_id": "$id",
+                "text": 1,
+                "context": 1,
+                "breadcrumb_trail": 1,
+                "page_numbers": 1,
+                "content_type": 1,
+                "metadata": 1,
+                "vehicle_systems": 1
+            }
+        }
+    ]
     
-    # Find the maximum RRF score for normalization
-    max_rrf_score = max((data["rrf_score"] for data in result_map.values()), default=1.0)
+    # Execute the aggregation pipeline
+    results = list(self.collection.aggregate(rank_fusion_pipeline))
     
-    # Convert to list and sort by RRF score
-    combined_results = []
-    for chunk_id, data in result_map.items():
-        # Normalize RRF score to 0-1 range by dividing by maximum score
-        normalized_score = data["rrf_score"] / max_rrf_score if max_rrf_score > 0 else 0.0
+    # Process results and extract individual scores
+    search_results = []
+    for result in results:
+        score = result.get("score", 0.0)
+        vector_score = 0.0
+        text_score = 0.0
         
-        combined_results.append(SearchResult(
-            score=normalized_score,  # Use normalized score instead of raw RRF score
-            vector_score=data["vector_score"],  # Always present now
-            text_score=data["text_score"],  # Always present now
-            chunk=data["chunk"]
-        ))
+        # Extract individual pipeline scores from scoreDetails
+        score_details = result.get("score_details", {})
+        if score_details and 'details' in score_details:
+            details = score_details['details']
+            if isinstance(details, list):
+                for detail in details:
+                    if isinstance(detail, dict):
+                        pipeline_name = detail.get('inputPipelineName', '')
+                        pipeline_value = detail.get('value', 0.0)
+                        
+                        if pipeline_name == 'vector':
+                            vector_score = pipeline_value
+                        elif pipeline_name == 'text':
+                            text_score = pipeline_value
+        
+        search_result = SearchResult(
+            score=score,
+            vector_score=vector_score,
+            text_score=text_score,
+            raw_score=score,
+            chunk_id=result.get("chunk_id"),
+            text=result.get("text", ""),
+            context=result.get("context"),
+            breadcrumb_trail=result.get("breadcrumb_trail"),
+            page_numbers=result.get("page_numbers"),
+            content_type=result.get("content_type"),
+            metadata=result.get("metadata"),
+            vehicle_systems=result.get("vehicle_systems")
+        )
+        search_results.append(search_result)
     
-    # Sort by normalized score (descending)
-    combined_results.sort(key=lambda x: x.score, reverse=True)
-    return combined_results
+    return search_results
 ```
 
 Key points:
-- Implements the Reciprocal Rank Fusion algorithm with k=60
-- Combines vector and text search results based on their rank positions
-- Initializes missing scores (0.0) so every result has both vector and text scores
-- Normalizes final RRF scores to 0-1 range for consistent UI display
-- Ensures all three score types (overall, vector, text) are available for every result
+- Uses MongoDB's native $rankFusion aggregation stage for optimal performance
+- Automatically handles Reciprocal Rank Fusion calculations at the database level
+- Reduces pipeline complexity from ~25 stages to ~4 stages
+- Extracts individual pipeline scores from scoreDetails metadata
+- No manual score normalization - displays raw scores from MongoDB
+- Configurable weights for vector and text components
 
 ## Frontend Integration
 
 ### Score Handling in UI
 
-The frontend selectively displays scores based on the search method:
+The frontend displays raw scores without normalization:
 
 ```typescript
-// For vector search, clear any text_score fields in results to avoid confusion
-if (method === 'vector' && response && response.results) {
-  response.results = response.results.map(result => ({
-    ...result, 
-    text_score: undefined // Clear text_score for vector search
-  }));
+// Score display with 4 decimal places for precision
+const scoreDisplay = score.toFixed(4);
+
+// Individual scores displayed for hybrid search
+if (searchMethod === 'hybrid') {
+  const vectorScoreDisplay = vectorScore ? vectorScore.toFixed(4) : '0.0000';
+  const textScoreDisplay = textScore ? textScore.toFixed(4) : '0.0000';
 }
 
-// For text search, clear any vector_score fields in results to avoid confusion
-if (method === 'text' && response && response.results) {
-  response.results = response.results.map(result => ({
-    ...result, 
-    vector_score: undefined // Clear vector_score for text search
-  }));
-}
-
-// For hybrid search, both vector_score and text_score are preserved
+// No score clearing or normalization - raw values from MongoDB are displayed
 ```
 
 ### URL Construction

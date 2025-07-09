@@ -193,7 +193,6 @@ async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = H
     
     - **query**: Text to search for
     - **limit**: Maximum number of results to return (1-20)
-    - **rrf_k**: RRF constant for rank fusion (default=60)
     - **vector_weight**: Weight for vector search scores (0.0-1.0, default=0.5)
     - **text_weight**: Weight for text search scores (0.0-1.0, default=0.5)
     - **num_candidates_multiplier**: Multiplier for candidates (default=15)
@@ -205,12 +204,11 @@ async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = H
     
     try:
         # Log the request parameters
-        logger.info(f"Hybrid search request: query='{request.query}', limit={request.limit}, rrf_k={request.rrf_k}")
+        logger.info(f"Hybrid search request: query='{request.query}', limit={request.limit}")
         if debug_mode:
             debug_info["request"] = {
                 "query": request.query,
                 "limit": request.limit,
-                "rrf_k": request.rrf_k,
                 "vector_weight": request.vector_weight,
                 "text_weight": request.text_weight,
                 "num_candidates_multiplier": request.num_candidates_multiplier
@@ -262,8 +260,7 @@ async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = H
             limit=request.limit,
             vector_weight=request.vector_weight,
             text_weight=request.text_weight,
-            num_candidates_multiplier=request.num_candidates_multiplier,
-            rrf_k=request.rrf_k
+            num_candidates_multiplier=request.num_candidates_multiplier
         )
         
         # Return formatted response

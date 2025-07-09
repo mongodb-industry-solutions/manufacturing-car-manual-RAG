@@ -17,66 +17,19 @@ import Banner from '@leafygreen-ui/banner';
 interface SearchMethodSelectorProps {
   selectedMethod: SearchMethod;
   onChange: (method: SearchMethod) => void;
-  rrf_k?: number;
-  onRrfKChange?: (value: number) => void;
 }
 
-// A simple custom slider based on HTML input range
-const CustomSlider = ({ 
-  min, 
-  max, 
-  step, 
-  value, 
-  onChange
-}: { 
-  min: number; 
-  max: number; 
-  step: number; 
-  value: number; 
-  onChange: (value: number) => void 
-}) => {
-  return (
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      style={{
-        width: '100%',
-        height: '8px',
-        borderRadius: '4px',
-        appearance: 'none',
-        backgroundColor: '#eee',
-        outline: 'none',
-        // Custom styling for webkit browsers
-        WebkitAppearance: 'none'
-      }}
-    />
-  );
-}
-
-// RRF explanation tooltip content
-const RRF_EXPLANATION = `
-RRF (Reciprocal Rank Fusion) is designed to combine multiple search methods.
-Scores are calculated as 1/(k + rank), which results in naturally low values.
-For example, with k=60, the top result has a maximum score of 1/60 (1.67%).
-These low percentages are mathematically expected and not an issue.
-`;
-
-// Advanced RRF explanation
-const RRF_ADVANCED_EXPLANATION = `
-Lower k-values emphasize top-ranked results and produce higher scores.
-Higher k-values provide more weight to lower-ranked items and produce lower scores.
-Industry standard values range from 10-60.
+// $rankFusion explanation tooltip content
+const RANKFUSION_EXPLANATION = `
+MongoDB's $rankFusion stage performs Reciprocal Rank Fusion (RRF) automatically.
+It intelligently combines rankings from multiple search methods (vector and text) 
+using optimized algorithms built into the database engine.
+This provides better performance and consistency than manual RRF implementations.
 `;
 
 const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
   selectedMethod,
-  onChange,
-  rrf_k = 60,
-  onRrfKChange
+  onChange
 }) => {
   return (
     <div>
@@ -128,57 +81,37 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
                 fill={palette.purple.base} 
               />
               <div>
-                <Body>Hybrid Search (RRF)</Body>
+                <Body>Hybrid Search ($rankFusion)</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
-                  Combine vector and keyword search using Reciprocal Rank Fusion
+                  Combine vector and keyword search using MongoDB's native $rankFusion
                 </Body>
               </div>
             </div>
           </Radio>
         </RadioGroup>
         
-        {/* RRF information banner - only show when hybrid is selected */}
+        {/* $rankFusion information banner - only show when hybrid is selected */}
         {selectedMethod === 'hybrid' && (
           <div style={{ marginTop: spacing[3] }}>
             <Banner variant="info">
               <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
                 <div className="flex items-center gap-1">
-                  <span>RRF scores are naturally low due to the algorithm&apos;s mathematical formula:&nbsp;</span>
+                  <span>Using MongoDB's native $rankFusion for optimal hybrid search performance.&nbsp;</span>
                   <Tooltip
                     trigger={<span style={{ textDecoration: 'underline', cursor: 'help' }}>Learn more</span>}
                     triggerEvent="hover"
                   >
-                    {RRF_EXPLANATION}
+                    {RANKFUSION_EXPLANATION}
                   </Tooltip>
                 </div>
                 
-                {/* K-value slider */}
-                {onRrfKChange && (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ fontWeight: 'bold' }}>RRF k-value: {rrf_k}</div>
-                      <Tooltip
-                        trigger={<Icon glyph="InfoWithCircle" />}
-                        triggerEvent="hover"
-                      >
-                        {RRF_ADVANCED_EXPLANATION}
-                      </Tooltip>
-                    </div>
-                    <div style={{ marginTop: spacing[2], marginBottom: spacing[2] }}>
-                      <CustomSlider
-                        value={rrf_k}
-                        max={100}
-                        min={5}
-                        step={5}
-                        onChange={(value) => onRrfKChange && onRrfKChange(value)}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <div style={{ fontSize: '12px', color: palette.gray.dark1 }}>Higher scores</div>
-                      <div style={{ fontSize: '12px', color: palette.gray.dark1 }}>Lower scores</div>
-                    </div>
-                  </div>
-                )}
+                <div style={{ fontSize: '14px', color: palette.gray.dark1 }}>
+                  • Automatically performs Reciprocal Rank Fusion (RRF)
+                  <br />
+                  • Optimized fusion weights for vector and text search
+                  <br />
+                  • Native MongoDB performance and reliability
+                </div>
               </div>
             </Banner>
           </div>

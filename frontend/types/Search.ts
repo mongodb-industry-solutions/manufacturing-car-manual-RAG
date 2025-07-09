@@ -10,6 +10,7 @@ export interface SearchResult {
   score: number;
   vector_score?: number;
   text_score?: number;
+  raw_score?: number;
   // Support new flattened structure
   chunk_id?: string;
   text?: string;
@@ -43,9 +44,7 @@ export interface VectorSearchRequest extends SearchRequest {}
 
 export interface TextSearchRequest extends SearchRequest {}
 
-export interface HybridSearchRequest extends SearchRequest {
-  rrf_k?: number;
-}
+export interface HybridSearchRequest extends SearchRequest {}
 
 /**
  * Interface for question-answering results

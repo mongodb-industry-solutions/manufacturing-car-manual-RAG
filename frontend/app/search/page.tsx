@@ -35,7 +35,6 @@ function SearchPageContent() {
   // State
   const [query, setQuery] = useState('');
   const [searchMethod, setSearchMethod] = useState<SearchMethod>('text'); // Default to keyword (text) search
-  const [rrf_k, setRrf_k] = useState(60); // RRF k parameter with slider control
   const [activeTab] = useState<'search'>('search');
   const [searchPlaceholder, setSearchPlaceholder] = useState('How do I change a flat tire?');
   
@@ -74,9 +73,7 @@ function SearchPageContent() {
     // Check if this is a new search (different from the last search we performed)
     const isNewSearch = 
       queryParam !== prevSearchRef.current.query || 
-      method !== prevSearchRef.current.method ||
-      (method === 'hybrid' && searchParams.get('krf') && 
-       parseInt(searchParams.get('krf') || '60', 10) !== rrf_k);
+      method !== prevSearchRef.current.method;
     
     // Update the ref with current search parameters
     prevSearchRef.current = { query: queryParam, method };
@@ -86,18 +83,13 @@ function SearchPageContent() {
       console.log('Performing search from URL params, new search or no results');
       
       // Use the direct search function without URL manipulation to avoid loops
-      if (method === 'hybrid') {
-        const krfValue = searchParams.get('krf') ? parseInt(searchParams.get('krf') || '60', 10) : rrf_k;
-        search(method, queryParam, 10, { rrf_k: krfValue });
-      } else {
-        search(method, queryParam, 10);
-      }
+      search(method, queryParam, 10);
     } else {
       console.log('Using existing results, no need to search again');
     }
     
   // Be selective about which parameters to watch to avoid excessive rerenders
-  }, [queryParam, methodParam, searchParams.get('krf'), search, results]);
+  }, [queryParam, methodParam, search, results]);
   
   const updateSearchParams = () => {
     const params = new URLSearchParams();
@@ -123,10 +115,6 @@ function SearchPageContent() {
     params.set('q', searchQuery);
     params.set('method', methodToUse);
     
-    // Include rrf_k parameter for hybrid searches
-    if (methodToUse === 'hybrid') {
-      params.set('krf', rrf_k.toString());
-    }
     
     return `/search?${params.toString()}`;
   };
@@ -174,32 +162,6 @@ function SearchPageContent() {
     }
   };
   
-  // Handle RRF k-value change
-  const handleRrfKChange = (value: number) => {
-    setRrf_k(value);
-    console.log(`RRF k-value changed to: ${value}`);
-    
-    // If we have a query and we're using hybrid search, trigger a new search
-    if (query.trim() && searchMethod === 'hybrid') {
-      // Get search URL with current query and method, but the updated rrf_k value
-      // We need to set the rrf_k state before calling performSearch
-      // so we manually construct the URL here
-      const params = new URLSearchParams();
-      params.set('q', query);
-      params.set('method', searchMethod);
-      params.set('krf', value.toString());
-      const searchUrl = `/search?${params.toString()}`;
-      
-      // Save to sessionStorage before navigation
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
-        sessionStorage.setItem('car_manual_referrer_type', 'search');
-      }
-      
-      // Use router.push to navigate, which will trigger useEffect to perform the search
-      router.push(searchUrl);
-    }
-  };
   
   return (
     <MainLayout>
@@ -407,8 +369,6 @@ function SearchPageContent() {
                 <SearchMethodSelector 
                   selectedMethod={searchMethod}
                   onChange={handleMethodChange}
-                  rrf_k={rrf_k}
-                  onRrfKChange={handleRrfKChange}
                 />
               </Card>
             </div>
