@@ -4,7 +4,7 @@ from .chunks import Chunk
 
 class SearchResult(BaseModel):
     """A single search result with score and chunk data"""
-    score: float = Field(..., description="Relevance score (0.0 to 100.0, percentile-based)")
+    score: float = Field(..., description="Raw relevance score (0.0 to 1.0 range for most algorithms)")
     vector_score: Optional[float] = Field(None, description="Vector search component score")
     text_score: Optional[float] = Field(None, description="Text search component score")
     raw_score: Optional[float] = Field(None, description="Raw unprocessed score for debugging")
@@ -48,13 +48,7 @@ class TextSearchRequest(SearchRequest):
     )
 
 class HybridSearchRequest(SearchRequest):
-    """Request model for hybrid search using explicit RRF"""
-    rrf_k: int = Field(
-        60,
-        ge=1,
-        le=100,
-        description="RRF k-value parameter for rank fusion (typically 60)"
-    )
+    """Request model for hybrid search using MongoDB $rankFusion"""
     vector_weight: float = Field(
         0.5,
         ge=0.0,

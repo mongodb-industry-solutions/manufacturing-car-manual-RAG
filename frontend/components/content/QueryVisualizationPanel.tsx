@@ -81,150 +81,68 @@ const QueryVisualizationPanel: React.FC<QueryVisualizationPanelProps> = ({
   }
 ])`;
       case 'hybrid':
-        return `// Hybrid search with RRF (Reciprocal Rank Fusion)
+        return `// Hybrid search using MongoDB's native $rankFusion
 db.chunks.aggregate([
-  // STEP 1: VECTOR SEARCH BRANCH
   {
-    $vectorSearch: {
-      index: "manual_vector_index",
-      path: "embedding",
-      queryVector: [0.123, 0.456, 0.789, ...], // Embedding for "${searchQuery}"
-      numCandidates: 150,
-      limit: 20
+    $rankFusion: {
+      input: {
+        pipelines: {
+          // Vector search pipeline
+          vector: [
+            {
+              $vectorSearch: {
+                index: "manual_vector_index",
+                path: "embedding",
+                queryVector: [0.123, 0.456, 0.789, ...], // Embedding for "${searchQuery}"
+                numCandidates: 150,
+              }
+            }
+          ],
+          // Text search pipeline
+          text: [
+            {
+              $search: {
+                index: "manual_text_search_index",
+                text: {
+                  query: "${searchQuery}",
+                  path: ["text"],
+                }
+              }
+            },
+          ]
+        }
+      },
+      combination: {
+        weights: {
+          vector: 0.5, // Vector search weight
+          text: 0.5    // Text search weight
+        }
+      },
+      scoreDetails: true // Enable detailed scoring for individual pipeline scores
     }
   },
-  // Group results to calculate rank within this branch
-  { $group: { _id: null, docs: { $push: "$$ROOT" } } },
-  // Unwind to add rank
-  { $unwind: { path: "$docs", includeArrayIndex: "rank" } },
-  // Calculate RRF score component for vector search
+  { $limit: 10 },
+  // Extract raw scores from metadata
   {
     $addFields: {
-      vs_score: {
-        $multiply: [
-          0.5, // Vector weight
-          { $divide: [1.0, { $add: ["$rank", 60] } ] } // RRF formula: 1/(k + rank)
-        ]
-      }
+      score: { $meta: "score" },           // Raw RRF score
+      score_details: { $meta: "scoreDetails" } // Individual pipeline details
     }
   },
-  // Project only necessary fields from this branch
+  // Project final fields
   {
     $project: {
-      _id: "$docs._id",
-      vs_score: 1,
-      chunk_id: "$docs.id",
-      text: "$docs.text",
-      context: "$docs.context",
-      breadcrumb_trail: "$docs.breadcrumb_trail",
-      page_numbers: "$docs.page_numbers",
-      content_type: "$docs.content_type",
-      metadata: "$docs.metadata",
-      vehicle_systems: "$docs.vehicle_systems"
-    }
-  },
-  
-  // STEP 2: TEXT SEARCH BRANCH
-  {
-    $unionWith: {
-      coll: "chunks",
-      pipeline: [
-        {
-          $search: {
-            index: "manual_text_search_index",
-            text: {
-              query: "${searchQuery}",
-              path: ["text", "context", "breadcrumb_trail"],
-              fuzzy: { maxEdits: 1, prefixLength: 3 }
-            }
-          }
-        },
-        { $limit: 20 },
-        // Group results to calculate rank within this branch
-        { $group: { _id: null, docs: { $push: "$$ROOT" } } },
-        // Unwind to add rank
-        { $unwind: { path: "$docs", includeArrayIndex: "rank" } },
-        // Calculate RRF score component for text search
-        {
-          $addFields: {
-            fts_score: {
-              $multiply: [
-                0.5, // Text weight
-                { $divide: [1.0, { $add: ["$rank", 60] } ] } // RRF formula
-              ]
-            }
-          }
-        },
-        // Project only necessary fields from this branch
-        {
-          $project: {
-            _id: "$docs._id",
-            fts_score: 1,
-            chunk_id: "$docs.id",
-            text: "$docs.text",
-            context: "$docs.context",
-            breadcrumb_trail: "$docs.breadcrumb_trail",
-            page_numbers: "$docs.page_numbers",
-            content_type: "$docs.content_type",
-            metadata: "$docs.metadata",
-            vehicle_systems: "$docs.vehicle_systems"
-          }
-        }
-      ]
-    }
-  },
-  
-  // STEP 3: COMBINE RESULTS
-  // Group by original document ID to combine scores
-  {
-    $group: {
-      _id: "$_id",
-      chunk_id: { $first: "$chunk_id" },
-      text: { $first: "$text" },
-      context: { $first: "$context" },
-      breadcrumb_trail: { $first: "$breadcrumb_trail" },
-      page_numbers: { $first: "$page_numbers" },
-      content_type: { $first: "$content_type" },
-      metadata: { $first: "$metadata" },
-      vehicle_systems: { $first: "$vehicle_systems" },
-      vs_score: { $max: "$vs_score" },
-      fts_score: { $max: "$fts_score" }
-    }
-  },
-  
-  // STEP 4: HANDLE MISSING SCORES (docs only in one result set)
-  {
-    $project: {
-      chunk_id: 1,
+      _id: 0,
+      score: 1,
+      score_details: 1,
+      chunk_id: "$id",
       text: 1,
       context: 1,
       breadcrumb_trail: 1,
       page_numbers: 1,
       content_type: 1,
       metadata: 1,
-      vehicle_systems: 1,
-      vs_score: { $ifNull: ["$vs_score", 0.0] },
-      fts_score: { $ifNull: ["$fts_score", 0.0] }
-    }
-  },
-  
-  // STEP 5: CALCULATE FINAL SCORE
-  {
-    $addFields: {
-      raw_score: { $add: ["$fts_score", "$vs_score"] },
-      // Scale to 0-100 range (typical RRF scores are very small)
-      score: { $multiply: [{ $add: ["$fts_score", "$vs_score"] }, 3000] }
-    }
-  },
-  
-  // STEP 6: SORT AND LIMIT RESULTS
-  { $sort: { score: -1 } },
-  { $limit: 10 },
-  
-  // STEP 7: CAP MAX SCORE AT 100
-  {
-    $addFields: {
-      score: { $min: [100, "$score"] }
+      vehicle_systems: 1
     }
   }
 ])`;
@@ -291,7 +209,7 @@ db.chunks.aggregate([
       case 'text':
         return 'Uses MongoDB Atlas Search for keyword-based search with fuzzy matching';
       case 'hybrid':
-        return 'Combines Vector and Text search using RRF in MongoDB\'s aggregation pipeline';
+        return 'Combines Vector and Text search using MongoDB\'s native $rankFusion aggregation stage';
       default:
         return '';
     }
@@ -335,13 +253,13 @@ db.chunks.aggregate([
     if (normalizedMethod === 'hybrid') {
       badges.push(
         <Tooltip
-          key="agg-badge"
+          key="rankfusion-badge"
           trigger={
-            <Badge variant="blue">Aggregation Pipeline</Badge>
+            <Badge variant="purple">$rankFusion</Badge>
           }
           triggerEvent="hover"
         >
-          MongoDB's aggregation pipeline powers the hybrid search implementation
+          MongoDB's native $rankFusion stage performs Reciprocal Rank Fusion automatically
         </Tooltip>
       );
     }
@@ -389,7 +307,7 @@ db.chunks.aggregate([
                   ? 'Vector search embeds your query text into a high-dimensional vector and finds documents with similar vectors, capturing semantic meaning beyond keywords.'
                   : searchMethod === 'text'
                     ? 'Text search looks for keywords and phrases in the document, with fuzzy matching to handle typos and variations.'
-                    : 'Hybrid search combines both approaches using Reciprocal Rank Fusion (RRF), which merges result rankings from both methods.'
+                    : 'Hybrid search combines both approaches using MongoDB\'s native $rankFusion stage, which automatically performs Reciprocal Rank Fusion (RRF) to merge and rank results from both search methods.'
               }
             </Body>
           </div>

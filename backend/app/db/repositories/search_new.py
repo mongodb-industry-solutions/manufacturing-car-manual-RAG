@@ -301,19 +301,18 @@ class SearchRepository:
         vector_weight: float = 0.5,
         text_weight: float = 0.5,
         num_candidates_multiplier: int = 15,
-        rrf_k: int = RRF_K_CONSTANT
+        use_native_rankfusion: bool = True
     ) -> List[SearchResult]:
         """
-        Performs hybrid search using an explicit RRF calculation pipeline
+        Performs hybrid search using MongoDB's native $rankFusion aggregation stage
         
         Args:
             query_text: The user's search query
             query_embedding: Pre-computed embedding for the query
             limit: Maximum number of results to return
-            vector_weight: Weight applied to vector search RRF score component
-            text_weight: Weight applied to text search RRF score component
+            vector_weight: Weight applied to vector search component
+            text_weight: Weight applied to text search component
             num_candidates_multiplier: Multiplier for the number of candidates
-            rrf_k: RRF constant for rank fusion formula
             
         Returns:
             List of search results ordered by combined RRF score
@@ -341,7 +340,7 @@ class SearchRepository:
             num_candidates = limit * num_candidates_multiplier
             intermediate_limit = limit * 2  # Fetch more results for ranking robustness
             
-            # --- Define the Vector Search Branch Pipeline ---
+            # --- Define the Vector Search Pipeline ---
             vector_search_pipeline = [
                 {
                     "$vectorSearch": {
@@ -351,176 +350,190 @@ class SearchRepository:
                         "numCandidates": num_candidates,
                         "limit": intermediate_limit
                     }
-                },
-                # Group results to calculate rank within this branch
-                {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
-                # Unwind to add rank
-                {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
-                # Calculate RRF score component for vector search
-                {
-                    "$addFields": {
-                        "vs_score": {
-                            "$multiply": [
-                                vector_weight,
-                                {"$divide": [1.0, {"$add": ["$rank", rrf_k]}]}
-                            ]
-                        }
-                    }
-                },
-                # Project only necessary fields from this branch
-                {
-                    "$project": {
-                        "_id": "$docs._id",
-                        "vs_score": 1,
-                        "chunk_id": "$docs.id",
-                        "text": "$docs.text",
-                        "context": "$docs.context",
-                        "breadcrumb_trail": "$docs.breadcrumb_trail",
-                        "page_numbers": "$docs.page_numbers",
-                        "content_type": "$docs.content_type",
-                        "metadata": "$docs.metadata",
-                        "vehicle_systems": "$docs.vehicle_systems",
-                    }
                 }
             ]
             
-            # --- Define the Text Search Branch Pipeline ---
+            # --- Define the Text Search Pipeline ---
             text_search_pipeline = [
                 {
                     "$search": {
                         "index": self.text_index_name,
                         "text": {
                             "query": query_text,
-                            "path": ["text", "context", "breadcrumb_trail"],
-                            "fuzzy": {"maxEdits": 1, "prefixLength": 3}
+                            "path": "text"
                         }
-                    }
-                },
-                {"$limit": intermediate_limit},
-                # Group results to calculate rank within this branch
-                {"$group": {"_id": None, "docs": {"$push": "$$ROOT"}}},
-                # Unwind to add rank
-                {"$unwind": {"path": "$docs", "includeArrayIndex": "rank"}},
-                # Calculate RRF score component for text search
-                {
-                    "$addFields": {
-                        "fts_score": {
-                            "$multiply": [
-                                text_weight,
-                                {"$divide": [1.0, {"$add": ["$rank", rrf_k]}]}
-                            ]
-                        }
-                    }
-                },
-                # Project only necessary fields from this branch
-                {
-                    "$project": {
-                        "_id": "$docs._id",
-                        "fts_score": 1,
-                        "chunk_id": "$docs.id",
-                        "text": "$docs.text",
-                        "context": "$docs.context",
-                        "breadcrumb_trail": "$docs.breadcrumb_trail",
-                        "page_numbers": "$docs.page_numbers",
-                        "content_type": "$docs.content_type",
-                        "metadata": "$docs.metadata",
-                        "vehicle_systems": "$docs.vehicle_systems",
                     }
                 }
             ]
             
-            # --- Combine using $unionWith and Final Aggregation ---
-            final_pipeline = vector_search_pipeline + [
-                # Union the text search results
+            # --- Use $rankFusion to combine the pipelines ---
+            rank_fusion_pipeline = [
                 {
-                    "$unionWith": {
-                        "coll": getattr(self, 'collection_name', self.settings.CHUNKS_COLLECTION),
-                        "pipeline": text_search_pipeline
+                    "$rankFusion": {
+                        "input": {
+                            "pipelines": {
+                                "vectorPipeline": vector_search_pipeline,
+                                "fullTextPipeline": text_search_pipeline
+                            }
+                        },
+                        "combination": {
+                            "weights": {
+                                "vectorPipeline": vector_weight,
+                                "fullTextPipeline": text_weight
+                            }
+                        },
+                        "scoreDetails": True
                     }
                 },
-                # Group by original document ID (_id) to combine scores
+                {"$limit": limit},
+                # Extract scoreDetails from $rankFusion metadata
                 {
-                    "$group": {
-                        "_id": "$_id",
-                        "chunk_id": {"$first": "$chunk_id"},
-                        "text": {"$first": "$text"},
-                        "context": {"$first": "$context"},
-                        "breadcrumb_trail": {"$first": "$breadcrumb_trail"},
-                        "page_numbers": {"$first": "$page_numbers"},
-                        "content_type": {"$first": "$content_type"},
-                        "metadata": {"$first": "$metadata"},
-                        "vehicle_systems": {"$first": "$vehicle_systems"},
-                        "vs_score": {"$max": "$vs_score"},
-                        "fts_score": {"$max": "$fts_score"}
+                    "$addFields": {
+                        "scoreDetails": {"$meta": "scoreDetails"}
                     }
                 },
-                # Handle cases where a doc was only in one result set
+                # Extract individual pipeline details
+                {
+                    "$addFields": {
+                        "vs_score_details": {
+                            "$arrayElemAt": [
+                                {
+                                    "$filter": {
+                                        "input": "$scoreDetails.details",
+                                        "as": "item",
+                                        "cond": {
+                                            "$eq": [
+                                                "$$item.inputPipelineName",
+                                                "vectorPipeline"
+                                            ]
+                                        }
+                                    }
+                                },
+                                0
+                            ]
+                        },
+                        "fts_score_details": {
+                            "$arrayElemAt": [
+                                {
+                                    "$filter": {
+                                        "input": "$scoreDetails.details",
+                                        "as": "item",
+                                        "cond": {
+                                            "$eq": [
+                                                "$$item.inputPipelineName",
+                                                "fullTextPipeline"
+                                            ]
+                                        }
+                                    }
+                                },
+                                0
+                            ]
+                        },
+                        "score": "$scoreDetails.value"
+                    }
+                },
+                # Calculate RRF contribution scores
+                {
+                    "$addFields": {
+                        "vs_score": {
+                            "$cond": [
+                                {
+                                    "$and": [
+                                        {"$ifNull": ["$vs_score_details", False]},
+                                        {"$ne": ["$vs_score_details.rank", 0]}
+                                    ]
+                                },
+                                {
+                                    "$multiply": [
+                                        "$vs_score_details.weight",
+                                        {
+                                            "$divide": [
+                                                1,
+                                                {"$add": [60, "$vs_score_details.rank"]}
+                                            ]
+                                        }
+                                    ]
+                                },
+                                0
+                            ]
+                        },
+                        "fts_score": {
+                            "$cond": [
+                                {
+                                    "$and": [
+                                        {"$ifNull": ["$fts_score_details", False]},
+                                        {"$ne": ["$fts_score_details.rank", 0]}
+                                    ]
+                                },
+                                {
+                                    "$multiply": [
+                                        "$fts_score_details.weight",
+                                        {
+                                            "$divide": [
+                                                1,
+                                                {"$add": [60, "$fts_score_details.rank"]}
+                                            ]
+                                        }
+                                    ]
+                                },
+                                0
+                            ]
+                        }
+                    }
+                },
+                # Project fields for SearchResult compatibility
                 {
                     "$project": {
-                        "chunk_id": 1,
+                        "_id": 0,
+                        "score": 1,
+                        "vs_score": 1,
+                        "fts_score": 1,
+                        "scoreDetails": 1,
+                        "chunk_id": "$id",
                         "text": 1,
                         "context": 1,
                         "breadcrumb_trail": 1,
                         "page_numbers": 1,
                         "content_type": 1,
                         "metadata": 1,
-                        "vehicle_systems": 1,
-                        "vs_score": {"$ifNull": ["$vs_score", 0.0]},
-                        "fts_score": {"$ifNull": ["$fts_score", 0.0]}
-                    }
-                },
-                # Simplify scoring completely - sum the scores and scale to 0-100
-                {
-                    "$addFields": {
-                        # Save raw score for debugging
-                        "raw_score": {"$add": ["$fts_score", "$vs_score"]},
-                        
-                        # Create a simple score in 0-100 range by multiplying
-                        # The typical RRF score range is very small (0.01-0.03), so multiply by 3000
-                        # to get scores in 30-90 range
-                        "score": {"$multiply": [{"$add": ["$fts_score", "$vs_score"]}, 3000]}
-                    }
-                },
-                # Sort by the score (descending)
-                {"$sort": {"score": -1}},
-                # Apply limit 
-                {"$limit": limit},
-                # Cap max score at 100
-                {
-                    "$addFields": {
-                        "score": {"$min": [100, "$score"]}
+                        "vehicle_systems": 1
                     }
                 }
             ]
             
             if self.debug_mode:
-                debug_info["pipeline"] = final_pipeline
+                debug_info["pipeline"] = rank_fusion_pipeline
                 start_time = get_current_time()
                 
-            # Execute the full pipeline
-            results = list(self.collection.aggregate(final_pipeline))
+            # Execute the $rankFusion pipeline
+            results = list(self.collection.aggregate(rank_fusion_pipeline))
             
             if self.debug_mode:
                 debug_info["result_count"] = len(results)
                 debug_info["execution_time_ms"] = (get_current_time() - start_time) * 1000
                 
-            logger.info(f"Hybrid Explicit RRF Search (k={rrf_k}, vec_w={vector_weight:.2f}, txt_w={text_weight:.2f}): Found {len(results)} results.")
+            logger.info(f"Hybrid $rankFusion Search (vec_w={vector_weight:.2f}, txt_w={text_weight:.2f}): Found {len(results)} results.")
             
             # Process results into SearchResult objects
             for result in results:
-                # Ensure score is properly rounded for consistency
-                score = round(result.get("score", 0.0), 0)  # Round to nearest whole number
+                # Get the main rankFusion score (no rounding, keep raw)
+                score = result.get("score", 0.0)
+                
+                # Get the RRF contribution scores (calculated in pipeline)
+                vector_score = result.get("vs_score", 0.0)
+                text_score = result.get("fts_score", 0.0)
                 
                 # Create helpful debug info for logging
-                logger.info(f"Result: score={score}, raw_score={result.get('raw_score', 0.0):.6f}, " +
-                            f"vs_score={result.get('vs_score', 0.0):.6f}, " +
-                            f"fts_score={result.get('fts_score', 0.0):.6f}")
+                logger.info(f"Result: score={score:.6f}, " +
+                            f"vs_score={vector_score:.6f}, " +
+                            f"fts_score={text_score:.6f}")
+                logger.info(f"  Verification: vs_score + fts_score = {vector_score + text_score:.6f}")
                 
                 search_result = SearchResult(
                     score=score,
-                    vector_score=result.get("vs_score", 0.0),  # Keep original raw scores
-                    text_score=result.get("fts_score", 0.0),   # Keep original raw scores
-                    raw_score=result.get("raw_score", 0.0),    # Include raw score for debugging
+                    vector_score=vector_score,
+                    text_score=text_score,
+                    raw_score=score,
                     chunk_id=result.get("chunk_id"),
                     text=result.get("text", ""),
                     context=result.get("context"),
@@ -537,7 +550,10 @@ class SearchRepository:
         except OperationFailure as ofe:
             logger.error(f"Hybrid Search OperationFailure: {ofe.details}")
             if "Unrecognized pipeline stage" in str(ofe.details):
-                logger.error("  -> Hint: Ensure your MongoDB Atlas version supports the pipeline stages used.")
+                if "$rankFusion" in str(ofe.details):
+                    logger.error("  -> Hint: $rankFusion requires MongoDB 6.0+ and Atlas Search. Ensure your MongoDB Atlas version supports $rankFusion.")
+                else:
+                    logger.error("  -> Hint: Ensure your MongoDB Atlas version supports the pipeline stages used.")
             elif "index not found" in str(ofe.details):
                 logger.error(f"  -> Hint: Ensure both indexes '{self.vector_index_name}' and '{self.text_index_name}' exist.")
             if self.debug_mode:

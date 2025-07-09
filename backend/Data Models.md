@@ -72,10 +72,19 @@ from .chunks import Chunk
 
 class SearchResult(BaseModel):
 """A single search result with score and chunk data"""
-score: float = Field(..., description="Relevance score (0.0 to 1.0)")
+score: float = Field(..., description="Raw relevance score (0.0 to 1.0 range for most algorithms)")
 vector_score: Optional[float] = Field(None, description="Vector search component score")
 text_score: Optional[float] = Field(None, description="Text search component score")
-chunk: Chunk = Field(..., description="The matching chunk")
+raw_score: Optional[float] = Field(None, description="Raw unprocessed score for debugging")
+chunk_id: Optional[str] = Field(None, description="ID of the matching chunk")
+text: str = Field(..., description="Text content of the chunk")
+context: Optional[str] = Field(None, description="Context string for the chunk")
+breadcrumb_trail: Optional[str] = Field(None, description="Hierarchical context path")
+page_numbers: Optional[List[int]] = Field(None, description="Page numbers covered by this chunk")
+content_type: Optional[List[str]] = Field(None, description="Types of content in the chunk")
+metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata about the chunk")
+vehicle_systems: Optional[List[str]] = Field(None, description="Vehicle systems referenced")
+chunk: Optional[Chunk] = Field(None, description="The full matching chunk object (deprecated)")
 
 class SearchRequest(BaseModel):
 """Request model for search endpoints"""
@@ -91,30 +100,25 @@ class TextSearchRequest(SearchRequest):
 pass
 
 class HybridSearchRequest(SearchRequest):
-"""Request model for hybrid search"""
-method: Literal["rrf", "weighted", "union"] = Field(
-"rrf",
-description="Method to combine vector and text search results"
-)
+"""Request model for hybrid search using MongoDB $rankFusion"""
 vector_weight: float = Field(
-0.7,
+0.5,
 ge=0.0,
 le=1.0,
-description="Weight for vector search (0.0 to 1.0)"
+description="Weight applied to vector search scores (0.0-1.0)"
 )
 text_weight: float = Field(
-0.3,
+0.5,
 ge=0.0,
 le=1.0,
-description="Weight for text search (0.0 to 1.0)"
+description="Weight applied to text search scores (0.0-1.0)"
 )
-
-    @validator('text_weight')
-    def weights_sum_to_one(cls, v, values):
-        """Ensure weights sum to approximately 1.0"""
-        if 'vector_weight' in values and abs(values['vector_weight'] + v - 1.0) > 0.01:
-            raise ValueError('vector_weight and text_weight must sum to 1.0')
-        return v
+num_candidates_multiplier: int = Field(
+15,
+ge=1,
+le=50,
+description="Multiplier for determining initial candidates (limit * multiplier)"
+)
 
 class SearchResponse(BaseModel):
 """Response model for search endpoints"""

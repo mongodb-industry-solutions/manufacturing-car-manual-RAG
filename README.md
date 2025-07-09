@@ -36,7 +36,7 @@ Before you begin working with this project, ensure that you have the following p
 
 - **Poetry**: The backend uses Poetry for dependency management. Install it by following the instructions on the [Poetry website](https://python-poetry.org/docs/#installation).
 
-- **MongoDB Atlas Account**: This project uses MongoDB Atlas for data storage and vector search capabilities. If you don't have an account, you can sign up for free at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register). Once you have an account, follow these steps to set up a minimum free tier cluster:
+- **MongoDB Atlas Account (8.1+)**: This project uses MongoDB Atlas for data storage and hybrid search capabilities with native $rankFusion. **MongoDB 8.1 or higher is required** for the $rankFusion aggregation stage. If you don't have an account, you can sign up for free at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas/register). Once you have an account, follow these steps to set up a minimum free tier cluster:
 
   - Log in to your MongoDB Atlas account.
   - Create a new project or use an existing one, and then click "create a new database".
@@ -97,7 +97,7 @@ Car Manual Explorer leverages MongoDB Atlas Vector Search for semantic search ca
 
 4. Choose the JSON editor and click "Next".
 
-5. Name your index "manual_vector_index".
+5. Name your index "manual_vector_search_index".
 
 6. Select your database and collection.
 
@@ -121,7 +121,7 @@ Car Manual Explorer leverages MongoDB Atlas Vector Search for semantic search ca
 8. Click "Next" and confirm by clicking "Create Search Index".
 
 > [!Note]
-> The index name ("manual_vector_index") must match exactly for the application to work properly.
+> The index name ("manual_vector_search_index") must match exactly for the application to work properly.
 
 ### Set up Text Search Index
 
@@ -185,8 +185,9 @@ GCP_LOCATION=us-central1
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
 
 # Search Configuration
-VECTOR_INDEX_NAME=manual_vector_index
+VECTOR_INDEX_NAME=manual_vector_search_index
 TEXT_INDEX_NAME=manual_text_search_index
+VECTOR_FIELD_NAME=embedding
 EMBEDDINGS_MODEL_ID=text-embedding-005
 ```
 
@@ -284,7 +285,7 @@ The search interface provides three powerful methods to find information in car 
 
    - **Vector Search**: Finds semantically similar content using AI embeddings
    - **Text Search**: Traditional keyword-based search with fuzzy matching
-   - **Hybrid Search**: Combines both methods using Reciprocal Rank Fusion
+   - **Hybrid Search**: Combines both methods using MongoDB's native $rankFusion
 
 3. Enter your query:
 
@@ -294,9 +295,11 @@ The search interface provides three powerful methods to find information in car 
 
 4. Review the results:
 
-   - Each result shows relevance scores
-   - Click "View Details" to see the full content
-   - Click "PDF" to view the source page in the manual
+   - **Hybrid Search**: Shows combined RRF score and visual percentage breakdown of vector vs text contributions
+   - **Vector/Text Search**: Shows individual search method scores
+   - **Score Display**: RRF scores typically range from 0.001 to 0.05 (this is normal and expected)
+   - Click "View Details" to see the full content with context navigation
+   - Visual indicators show safety notices, procedural steps, and content types
 
 > [!Note]
 > The search interface maintains your search state in the URL, making it easy to share specific searches.
@@ -364,9 +367,11 @@ For containerized deployment in production environments:
    - Best for finding specific terms, part numbers, or exact phrases
 
 3. **Hybrid Search**:
-   - Combines vector and text search results
-   - Uses Reciprocal Rank Fusion (RRF) algorithm
-   - Provides the most comprehensive results
+   - Combines vector and text search results using MongoDB's native $rankFusion aggregation stage
+   - Automatically performs Reciprocal Rank Fusion (RRF) with k=60 constant
+   - Displays combined RRF scores and individual contribution percentages
+   - Visual percentage slider showing vector (blue) vs text (green) contributions
+   - Provides the most comprehensive results with intelligent score weighting
 
 ### Content Structure
 

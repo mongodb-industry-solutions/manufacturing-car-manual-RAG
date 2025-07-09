@@ -1,7 +1,7 @@
 /**
  * Search input component
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TextInput from '@leafygreen-ui/text-input';
 import { MyButton as Button } from '@/components/ui/TypographyWrapper';
 import Icon from '@leafygreen-ui/icon';
@@ -22,6 +22,11 @@ const SearchInput: React.FC<SearchInputProps> = ({
   placeholder = 'How do I change a flat tire?'
 }) => {
   const [query, setQuery] = useState(initialValue);
+  
+  // Update internal state when initialValue prop changes
+  useEffect(() => {
+    setQuery(initialValue);
+  }, [initialValue]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

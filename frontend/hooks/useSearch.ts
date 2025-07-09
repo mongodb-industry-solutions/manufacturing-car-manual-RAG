@@ -19,14 +19,14 @@ interface SearchCache {
 // Create a static cache that persists between component mounts
 const GLOBAL_SEARCH_CACHE: SearchCache = {};
 
+// Cache version to invalidate old results after $rankFusion implementation
+const CACHE_VERSION = 'v3_rrf_contribution_scores';
+
 export interface UseSearchResult {
   search: (
     method: SearchMethod, 
     query: string, 
-    limit?: number,
-    hybridOptions?: { 
-      rrf_k?: number
-    }
+    limit?: number
   ) => Promise<SearchResponse>;
   loading: boolean;
   error: string | null;
@@ -51,21 +51,15 @@ export const useSearch = (): UseSearchResult => {
       const urlParams = new URLSearchParams(window.location.search);
       const queryParam = urlParams.get('q');
       const methodParam = urlParams.get('method') as SearchMethod | null;
-      const krfParam = urlParams.get('krf');
       
       if (queryParam) {
         // Use method from URL or default to hybrid if not specified
         const method = (methodParam && ['vector', 'text', 'hybrid'].includes(methodParam)) 
           ? methodParam as SearchMethod 
           : 'hybrid';
-        
-        // Get rrf_k value from URL or use default
-        const rrf_k = method === 'hybrid' ? 
-          (krfParam ? parseInt(krfParam, 10) : 60) : undefined;
           
         // Create a cache key  
-        const cacheKey = getCacheKey(method, queryParam, 10, 
-          method === 'hybrid' ? { rrf_k } : undefined);
+        const cacheKey = getCacheKey(method, queryParam, 10);
         
         // Check if we have cached results
         if (GLOBAL_SEARCH_CACHE[cacheKey]) {
@@ -83,26 +77,18 @@ export const useSearch = (): UseSearchResult => {
   const getCacheKey = (
     method: SearchMethod, 
     query: string, 
-    limit: number = 5,
-    hybridOptions?: { rrf_k?: number }
+    limit: number = 5
   ): string => {
-    if (method === 'hybrid' && hybridOptions) {
-      return `${method}:${query}:${limit}:${hybridOptions.rrf_k}`;
-    } else {
-      return `${method}:${query}:${limit}`;
-    }
+    return `${CACHE_VERSION}:${method}:${query}:${limit}`;
   };
   
   const search = async (
     method: SearchMethod, 
     query: string, 
-    limit: number = 5,
-    hybridOptions?: { 
-      rrf_k?: number 
-    }
+    limit: number = 5
   ): Promise<SearchResponse> => {
     // Generate a cache key for this search
-    const cacheKey = getCacheKey(method, query, limit, hybridOptions);
+    const cacheKey = getCacheKey(method, query, limit);
     
     // Check if we have a cached result for this exact search
     if (GLOBAL_SEARCH_CACHE[cacheKey]) {
@@ -145,13 +131,9 @@ export const useSearch = (): UseSearchResult => {
           break;
           
         case 'hybrid':
-          if (!hybridOptions) {
-            throw new Error('Hybrid search requires options');
-          }
           response = await searchService.hybridSearch({
             query,
-            limit,
-            ...hybridOptions
+            limit
           });
           break;
           
