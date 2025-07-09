@@ -47,9 +47,9 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
       )}
       
       <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
-        {results.map((result) => (
+        {results.map((result, index) => (
           <SearchResultCard 
-            key={result.chunk_id || (result.chunk && result.chunk.id) || `result-${Math.random()}`} 
+            key={result.chunk_id || (result.chunk && result.chunk.id) || `result-${index}`} 
             result={result} 
             highlight={highlight} 
           />
