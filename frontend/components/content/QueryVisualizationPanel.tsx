@@ -255,7 +255,7 @@ db.chunks.aggregate([
         <Tooltip
           key="rankfusion-badge"
           trigger={
-            <Badge variant="purple">$rankFusion</Badge>
+            <Badge variant="lightgray">$rankFusion</Badge>
           }
           triggerEvent="hover"
         >

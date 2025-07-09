@@ -104,14 +104,6 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
                     {RANKFUSION_EXPLANATION}
                   </Tooltip>
                 </div>
-                
-                <div style={{ fontSize: '14px', color: palette.gray.dark1 }}>
-                  • Automatically performs Reciprocal Rank Fusion (RRF)
-                  <br />
-                  • Optimized fusion weights for vector and text search
-                  <br />
-                  • Native MongoDB performance and reliability
-                </div>
               </div>
             </Banner>
           </div>
