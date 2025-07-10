@@ -83,7 +83,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
         overflow: 'hidden',
         border: `1px solid ${palette.gray.light1}`,
       }}
-      hoverable="true"
+      hoverable={true}
     >
       {/* Header section with color bar based on score */}
       <div style={{ 
