@@ -1,21 +1,17 @@
 services:
-  demoname-backend:
+  back:
     build:
       context: .
       no_cache: true
       dockerfile: Dockerfile.backend
-    image: imagename-backend:latest
     ports:
       - "8000:8000"
-    restart: always
-    container_name: demoname-backend
-  demoname-frontend:
+    container_name: back
+  front:
     build:
       context: .
       no_cache: true
       dockerfile: Dockerfile.frontend
-    image: imagename-frontend:latest
     ports:
-      - "8000:8000"
-    restart: always
-    container_name: demoname-frontend
+      - "3000:3000"
+    container_name: front

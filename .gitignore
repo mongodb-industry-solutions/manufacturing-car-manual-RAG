@@ -11,6 +11,11 @@ venv.bak/
 **/config.yml
 **/config.yaml
 
+# Google Cloud credentials
+gcp/
+.config/gcloud/
+**/application_default_credentials.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -166,6 +171,9 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Makefile
+makefile
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
