@@ -1,24 +1,60 @@
+import logging
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
-from dotenv import load_dotenv
+from app.core.config import get_settings
+from app.api.routes import chunks, search, health
 
-load_dotenv()
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
-app = FastAPI()
+# Load settings
+settings = get_settings()
 
+# Create FastAPI app
+app = FastAPI(title=settings.PROJECT_NAME, redirect_slashes=False)
+
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-router = APIRouter()
+# Exception handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error. Please check the logs for details."}
+    )
 
+# Include routers with consistent slash handling
+app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
+app.include_router(chunks.router, prefix=f"{settings.API_V1_STR}/chunks", tags=["chunks"])
+app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["search"])
+
+# Allow redirects for slash handling (default behavior)
+# Our frontend will consistently use trailing slashes
+
+# Root endpoint
 @app.get("/")
-async def read_root(request: Request):
-    return {"message":"Server is running"}
+async def root():
+    return {
+        "message": "Car Manual Explorer API is running. See /docs for API documentation.",
+        "industry": "automotive",
+        "version": "1.0.0"
+    }
+
+if __name__ == "__main__":
+    # Run the application with uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)

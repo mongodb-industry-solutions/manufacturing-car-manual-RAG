@@ -1,7 +1,0 @@
-{
-    "INDUSTRY": "Cross",
-    "EMBEDDINGS_MODEL_NAME": "Cohere Embed English V3 Model (within AWS Bedrock)",
-    "EMBEDDINGS_MODEL_ID": "cohere.embed-english-v3",
-    "CHATCOMPLETIONS_MODEL_NAME": "Anthropic Claude 3 Haiku (within AWS Bedrock)",
-    "CHATCOMPLETIONS_MODEL_ID": "anthropic.claude-3-haiku-20240307-v1:0"
-}

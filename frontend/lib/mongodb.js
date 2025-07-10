@@ -2,10 +2,19 @@ import { MongoClient } from "mongodb";
 
 const uri = process.env.MONGODB_URI;
 
-const client = new MongoClient(uri);
+let client = null;
 let db = null;
 
+// Initialize client only if URI is available
+if (uri) {
+  client = new MongoClient(uri);
+}
+
 export async function connectToDatabase(dbName, collectionName) {
+  if (!client) {
+    throw new Error("MongoDB URI is not configured. Please set MONGODB_URI environment variable.");
+  }
+
   if (db && client.topology && client.topology.isConnected()) {
     return db.collection(collectionName);
   }
