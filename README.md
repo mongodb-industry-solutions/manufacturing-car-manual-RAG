@@ -206,9 +206,35 @@ poetry install
 
 This will create a virtual environment and install all the dependencies specified in the `pyproject.toml` file.
 
-### Data Preparation
+### Data Ingestion using the Car Manual Notebook
 
-If you have car manual data to import, ensure it follows the expected chunk format:
+This project includes a Jupyter Notebook, `Car Manual Data Ingestion Notebook.ipynb`, to help you process your own car manual PDFs. The notebook guides you through the following steps:
+
+1.  **Parsing**: Using Google's Document AI to parse the PDF and extract text, layout, and hierarchical information.
+2.  **Chunking**: Intelligently splitting the extracted content into meaningful, semantically-aware chunks.
+3.  **Embedding**: Generating vector embeddings for each chunk using Google's Vertex AI.
+4.  **Storing**: Saving the processed data, including text, metadata, and embeddings, into your MongoDB Atlas collection in a format compatible with the web application.
+
+#### Prerequisites for the Notebook
+
+Before running the notebook, you need to have the following:
+
+- A **Google Cloud Platform (GCP) Project**.
+- The **Document AI** and **Vertex AI** APIs enabled in your GCP project.
+- A service account with appropriate permissions for Document AI and Vertex AI.
+- Your car manual in PDF format.
+
+#### Running the Notebook
+
+1.  Open the `Car Manual Data Ingestion Notebook.ipynb` in a Jupyter environment (like Jupyter Lab or Google Colab).
+2.  Follow the instructions in the notebook to install the required Python libraries.
+3.  Configure your GCP project details and service account credentials as instructed in the notebook.
+4.  Set the path to your car manual PDF.
+5.  Run the notebook cells sequentially to process the PDF, create embeddings, and ingest the data into MongoDB.
+
+#### Output Data Format
+
+The notebook will generate documents in your MongoDB collection with the following structure, which is ready to be used by the Car Manual Explorer application:
 
 ```json
 {
@@ -427,10 +453,21 @@ Check additional and accompanying resources below:
 
 ## License
 
-This project is provided as a demonstration and learning resource.
+MIT License
+Copyright (c) 2025 MongoDB
 
-## Acknowledgments
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-- MongoDB Atlas for providing powerful search capabilities
-- Google Vertex AI for AI services
-- MongoDB Leafygreen UI for the component library
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
