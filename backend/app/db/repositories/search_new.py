@@ -177,7 +177,8 @@ class SearchRepository:
         max_edits: int = 1
     ) -> List[SearchResult]:
         """
-        Performs a standard text search using Atlas Search
+        Performs enhanced text search using Atlas Search compound query
+        with phrase, exact text, and fuzzy matching operators with boost values
         
         Args:
             query_text: The text query to search for
@@ -186,7 +187,7 @@ class SearchRepository:
             max_edits: Maximum edit distance for fuzzy matching (0-2)
         
         Returns:
-            List of search results ordered by text relevance
+            List of search results ordered by text relevance with improved scoring
         """
         # Make sure db_name and collection_name are set
         if not hasattr(self, 'db_name') or not self.db_name:
@@ -203,26 +204,39 @@ class SearchRepository:
             return []
             
         try:
-            logger.info(f"Performing Atlas Search with index: {self.text_index_name}")
+            logger.info(f"Performing Enhanced Atlas Search with compound query using index: {self.text_index_name}")
             
             # Set up fuzzy options if enabled
             fuzzy_options = {"maxEdits": max_edits, "prefixLength": 3} if fuzzy else None
             
-            # Build the search pipeline with compound operator for better results
-            text_search_config = {
-                "query": query_text,
-                "path": ["text", "context", "breadcrumb_trail"]
-            }
+            # Build compound should clauses with boost values for prioritized matching
+            compound_should_clauses = [
+                # Part 1: Exact phrase matching (highest priority)
+                # Finds documents containing the exact phrase - most relevant results
+                {"phrase": {"query": query_text, "path": "breadcrumb_trail", "score": {"boost": {"value": 10}}}},
+                {"phrase": {"query": query_text, "path": "text", "score": {"boost": {"value": 8}}}},
+                
+                # Part 2: Individual word matching (medium priority)
+                # Finds documents containing all words individually - good relevance
+                {"text": {"query": query_text, "path": "breadcrumb_trail", "score": {"boost": {"value": 5}}}},
+                {"text": {"query": query_text, "path": "text", "score": {"boost": {"value": 4}}}},
+            ]
             
-            # Add fuzzy options if enabled
+            # Part 3: Add fuzzy operators if enabled (lowest priority)
+            # Catches typos and similar words - ensures recall
             if fuzzy and fuzzy_options:
-                text_search_config["fuzzy"] = fuzzy_options
+                compound_should_clauses.extend([
+                    {"text": {"query": query_text, "path": "breadcrumb_trail", "fuzzy": fuzzy_options, "score": {"boost": {"value": 2}}}},
+                    {"text": {"query": query_text, "path": "text", "fuzzy": fuzzy_options, "score": {"boost": {"value": 1.5}}}},
+                ])
                 
             pipeline = [
                 {
                     "$search": {
                         "index": self.text_index_name,
-                        "text": text_search_config
+                        "compound": {
+                            "should": compound_should_clauses
+                        }
                     }
                 },
                 {"$limit": limit},
@@ -240,7 +254,7 @@ class SearchRepository:
                 debug_info["result_count"] = len(results)
                 debug_info["execution_time_ms"] = (get_current_time() - start_time) * 1000
                 
-            logger.info(f"Atlas Text Search: Found {len(results)} results for query '{query_text}'")
+            logger.info(f"Enhanced Atlas Text Search (compound query): Found {len(results)} results for query '{query_text}'")
             
             # Process results into SearchResult objects
             for result in results:
@@ -353,14 +367,25 @@ class SearchRepository:
                 }
             ]
             
-            # --- Define the Text Search Pipeline ---
+            # --- Define the Text Search Pipeline with compound query ---
             text_search_pipeline = [
                 {
                     "$search": {
                         "index": self.text_index_name,
-                        "text": {
-                            "query": query_text,
-                            "path": "text"
+                        "compound": {
+                            "should": [
+                                # Exact phrase matching (highest priority)
+                                {"phrase": {"query": query_text, "path": "breadcrumb_trail", "score": {"boost": {"value": 10}}}},
+                                {"phrase": {"query": query_text, "path": "text", "score": {"boost": {"value": 8}}}},
+                                
+                                # Individual word matching (medium priority)
+                                {"text": {"query": query_text, "path": "breadcrumb_trail", "score": {"boost": {"value": 5}}}},
+                                {"text": {"query": query_text, "path": "text", "score": {"boost": {"value": 4}}}},
+                                
+                                # Fuzzy matching (lowest priority)
+                                {"text": {"query": query_text, "path": "breadcrumb_trail", "fuzzy": {"maxEdits": 1, "prefixLength": 3}, "score": {"boost": {"value": 2}}}},
+                                {"text": {"query": query_text, "path": "text", "fuzzy": {"maxEdits": 1, "prefixLength": 3}, "score": {"boost": {"value": 1.5}}}}
+                            ]
                         }
                     }
                 }

@@ -54,14 +54,28 @@ const QueryVisualizationPanel: React.FC<QueryVisualizationPanelProps> = ({
   }
 ])`;
       case 'text':
-        return `db.chunks.aggregate([
+        return `// Enhanced text search with compound operators and boost values
+db.chunks.aggregate([
   {
     $search: {
       index: "manual_text_search_index",
-      text: {
-        query: "${searchQuery}",
-        path: ["text", "context", "breadcrumb_trail"],
-        fuzzy: { maxEdits: 1, prefixLength: 3 }
+      compound: {
+        should: [
+          // Part 1: Exact phrase matching (highest priority)
+          // Finds documents containing the exact phrase - most relevant results
+          { phrase: { query: "${searchQuery}", path: "breadcrumb_trail", score: { boost: { value: 10 } } } },
+          { phrase: { query: "${searchQuery}", path: "text", score: { boost: { value: 8 } } } },
+          
+          // Part 2: Individual word matching (medium priority)
+          // Finds documents containing all words individually - good relevance
+          { text: { query: "${searchQuery}", path: "breadcrumb_trail", score: { boost: { value: 5 } } } },
+          { text: { query: "${searchQuery}", path: "text", score: { boost: { value: 4 } } } },
+          
+          // Part 3: Fuzzy matching (lowest priority)
+          // Catches typos and similar words - ensures recall
+          { text: { query: "${searchQuery}", path: "breadcrumb_trail", fuzzy: { maxEdits: 1, prefixLength: 3 }, score: { boost: { value: 2 } } } },
+          { text: { query: "${searchQuery}", path: "text", fuzzy: { maxEdits: 1, prefixLength: 3 }, score: { boost: { value: 1.5 } } } }
+        ]
       }
     }
   },
@@ -72,7 +86,6 @@ const QueryVisualizationPanel: React.FC<QueryVisualizationPanelProps> = ({
       score: { $meta: "searchScore" },
       chunk_id: "$id",
       text: 1,
-      context: 1,
       breadcrumb_trail: 1,
       page_numbers: 1,
       content_type: 1,
@@ -82,6 +95,7 @@ const QueryVisualizationPanel: React.FC<QueryVisualizationPanelProps> = ({
 ])`;
       case 'hybrid':
         return `// Hybrid search using MongoDB's native $rankFusion
+// Combines vector search with enhanced compound text search
 db.chunks.aggregate([
   {
     $rankFusion: {
@@ -98,14 +112,25 @@ db.chunks.aggregate([
               }
             }
           ],
-          // Text search pipeline
+          // Text search pipeline with enhanced compound query
           text: [
             {
               $search: {
                 index: "manual_text_search_index",
-                text: {
-                  query: "${searchQuery}",
-                  path: ["text"],
+                compound: {
+                  should: [
+                    // Exact phrase matching (highest priority)
+                    { phrase: { query: "${searchQuery}", path: "breadcrumb_trail", score: { boost: { value: 10 } } } },
+                    { phrase: { query: "${searchQuery}", path: "text", score: { boost: { value: 8 } } } },
+                    
+                    // Individual word matching (medium priority)
+                    { text: { query: "${searchQuery}", path: "breadcrumb_trail", score: { boost: { value: 5 } } } },
+                    { text: { query: "${searchQuery}", path: "text", score: { boost: { value: 4 } } } },
+                    
+                    // Fuzzy matching (lowest priority)
+                    { text: { query: "${searchQuery}", path: "breadcrumb_trail", fuzzy: { maxEdits: 1, prefixLength: 3 }, score: { boost: { value: 2 } } } },
+                    { text: { query: "${searchQuery}", path: "text", fuzzy: { maxEdits: 1, prefixLength: 3 }, score: { boost: { value: 1.5 } } } }
+                  ]
                 }
               }
             },
@@ -207,7 +232,7 @@ db.chunks.aggregate([
       case 'vector':
         return 'Uses MongoDB Atlas Vector Search to find semantically similar content using vector embeddings';
       case 'text':
-        return 'Uses MongoDB Atlas Search for keyword-based search with fuzzy matching';
+        return 'Enhanced MongoDB Atlas Search with compound operators, prioritizing breadcrumb trail navigation context';
       case 'hybrid':
         return 'Combines Vector and Text search using MongoDB\'s native $rankFusion aggregation stage';
       default:
@@ -245,7 +270,7 @@ db.chunks.aggregate([
           }
           triggerEvent="hover"
         >
-          MongoDB Atlas Search provides full-text search with fuzzy matching
+          Enhanced MongoDB Atlas Search with compound operators, prioritizing breadcrumb trail navigation context
         </Tooltip>
       );
     }
@@ -306,7 +331,7 @@ db.chunks.aggregate([
                 searchMethod === 'vector' 
                   ? 'Vector search embeds your query text into a high-dimensional vector and finds documents with similar vectors, capturing semantic meaning beyond keywords.'
                   : searchMethod === 'text'
-                    ? 'Text search looks for keywords and phrases in the document, with fuzzy matching to handle typos and variations.'
+                    ? 'Enhanced text search uses compound operators with boost values: phrase operators (highest priority) find exact phrases, text operators find individual words, and fuzzy matching catches typos. Breadcrumb trail matches are prioritized over main text content to emphasize navigation context.'
                     : 'Hybrid search combines both approaches using MongoDB\'s native $rankFusion stage, which automatically performs Reciprocal Rank Fusion (RRF) to merge and rank results from both search methods.'
               }
             </Body>
