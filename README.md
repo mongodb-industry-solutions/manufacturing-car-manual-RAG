@@ -17,13 +17,6 @@ The architecture we're about to set up is depicted in the diagram below:
 
 ![Car Manual Explorer Architecture](frontend/public/architecture.png)
 
-If you want to learn more about Retrieval-Augmented Generation (RAG) and semantic search for technical documentation, visit the following pages:
-
-- [MongoDB Atlas Vector Search](https://www.mongodb.com/docs/atlas/atlas-search/vector-search/)
-- [AWS Bedrock Foundation Models](https://aws.amazon.com/bedrock/foundation-models/)
-- [Google Vertex AI](https://cloud.google.com/vertex-ai/docs/generative-ai/learn/overview)
-- [Building RAG Applications with MongoDB](https://www.mongodb.com/developer/products/atlas/building-rag-application-mongodb-atlas/)
-
 Let's get started!
 
 ## Prerequisites
@@ -74,7 +67,7 @@ Now it's time to clone the Car Manual Explorer source code from GitHub to your l
 3. Once you're in the desired directory, use the `git clone` command to clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/car-manual-explorer.git
+   git clone https://github.com/mongodb-industry-solutions/manufacturing-car-manual-RAG.git
    ```
 
 4. After running the `git clone` command, a new directory with the repository's name will be created in your chosen directory. To navigate into the cloned repository, use the `cd` command:
@@ -406,10 +399,12 @@ The application implements an **advanced compound query structure** that dramati
 #### Three-Phase Matching Strategy
 
 1. **Exact Phrase Matching** (Boost: 10/8)
+
    - Finds complete phrases like "check engine light" as a unit
    - Ensures specific procedures rank highest
 
-2. **Individual Word Matching** (Boost: 5/4)  
+2. **Individual Word Matching** (Boost: 5/4)
+
    - Finds documents with all words present (even if separated)
    - Captures related content discussing the topic
 
@@ -420,6 +415,7 @@ The application implements an **advanced compound query structure** that dramati
 #### Smart Field Prioritization
 
 The pipeline prioritizes **breadcrumb_trail** over **text** because:
+
 - Section titles contain the most relevant terminology
 - Navigation context helps users find specific procedures faster
 - Reduces noise from incidental mentions in body text
@@ -427,8 +423,9 @@ The pipeline prioritizes **breadcrumb_trail** over **text** because:
 #### Real-World Impact
 
 For a search like "check engine light":
+
 - Documents with the exact phrase in navigation: ~17 points
-- Documents with the phrase in main text: ~13.5 points  
+- Documents with the phrase in main text: ~13.5 points
 - Documents with only individual words: ~9 points
 - Documents with typos: ~3.5 points (still visible but ranked lower)
 
@@ -480,9 +477,6 @@ Here are some common issues and their solutions:
 Check additional and accompanying resources below:
 
 - [MongoDB Atlas Documentation](https://docs.mongodb.com/atlas/)
-- [MongoDB Vector Search Tutorial](https://www.mongodb.com/docs/atlas/atlas-search/vector-search/)
-- [FastAPI Best Practices](https://fastapi.tiangolo.com/tutorial/)
-- [Next.js Production Deployment](https://nextjs.org/docs/deployment)
 - [Google Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs)
 - [MongoDB Leafygreen UI Components](https://www.mongodb.design/)
 
