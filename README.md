@@ -399,6 +399,41 @@ For containerized deployment in production environments:
    - Visual percentage slider showing vector (blue) vs text (green) contributions
    - Provides the most comprehensive results with intelligent score weighting
 
+### Enhanced Compound Search Pipeline
+
+The application implements an **advanced compound query structure** that dramatically improves search relevance by distinguishing between exact phrases, individual words, and typos. This is critical for technical documentation where precision matters.
+
+#### Three-Phase Matching Strategy
+
+1. **Exact Phrase Matching** (Boost: 10/8)
+   - Finds complete phrases like "check engine light" as a unit
+   - Ensures specific procedures rank highest
+
+2. **Individual Word Matching** (Boost: 5/4)  
+   - Finds documents with all words present (even if separated)
+   - Captures related content discussing the topic
+
+3. **Fuzzy Matching** (Boost: 2/1.5)
+   - Catches typos and variations ("engin lite")
+   - Ensures no relevant content is missed
+
+#### Smart Field Prioritization
+
+The pipeline prioritizes **breadcrumb_trail** over **text** because:
+- Section titles contain the most relevant terminology
+- Navigation context helps users find specific procedures faster
+- Reduces noise from incidental mentions in body text
+
+#### Real-World Impact
+
+For a search like "check engine light":
+- Documents with the exact phrase in navigation: ~17 points
+- Documents with the phrase in main text: ~13.5 points  
+- Documents with only individual words: ~9 points
+- Documents with typos: ~3.5 points (still visible but ranked lower)
+
+This compound approach ensures the most relevant content always appears first, crucial for technicians who need quick access to specific repair procedures. The same enhanced structure is used in both text search and the text component of hybrid search.
+
 ### Content Structure
 
 The application intelligently processes car manuals to preserve:
@@ -453,21 +488,4 @@ Check additional and accompanying resources below:
 
 ## License
 
-MIT License
-Copyright (c) 2025 MongoDB
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

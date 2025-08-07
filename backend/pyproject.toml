@@ -16,6 +16,9 @@ vertexai = "^0.0.1"
 pydantic-settings = "^2.8.1"
 
 
+[tool.poetry.group.dev.dependencies]
+pip-licenses = "^5.0.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
