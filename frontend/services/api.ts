@@ -10,6 +10,25 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  paramsSerializer: {
+    serialize: (params) => {
+      // Configure array serialization for FastAPI compatibility
+      // FastAPI expects: vehicle_systems=engine&vehicle_systems=brakes
+      // Not: vehicle_systems[]=engine&vehicle_systems[]=brakes
+      const searchParams = new URLSearchParams();
+      
+      Object.entries(params).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          // For arrays, add each value as a separate parameter
+          value.forEach(item => searchParams.append(key, item));
+        } else if (value !== undefined && value !== null) {
+          searchParams.append(key, String(value));
+        }
+      });
+      
+      return searchParams.toString();
+    }
+  }
 });
 
 // Add request interceptor for handling errors

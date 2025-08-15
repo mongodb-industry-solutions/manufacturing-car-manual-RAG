@@ -47,20 +47,17 @@ const MongoDBFilterVisualization: React.FC<MongoDBFilterVisualizationProps> = ({
       stages.push(`  {
     $match: {
       content_type: { 
-        $in: ${JSON.stringify(filters.contentType)} 
+        $all: ${JSON.stringify(filters.contentType)} 
       }
     }
   }`);
     }
     
-    // Match stage for vehicle systems - check both vehicle_systems and metadata.systems
+    // Match stage for vehicle systems - stored in metadata.systems
     if (filters.vehicleSystems.length > 0) {
       stages.push(`  {
     $match: {
-      $or: [
-        { vehicle_systems: { $in: ${JSON.stringify(filters.vehicleSystems)} } },
-        { "metadata.systems": { $in: ${JSON.stringify(filters.vehicleSystems)} } }
-      ]
+      "metadata.systems": { $all: ${JSON.stringify(filters.vehicleSystems)} }
     }
   }`);
     }
@@ -145,18 +142,18 @@ const MongoDBFilterVisualization: React.FC<MongoDBFilterVisualizationProps> = ({
               }
               triggerEvent="hover"
             >
-              Filters chunks by content type: {filters.contentType.join(', ')}
+              Filters chunks that contain ALL selected content types: {filters.contentType.join(' AND ')}
             </Tooltip>
           )}
           
           {filters.vehicleSystems.length > 0 && (
             <Tooltip
               trigger={
-                <Badge variant="green">$match vehicle_systems</Badge>
+                <Badge variant="green">$match metadata.systems</Badge>
               }
               triggerEvent="hover"
             >
-              Filters chunks by vehicle systems using $or operator to check both vehicle_systems field and metadata.systems: {filters.vehicleSystems.join(', ')}
+              Filters chunks that contain ALL selected vehicle systems in metadata.systems: {filters.vehicleSystems.join(' AND ')}
             </Tooltip>
           )}
           

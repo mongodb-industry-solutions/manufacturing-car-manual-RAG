@@ -115,7 +115,7 @@ class ChunkRepository:
             return Chunk(**result)
         return None
     
-    async def get_chunks(self, skip: int = 0, limit: int = 100, filters: dict = None) -> ChunkList:
+    async def get_chunks(self, skip: int = 0, limit: int = 100, filters: dict = None, include_embeddings: bool = False) -> ChunkList:
         """
         Get multiple chunks with pagination and filtering
         
@@ -128,68 +128,126 @@ class ChunkRepository:
                 - has_safety_notices: Whether chunks must have safety notices
                 - has_procedures: Whether chunks must have procedural steps
                 - text_search: Text to search within chunks
+            include_embeddings: Whether to include embedding data in response (default: False for performance)
         """
+        logger.info(f"get_chunks called with skip={skip}, limit={limit}, filters={filters}")
+        
         # Check if collection is initialized
         if not hasattr(self, 'collection') or self.collection is None:
             return ChunkList(total=0, chunks=[])
             
-        # Build the query filter
-        query_filter = {}
+        # Build aggregation pipeline for server-side filtering
+        pipeline = []
+        
+        # Build match stage for filtering
+        match_stage = {}
+        
+        # If no filters provided, we still need to match all documents
+        # Otherwise the facet will operate on an empty pipeline
         
         if filters:
-            # Filter by content types
+            # Filter by content types - must contain ALL selected types
             if filters.get('content_types'):
-                query_filter['content_type'] = {'$in': filters['content_types']}
+                match_stage['content_type'] = {'$all': filters['content_types']}
             
-            # Filter by vehicle systems
+            # Filter by vehicle systems (stored in metadata.systems) - must contain ALL selected systems
             if filters.get('vehicle_systems'):
-                query_filter['vehicle_systems'] = {'$in': filters['vehicle_systems']}
+                match_stage['metadata.systems'] = {'$all': filters['vehicle_systems']}
             
-            # Filter for chunks with safety notices - check both direct safety_notices and metadata.has_safety
+            # Build separate conditions for safety and procedures to avoid $or conflicts
+            special_conditions = []
+            
+            # Filter for chunks with safety notices
             if filters.get('has_safety_notices'):
-                query_filter['$or'] = [
-                    {'safety_notices.0': {'$exists': True}},
-                    {'metadata.has_safety': True}
-                ]
+                safety_condition = {
+                    '$or': [
+                        {'safety_notices.0': {'$exists': True}},
+                        {'metadata.has_safety': True},
+                        {'content_type': 'safety'},
+                        {'text': {'$regex': '⚠️|warning|caution', '$options': 'i'}}
+                    ]
+                }
+                special_conditions.append(safety_condition)
             
             # Filter for chunks with procedural steps
             if filters.get('has_procedures'):
-                query_filter['procedural_steps.0'] = {'$exists': True}
+                procedure_condition = {
+                    '$or': [
+                        {'procedural_steps.0': {'$exists': True}},
+                        {'content_type': {'$in': ['procedure', 'procedural']}},
+                        {'text': {'$regex': r'\d+\.\s+[A-Z]|Step\s+\d+', '$options': 'i'}}
+                    ]
+                }
+                special_conditions.append(procedure_condition)
             
-            # Text search within chunks (across multiple fields)
+            # Combine special conditions with $and if multiple exist
+            if special_conditions:
+                if len(special_conditions) == 1:
+                    # Single special condition, merge it directly
+                    if '$or' in special_conditions[0]:
+                        match_stage['$or'] = special_conditions[0]['$or']
+                else:
+                    # Multiple special conditions, use $and
+                    match_stage['$and'] = special_conditions
+            
+            # Text search using existing Atlas Search index
             if filters.get('text_search'):
-                # Create a text index if needed
-                self.collection.create_index([
-                    ("text", "text"),
-                    ("heading_level_1", "text"),
-                    ("heading_level_2", "text"),
-                    ("heading_level_3", "text")
-                ])
-                
-                query_filter['$text'] = {'$search': filters['text_search']}
+                # Use $search stage for Atlas Search instead of $text
+                search_stage = {
+                    '$search': {
+                        'index': 'manual_text_search_index',
+                        'text': {
+                            'query': filters['text_search'],
+                            'path': ['text', 'context', 'breadcrumb_trail']
+                        }
+                    }
+                }
+                pipeline.append(search_stage)
         
-        # Count total matching documents
-        total = self.collection.count_documents(query_filter)
+        # Add match stage if we have filters (except text search which uses $search)
+        if match_stage:
+            pipeline.append({'$match': match_stage})
+            logger.info(f"Added match stage to pipeline: {match_stage}")
         
-        # Execute the query with pagination
-        cursor = self.collection.find(query_filter).skip(skip).limit(limit)
+        # Add facet stage to get both count and data
+        facet_stage = {
+            '$facet': {
+                'total': [{'$count': 'count'}],
+                'data': [
+                    {'$skip': skip},
+                    {'$limit': limit}
+                ]
+            }
+        }
+        pipeline.append(facet_stage)
         
-        # Sort by _id if no specific sorting is needed
-        if not filters or not filters.get('text_search'):
-            cursor = cursor.sort('_id', 1)
-        else:
-            # If text search is used, sort by text score
-            cursor = cursor.sort([('score', {'$meta': 'textScore'})])
+        # Log the complete pipeline for debugging
+        logger.info(f"Executing aggregation pipeline with {len(pipeline)} stages")
+        logger.info(f"Pipeline: {pipeline}")
+        
+        # Execute aggregation pipeline
+        result = list(self.collection.aggregate(pipeline))
+        
+        if not result:
+            logger.warning("Aggregation returned no results")
+            return ChunkList(total=0, chunks=[])
+        
+        # Extract total count and data
+        facet_result = result[0]
+        total = facet_result['total'][0]['count'] if facet_result['total'] else 0
+        documents = facet_result['data']
+        
+        logger.info(f"Query returned {len(documents)} documents out of {total} total matching filter criteria")
         
         # Process results
         chunks = []
-        for doc in cursor:
+        for doc in documents:
             # Keep _id as a string representation for debugging/reference
             if "_id" in doc:
                 doc["_id"] = str(doc["_id"])
             
-            # Transform the embedding vector to a truncated representation for display
-            if self.settings.VECTOR_FIELD_NAME in doc:
+            # Only process embeddings if explicitly requested (performance optimization)
+            if include_embeddings and self.settings.VECTOR_FIELD_NAME in doc:
                 # Preserve embedding timestamp if it exists
                 embedding_timestamp = None
                 if "embedding_timestamp" in doc:
@@ -213,6 +271,9 @@ class ChunkRepository:
                 # Add back the timestamp if it existed
                 if embedding_timestamp:
                     doc["embedding_timestamp"] = embedding_timestamp
+            elif self.settings.VECTOR_FIELD_NAME in doc:
+                # Remove embedding data when not requested for performance
+                del doc[self.settings.VECTOR_FIELD_NAME]
             
             # Ensure the id is set for clients expecting it
             if "id" not in doc and "_id" in doc:
@@ -248,8 +309,8 @@ class ChunkRepository:
                         {"$sort": {"_id": 1}}
                     ],
                     "vehicle_systems": [
-                        {"$unwind": "$vehicle_systems"},
-                        {"$group": {"_id": "$vehicle_systems"}},
+                        {"$unwind": "$metadata.systems"},
+                        {"$group": {"_id": "$metadata.systems"}},
                         {"$sort": {"_id": 1}}
                     ]
                 }

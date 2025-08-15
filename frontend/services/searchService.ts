@@ -121,12 +121,44 @@ export const searchService = {
   },
   
   /**
-   * Get a list of chunks with pagination
+   * Get a list of chunks with pagination and filtering
    */
-  getChunks: async (skip: number = 0, limit: number = 100): Promise<ChunkList> => {
-    console.log(`[API] Fetching chunks with skip=${skip}, limit=${limit}`);
-    const response = await apiGet<ChunkList>('/chunks', { skip, limit });
-    console.log(`[API] Received ${response.chunks?.length || 0} chunks`);
+  getChunks: async (
+    skip: number = 0, 
+    limit: number = 100, 
+    filters?: {
+      content_types?: string[];
+      vehicle_systems?: string[];
+      has_safety_notices?: boolean;
+      has_procedures?: boolean;
+      text_search?: string;
+    }
+  ): Promise<ChunkList> => {
+    console.log(`[API] Fetching chunks with skip=${skip}, limit=${limit}, filters:`, filters);
+    
+    // Build query parameters
+    const params: any = { skip, limit, include_embeddings: false };
+    
+    if (filters) {
+      if (filters.content_types && filters.content_types.length > 0) {
+        params.content_types = filters.content_types;
+      }
+      if (filters.vehicle_systems && filters.vehicle_systems.length > 0) {
+        params.vehicle_systems = filters.vehicle_systems;
+      }
+      if (filters.has_safety_notices !== undefined) {
+        params.has_safety_notices = filters.has_safety_notices;
+      }
+      if (filters.has_procedures !== undefined) {
+        params.has_procedures = filters.has_procedures;
+      }
+      if (filters.text_search) {
+        params.text_search = filters.text_search;
+      }
+    }
+    
+    const response = await apiGet<ChunkList>('/chunks', params);
+    console.log(`[API] Received ${response.chunks?.length || 0} chunks (${response.total} total)`);
     return response;
   },
 

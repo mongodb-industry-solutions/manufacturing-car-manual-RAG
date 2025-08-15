@@ -58,7 +58,18 @@ const cacheManager = {
 
 export interface UseChunksResult {
   getChunk: (id: string) => Promise<Chunk>;
-  getChunks: (skip?: number, limit?: number, append?: boolean) => Promise<ChunkList>;
+  getChunks: (
+    skip?: number, 
+    limit?: number, 
+    append?: boolean, 
+    filters?: {
+      content_types?: string[];
+      vehicle_systems?: string[];
+      has_safety_notices?: boolean;
+      has_procedures?: boolean;
+      text_search?: string;
+    }
+  ) => Promise<ChunkList>;
   chunk: Chunk | null;
   chunks: ChunkList | null;
   loading: boolean;
@@ -148,17 +159,29 @@ export const useChunks = (): UseChunksResult => {
     }
   }, []);
 
-  const getChunks = useCallback(async (skip: number = 0, limit: number = 1000, append: boolean = false): Promise<ChunkList> => {
+  const getChunks = useCallback(async (
+    skip: number = 0, 
+    limit: number = 1000, 
+    append: boolean = false,
+    filters?: {
+      content_types?: string[];
+      vehicle_systems?: string[];
+      has_safety_notices?: boolean;
+      has_procedures?: boolean;
+      text_search?: string;
+    }
+  ): Promise<ChunkList> => {
     // Only set loading to true if this is the initial load
     if (!append) {
       setLoading(true);
     }
     setError(null);
     
-    // Check cache first (only for the initial request)
-    if (skip === 0 && !append) {
+    // Check cache first (only for initial request WITHOUT filters)
+    if (skip === 0 && !append && !filters) {
       const cachedChunks = cacheManager.getCache<ChunkList>(CACHE_KEY_CHUNKS);
       if (cachedChunks) {
+        console.log('[useChunks] Using cached unfiltered chunks');
         setChunks(cachedChunks);
         setLoading(false);
         return cachedChunks;
@@ -166,7 +189,7 @@ export const useChunks = (): UseChunksResult => {
     }
     
     try {
-      const response = await searchService.getChunks(skip, limit);
+      const response = await searchService.getChunks(skip, limit, filters);
       
       // Process chunks to ensure proper id field
       if (response.chunks && response.chunks.length > 0) {
@@ -199,8 +222,8 @@ export const useChunks = (): UseChunksResult => {
         setChunks(response);
       }
       
-      // Cache only the initial load (50 chunks)
-      if (skip === 0 && limit === 50 && !append) {
+      // Cache only the initial load (20 chunks) without filters
+      if (skip === 0 && limit === 20 && !append && !filters) {
         cacheManager.setCache(CACHE_KEY_CHUNKS, response);
       }
       
