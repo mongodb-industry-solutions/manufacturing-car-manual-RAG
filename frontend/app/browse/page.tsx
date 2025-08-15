@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { MyH1 as H1, MyH2 as H2, MyH3 as H3, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
@@ -54,12 +54,13 @@ export default function BrowsePage() {
   const [hasMoreInAPI, setHasMoreInAPI] = useState(true);
   const [totalChunks, setTotalChunks] = useState(0);
   
-  // Display state for filtered results
-  const [displayLimit, setDisplayLimit] = useState(20);
-  const [hasMoreToDisplay, setHasMoreToDisplay] = useState(true);
+  // Remove display limit logic - using server-side pagination only
   
   // Scroll observer reference
   const observerTarget = React.useRef(null);
+  
+  // Ref to prevent double initialization in React Strict Mode
+  const hasInitialized = useRef(false);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -75,287 +76,152 @@ export default function BrowsePage() {
     vehicleSystems: []
   });
   
+  // Function to build API filters from current state
+  const buildApiFilters = useCallback(() => {
+    const apiFilters: any = {};
+    if (filters.contentType.length > 0) {
+      apiFilters.content_types = filters.contentType;
+    }
+    if (filters.vehicleSystems.length > 0) {
+      apiFilters.vehicle_systems = filters.vehicleSystems;
+    }
+    if (filters.hasSafetyNotices) {
+      apiFilters.has_safety_notices = true;
+    }
+    if (filters.hasProcedures) {
+      apiFilters.has_procedures = true;
+    }
+    if (textFilter) {
+      apiFilters.text_search = textFilter;
+    }
+    return Object.keys(apiFilters).length > 0 ? apiFilters : undefined;
+  }, [filters, textFilter]);
+
+  // Initial load function
+  const loadInitialChunks = useCallback(async () => {
+    try {
+      console.log('Loading initial chunks...');
+      const filtersToPass = buildApiFilters();
+      console.log('Initial load filters:', filtersToPass);
+      
+      const result = await getChunks(0, 20, false, filtersToPass);
+      console.log(`Initial load: ${result.chunks.length} chunks out of ${result.total} total`);
+      
+      setTotalChunks(result.total);
+      setCurrentOffset(20); // Always increment by page size
+      setHasMoreInAPI(20 < result.total);
+    } catch (err) {
+      console.error('Failed to load initial chunks:', err);
+    }
+  }, [getChunks, buildApiFilters]);
+
+  // Load more chunks function
+  const loadMoreChunks = useCallback(async () => {
+    if (isLoadingMore || !hasMoreInAPI) return;
+    
+    setIsLoadingMore(true);
+    try {
+      console.log(`Loading more chunks from offset ${currentOffset}`);
+      const filtersToPass = buildApiFilters();
+      
+      const result = await getChunks(currentOffset, 20, true, filtersToPass);
+      console.log(`Loaded 20 more chunks (total in view: ${result.chunks.length})`);
+      
+      // Always increment offset by page size
+      const newOffset = currentOffset + 20;
+      setCurrentOffset(newOffset);
+      setHasMoreInAPI(newOffset < result.total);
+    } catch (err) {
+      console.error('Failed to load more chunks:', err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [currentOffset, isLoadingMore, hasMoreInAPI, getChunks, buildApiFilters]);
+  
   // Fetch initial chunks on load
   useEffect(() => {
-    // Skip if we already have chunks loaded from cache
-    if (chunks && chunks.chunks && chunks.chunks.length > 0) {
-      console.log('Using existing chunks data from cache');
-      setTotalChunks(chunks.total);
-      setCurrentOffset(chunks.chunks.length);
-      setHasMoreInAPI(chunks.chunks.length < chunks.total);
+    // Prevent double initialization in React Strict Mode
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      // Always load initial chunks - server-side filtering will handle empty filters
+      loadInitialChunks();
+    }
+  }, []); // Empty dependency array - only run once on mount
+  
+  // Refetch when filters change
+  useEffect(() => {
+    // Skip if not initialized yet
+    if (!hasInitialized.current) {
       return;
     }
-
-    const fetchInitialChunks = async () => {
+    
+    // Skip if all filters are empty (initial state)
+    if (filters.contentType.length === 0 && filters.vehicleSystems.length === 0 && 
+        !filters.hasSafetyNotices && !filters.hasProcedures && !textFilter) {
+      return;
+    }
+    
+    console.log('Filters changed, reloading with server-side filtering...');
+    // Reset pagination and reload with new filters
+    setCurrentOffset(0);
+    setHasMoreInAPI(true);
+    loadInitialChunks();
+  }, [filters, textFilter]); // Removed loadInitialChunks to prevent dependency cycle
+  
+  // Fetch available filters from API instead of extracting from chunks
+  useEffect(() => {
+    const fetchAvailableFilters = async () => {
       try {
-        console.log('Fetching initial 50 chunks...');
-        // Load only 50 chunks initially for fast page load
-        const result = await getChunks(0, 50);
-        console.log(`Successfully fetched ${result.chunks.length} chunks out of ${result.total} total`);
-        
-        setTotalChunks(result.total);
-        setCurrentOffset(result.chunks.length);
-        setHasMoreInAPI(result.chunks.length < result.total);
-        
-        // Debug: Log the first chunk to see its structure
-        if (result.chunks && result.chunks.length > 0) {
-          console.log('Sample chunk structure:', JSON.stringify(result.chunks[0], null, 2));
+        console.log('Fetching available filter values from API...');
+        // Use the existing API endpoint to get all available filter values
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/chunks/filters`);
+        if (response.ok) {
+          const filterData = await response.json();
+          setAvailableFilters({
+            contentTypes: filterData.content_types || [],
+            vehicleSystems: filterData.vehicle_systems || []
+          });
+          console.log('Loaded filter values:', filterData);
         }
-      } catch (err) {
-        console.error('Failed to fetch chunks:', err);
+      } catch (error) {
+        console.error('Failed to fetch available filters:', error);
+        // Fallback to extracting from loaded chunks if API call fails
+        if (chunks && chunks.chunks && chunks.chunks.length > 0) {
+          const contentTypes = new Set();
+          const vehicleSystems = new Set();
+          
+          chunks.chunks.forEach(chunk => {
+            if (chunk.content_type && Array.isArray(chunk.content_type)) {
+              chunk.content_type.forEach(type => contentTypes.add(type));
+            }
+            if (chunk.vehicle_systems && Array.isArray(chunk.vehicle_systems)) {
+              chunk.vehicle_systems.forEach(system => vehicleSystems.add(system));
+            }
+          });
+          
+          setAvailableFilters({
+            contentTypes: Array.from(contentTypes),
+            vehicleSystems: Array.from(vehicleSystems)
+          });
+        }
       }
     };
-    
-    fetchInitialChunks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Keep the empty dependency array to run only once
-  
-  // Extract available filters from chunks
-  useEffect(() => {
-    if (chunks && chunks.chunks && chunks.chunks.length > 0) {
-      // Avoid re-processing if we already have filter values
-      if (availableFilters.contentTypes.length > 0 || availableFilters.vehicleSystems.length > 0) {
-        return;
-      }
 
-      console.log('Extracting filter values from chunks...');
-      const contentTypes = new Set();
-      const vehicleSystems = new Set();
-      
-      chunks.chunks.forEach(chunk => {
-        // Extract content_type from the array
-        if (chunk.content_type && Array.isArray(chunk.content_type)) {
-          chunk.content_type.forEach(type => contentTypes.add(type));
-        }
-        
-        // Extract vehicle_systems from the array or metadata.systems if present
-        if (chunk.vehicle_systems && Array.isArray(chunk.vehicle_systems)) {
-          chunk.vehicle_systems.forEach(system => vehicleSystems.add(system));
-        }
-        // Also check metadata.systems as an alternative source
-        if (chunk.metadata && chunk.metadata.systems && Array.isArray(chunk.metadata.systems)) {
-          chunk.metadata.systems.forEach(system => vehicleSystems.add(system));
-        }
-      });
-      
-      // Log the found filter values for debugging
-      console.log('Found content types:', Array.from(contentTypes));
-      console.log('Found vehicle systems:', Array.from(vehicleSystems));
-      
-      setAvailableFilters({
-        contentTypes: Array.from(contentTypes),
-        vehicleSystems: Array.from(vehicleSystems)
-      });
+    // Only fetch if we don't already have filter values
+    if (availableFilters.contentTypes.length === 0 && availableFilters.vehicleSystems.length === 0) {
+      fetchAvailableFilters();
     }
-  }, [chunks, availableFilters]);
+  }, [availableFilters]);
   
-  // Helper to check if chunk matches text filter
-  const chunkMatchesText = (chunk: Chunk, text: string): boolean => {
-    const lowerText = text.toLowerCase();
-    
-    // Check in text content
-    if (chunk.text.toLowerCase().includes(lowerText)) {
-      console.debug(`Text match found in chunk text: "${chunk.id}"`);
-      return true;
-    }
-    
-    // Check in headings
-    if (chunk.heading_level_1 && chunk.heading_level_1.toLowerCase().includes(lowerText)) {
-      console.debug(`Text match found in heading_level_1: "${chunk.id}"`);
-      return true;
-    }
-    if (chunk.heading_level_2 && chunk.heading_level_2.toLowerCase().includes(lowerText)) {
-      console.debug(`Text match found in heading_level_2: "${chunk.id}"`);
-      return true;
-    }
-    if (chunk.heading_level_3 && chunk.heading_level_3.toLowerCase().includes(lowerText)) {
-      console.debug(`Text match found in heading_level_3: "${chunk.id}"`);
-      return true;
-    }
-    
-    return false;
-  };
-  
-  // Filter chunks based on current filters
+  // Since filtering is now done server-side, we just use the chunks directly
   const filteredChunks = React.useMemo(() => {
     if (!chunks || !chunks.chunks) return [];
     
-    console.log(`Filtering ${chunks.chunks.length} chunks with filters:`, 
-      JSON.stringify({...filters, textFilter}, null, 2));
-    
-    // Process all loaded chunks (no artificial limit since we're loading progressively)
-    const filtered = chunks.chunks.filter(chunk => {
-      // For debugging specific chunks
-      const isDebugging = false; // Set to true and specify chunk ID for detailed debugging
-      const debugChunkId = 'chunk_00001';
-      const isDebugChunk = isDebugging && chunk.id === debugChunkId;
-      
-      if (isDebugChunk) {
-        console.log(`Debugging chunk ${chunk.id}:`, chunk);
-      }
-      
-      // Text filter
-      if (textFilter && !chunkMatchesText(chunk, textFilter)) {
-        if (isDebugChunk) console.log(`${chunk.id} failed text filter`);
-        return false;
-      }
-      
-      // Content type filter
-      if (filters.contentType.length > 0) {
-        if (!chunk.content_type || !Array.isArray(chunk.content_type) || 
-            !chunk.content_type.some(type => filters.contentType.includes(type))) {
-          if (isDebugChunk) {
-            console.log(`${chunk.id} failed content_type filter`);
-            console.log(`  - chunk.content_type:`, chunk.content_type);
-            console.log(`  - filters.contentType:`, filters.contentType);
-          }
-          return false;
-        } else if (isDebugChunk) {
-          console.log(`${chunk.id} passed content_type filter`);
-          console.log(`  - chunk.content_type:`, chunk.content_type);
-          console.log(`  - filters.contentType:`, filters.contentType);
-        }
-      }
-      
-      // Vehicle systems filter - check both vehicle_systems array and metadata.systems
-      if (filters.vehicleSystems.length > 0) {
-        const directMatch = chunk.vehicle_systems && Array.isArray(chunk.vehicle_systems) && 
-          chunk.vehicle_systems.some(system => filters.vehicleSystems.includes(system));
-          
-        const metadataMatch = chunk.metadata && chunk.metadata.systems && Array.isArray(chunk.metadata.systems) &&
-          chunk.metadata.systems.some(system => filters.vehicleSystems.includes(system));
-          
-        const hasMatchingSystem = directMatch || metadataMatch;
-        
-        if (isDebugChunk) {
-          console.log(`${chunk.id} vehicle_systems filter check:`);
-          console.log(`  - chunk.vehicle_systems:`, chunk.vehicle_systems);
-          console.log(`  - chunk.metadata?.systems:`, chunk.metadata?.systems);
-          console.log(`  - filters.vehicleSystems:`, filters.vehicleSystems);
-          console.log(`  - directMatch:`, directMatch);
-          console.log(`  - metadataMatch:`, metadataMatch);
-          console.log(`  - hasMatchingSystem:`, hasMatchingSystem);
-        }
-        
-        if (!hasMatchingSystem) {
-          if (isDebugChunk) console.log(`${chunk.id} failed vehicle_systems filter`);
-          return false;
-        } else if (isDebugChunk) {
-          console.log(`${chunk.id} passed vehicle_systems filter`);
-        }
-      }
-      
-      // Safety notices filter - check all safety indicators
-      if (filters.hasSafetyNotices) {
-        // Check for safety notices in the content
-        const hasExplicitSafetyNotices = 
-          chunk.safety_notices && 
-          Array.isArray(chunk.safety_notices) && 
-          chunk.safety_notices.length > 0;
-        
-        // Check for safety flag in metadata
-        const hasSafetyMetadata = 
-          chunk.metadata && 
-          chunk.metadata.has_safety === true;
-        
-        // Check for safety notices in text (warning symbols)
-        const hasWarningSymbols = 
-          chunk.text && 
-          (chunk.text.includes('⚠️') || 
-           chunk.text.toLowerCase().includes('warning') || 
-           chunk.text.toLowerCase().includes('caution'));
-        
-        // Check if content_type includes 'safety'
-        const hasSafetyContentType = 
-          chunk.content_type && 
-          Array.isArray(chunk.content_type) && 
-          chunk.content_type.includes('safety');
-          
-        const hasSafety = hasExplicitSafetyNotices || hasSafetyMetadata || hasWarningSymbols || hasSafetyContentType;
-        
-        if (isDebugChunk) {
-          console.log(`${chunk.id} safety filter check:`);
-          console.log(`  - hasExplicitSafetyNotices:`, hasExplicitSafetyNotices);
-          console.log(`  - hasSafetyMetadata:`, hasSafetyMetadata);
-          console.log(`  - hasWarningSymbols:`, hasWarningSymbols);
-          console.log(`  - hasSafetyContentType:`, hasSafetyContentType);
-          console.log(`  - overall hasSafety:`, hasSafety);
-        }
-        
-        if (!hasSafety) {
-          if (isDebugChunk) console.log(`${chunk.id} failed safety filter`);
-          return false;
-        } else if (isDebugChunk) {
-          console.log(`${chunk.id} passed safety filter`);
-        }
-      }
-      
-      // Procedures filter - check for procedural steps and procedural content type
-      if (filters.hasProcedures) {
-        // Check for explicit procedural steps
-        const hasProceduralSteps = 
-          chunk.procedural_steps && 
-          Array.isArray(chunk.procedural_steps) && 
-          chunk.procedural_steps.length > 0;
-        
-        // Check if content_type includes 'procedure'
-        const hasProceduralContentType = 
-          chunk.content_type && 
-          Array.isArray(chunk.content_type) && 
-          chunk.content_type.some(type => 
-            type === 'procedure' || 
-            type === 'procedural' || 
-            type.includes('step')
-          );
-        
-        // Check for numbered steps in the text
-        const hasNumberedSteps = 
-          chunk.text && 
-          (chunk.text.match(/\d+\.\s+[A-Z]/) || // Matches patterns like "1. Do something"
-           chunk.text.match(/Step\s+\d+/i));     // Matches patterns like "Step 1"
-           
-        const hasProcedures = hasProceduralSteps || hasProceduralContentType || hasNumberedSteps;
-        
-        if (isDebugChunk) {
-          console.log(`${chunk.id} procedures filter check:`);
-          console.log(`  - hasProceduralSteps:`, hasProceduralSteps);
-          console.log(`  - hasProceduralContentType:`, hasProceduralContentType);
-          console.log(`  - hasNumberedSteps:`, hasNumberedSteps);
-          console.log(`  - overall hasProcedures:`, hasProcedures);
-          
-          if (hasNumberedSteps && chunk.text) {
-            console.log(`  - Matched pattern in text:`, 
-              chunk.text.match(/\d+\.\s+[A-Z]/) || chunk.text.match(/Step\s+\d+/i));
-          }
-        }
-        
-        if (!hasProcedures) {
-          if (isDebugChunk) console.log(`${chunk.id} failed procedures filter`);
-          return false;
-        } else if (isDebugChunk) {
-          console.log(`${chunk.id} passed procedures filter`);
-        }
-      }
-      
-      return true;
-    });
-    
-    console.log(`Filtering complete. Found ${filtered.length} matching chunks out of ${chunks.chunks.length} total`);
-    
-    // If we have very few matches, log them to help with debugging
-    if (filtered.length > 0 && filtered.length < 5) {
-      console.log('Matching chunks:', filtered.map(chunk => ({
-        id: chunk.id,
-        content_type: chunk.content_type,
-        vehicle_systems: chunk.vehicle_systems,
-        metadata: chunk.metadata
-      })));
-    }
-    
-    return filtered;
-  }, [chunks, filters, textFilter]);
+    console.log(`Using server-filtered chunks: ${chunks.chunks.length} chunks`);
+    return chunks.chunks;
+  }, [chunks]);
   
-  // Toggle filter value
+  // Toggle filter value - triggers server-side filtering
   const toggleFilter = (type, value) => {
     console.log(`Toggling filter: ${type}${value ? ` (${value})` : ''}`);
     
@@ -379,61 +245,22 @@ export default function BrowsePage() {
         console.log(`Toggled ${type} filter to ${!prev[type]}`);
       }
       
-      // Log new filter state
-      console.log('New filter state:', newFilters);
+      // Log new filter state - server-side filtering will be triggered by useEffect
+      console.log('New filter state (will trigger server-side filtering):', newFilters);
       return newFilters;
     });
+    
+    // Pagination reset is handled in the filters change useEffect
   };
   
   // Function to load more items from API
-  const loadMoreChunksFromAPI = useCallback(async () => {
+  // Simplified infinite scroll handler
+  const handleInfiniteScroll = useCallback(() => {
     if (isLoadingMore || !hasMoreInAPI) return;
     
-    setIsLoadingMore(true);
-    console.log(`Loading more chunks from API, current offset: ${currentOffset}`);
-    
-    try {
-      // Load 200 more chunks from the API
-      const result = await getChunks(currentOffset, 200, true);
-      console.log(`Loaded ${result.chunks.length} more chunks. Total now: ${currentOffset + result.chunks.length}`);
-      
-      const newOffset = currentOffset + result.chunks.length;
-      setCurrentOffset(newOffset);
-      
-      // Check if we've loaded all chunks from the API
-      if (newOffset >= totalChunks || result.chunks.length < 200) {
-        setHasMoreInAPI(false);
-        console.log('All chunks loaded from API');
-      }
-    } catch (err) {
-      console.error('Failed to load more chunks:', err);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [currentOffset, hasMoreInAPI, isLoadingMore, getChunks, totalChunks]);
-  
-  // Function to handle display pagination (for filtered results)
-  const loadMoreItemsToDisplay = useCallback(() => {
-    if (isLoadingMore) return;
-    
-    console.log(`Current display limit: ${displayLimit}, filtered chunks: ${filteredChunks.length}`);
-    
-    // If we need more chunks from API and we're close to the end of loaded chunks
-    if (hasMoreInAPI && displayLimit + 40 >= filteredChunks.length) {
-      console.log('Need to load more chunks from API');
-      loadMoreChunksFromAPI();
-    }
-    
-    // Update display limit
-    setDisplayLimit(prev => {
-      const newLimit = prev + 20;
-      // Check if we've shown all filtered items
-      if (newLimit >= filteredChunks.length) {
-        setHasMoreToDisplay(false);
-      }
-      return newLimit;
-    });
-  }, [displayLimit, filteredChunks.length, hasMoreInAPI, isLoadingMore, loadMoreChunksFromAPI]);
+    console.log('Loading more chunks via infinite scroll...');
+    loadMoreChunks();
+  }, [isLoadingMore, hasMoreInAPI, loadMoreChunks]);
   
   // Setup intersection observer for infinite scroll
   useEffect(() => {
@@ -441,14 +268,14 @@ export default function BrowsePage() {
     if (typeof window === 'undefined') return;
     
     // If we don't have chunks yet or we're already at the end, don't observe
-    if (!filteredChunks || filteredChunks.length === 0 || (!hasMoreToDisplay && !hasMoreInAPI)) return;
+    if (!filteredChunks || filteredChunks.length === 0 || !hasMoreInAPI) return;
     
     const observer = new IntersectionObserver(
       entries => {
         // If the target element is intersecting (visible)
         if (entries[0].isIntersecting && !isLoadingMore) {
-          console.log("Loading more items...");
-          loadMoreItemsToDisplay();
+          console.log("Triggering infinite scroll...");
+          handleInfiniteScroll();
         }
       },
       { threshold: 0.1 } // Trigger when 10% of the element is visible
@@ -465,16 +292,12 @@ export default function BrowsePage() {
         observer.unobserve(observerTarget.current);
       }
     };
-  }, [filteredChunks, hasMoreToDisplay, hasMoreInAPI, isLoadingMore, loadMoreItemsToDisplay]);
+  }, [filteredChunks, hasMoreInAPI, isLoadingMore, handleInfiniteScroll]);
   
-  // Reset display limit when filters change
-  useEffect(() => {
-    setDisplayLimit(20);
-    setHasMoreToDisplay(true);
-  }, [filters, textFilter]);
+  // Reset pagination state when filters change (handled in filter change useEffect above)
   
-  // Get current items to display based on displayLimit
-  const currentItems = filteredChunks.slice(0, displayLimit);
+  // All loaded chunks are displayed (server-side filtering handles everything)
+  const currentItems = filteredChunks;
   
   // Get chunk title
   const getChunkTitle = (chunk: Chunk): string => {
@@ -620,9 +443,7 @@ export default function BrowsePage() {
               value={textFilter}
               onChange={e => {
                 setTextFilter(e.target.value);
-                // Reset infinite scroll state when filter changes
-                setDisplayLimit(20);
-                setHasMoreToDisplay(true);
+                // Pagination reset is handled in the filters change useEffect
               }}
             />
           </div>
@@ -715,8 +536,8 @@ export default function BrowsePage() {
         <MongoDBFilterVisualization
           filters={filters}
           textFilter={textFilter}
-          totalResults={chunks?.total || 0}
-          filteredResults={filteredChunks.length}
+          totalResults={713}
+          filteredResults={totalChunks || chunks?.total || 0}
         />
         
         <div style={{ 
@@ -731,7 +552,7 @@ export default function BrowsePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
             <Icon glyph="Checkmark" fill={palette.green.base} />
             <Subtitle style={{ margin: 0 }}>
-              Showing {currentItems.length} of {filteredChunks.length} filtered ({totalChunks || chunks?.total || 0} total in database)
+              Showing {currentItems.length} of {totalChunks || chunks?.total || 0} total chunks matching filters
             </Subtitle>
           </div>
           <div style={{ 
@@ -892,12 +713,12 @@ export default function BrowsePage() {
                 <Icon glyph="Refresh" fill={palette.green.base} />
                 <Body>Loading more chunks from database...</Body>
               </div>
-            ) : (hasMoreToDisplay || hasMoreInAPI) ? (
+            ) : hasMoreInAPI ? (
               <Body style={{ color: palette.gray.dark1 }}>Scroll to load more</Body>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: spacing[2] }}>
                 <Icon glyph="Checkmark" fill={palette.green.base} />
-                <Body>All {filteredChunks.length} chunks displayed</Body>
+                <Body>All {totalChunks || chunks?.total || filteredChunks.length} matching chunks displayed</Body>
               </div>
             )}
           </div>
@@ -922,9 +743,7 @@ export default function BrowsePage() {
                     hasProcedures: false
                   });
                   setTextFilter('');
-                  // Reset infinite scroll state
-                  setDisplayLimit(20);
-                  setHasMoreToDisplay(true);
+                  // Reset will be handled by the filters change useEffect
                 }}
                 style={{ marginTop: spacing[3] }}
               >

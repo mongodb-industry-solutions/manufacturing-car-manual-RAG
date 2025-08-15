@@ -48,7 +48,8 @@ async def get_chunks(
     vehicle_systems: Optional[List[str]] = Query(None),
     has_safety_notices: Optional[bool] = Query(None),
     has_procedures: Optional[bool] = Query(None),
-    text_search: Optional[str] = Query(None)
+    text_search: Optional[str] = Query(None),
+    include_embeddings: bool = Query(False, description="Include embedding data in response (impacts performance)")
 ):
     """
     Get multiple chunks with pagination and filtering
@@ -62,6 +63,9 @@ async def get_chunks(
     - **text_search**: Text to search for in chunk content and headings
     """
     try:
+        # Debug: log all received parameters
+        logger.info(f"Received parameters: content_types={content_types}, vehicle_systems={vehicle_systems}, has_safety_notices={has_safety_notices}, has_procedures={has_procedures}, text_search={text_search}")
+        
         # Build filters
         filters = {}
         if content_types:
@@ -80,7 +84,7 @@ async def get_chunks(
             logger.error("MongoDB collection is not available")
             return ChunkList(total=0, chunks=[])
             
-        return await chunk_repo.get_chunks(skip, limit, filters)
+        return await chunk_repo.get_chunks(skip, limit, filters, include_embeddings)
     except Exception as e:
         logger.error(f"Error retrieving chunks: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error retrieving chunks: {str(e)}")
