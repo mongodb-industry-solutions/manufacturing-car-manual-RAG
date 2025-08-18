@@ -39,39 +39,8 @@ export const useSearch = (): UseSearchResult => {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<SearchResponse | null>(null);
   
-  // Use a ref to track if we're mounting/initial rendering
-  const initialRender = useRef(true);
-  
-  // This handles restoring cached results when the component mounts
-  useEffect(() => {
-    // Check URL params to see if we should restore from cache
-    if (typeof window !== 'undefined' && initialRender.current) {
-      initialRender.current = false;
-      
-      const urlParams = new URLSearchParams(window.location.search);
-      const queryParam = urlParams.get('q');
-      const methodParam = urlParams.get('method') as SearchMethod | null;
-      
-      if (queryParam) {
-        // Use method from URL or default to hybrid if not specified
-        const method = (methodParam && ['vector', 'text', 'hybrid'].includes(methodParam)) 
-          ? methodParam as SearchMethod 
-          : 'hybrid';
-          
-        // Create a cache key  
-        const cacheKey = getCacheKey(method, queryParam, 10);
-        
-        // Check if we have cached results
-        if (GLOBAL_SEARCH_CACHE[cacheKey]) {
-          console.log('Restoring search results from cache:', cacheKey);
-          setResults(GLOBAL_SEARCH_CACHE[cacheKey]);
-        } else {
-          console.log('No cached results found for key:', cacheKey);
-          // Don't auto-search here; the component will handle this
-        }
-      }
-    }
-  }, []);
+  // Remove the automatic cache restoration on mount
+  // The page component will handle URL params and trigger searches as needed
   
   // Generate a consistent cache key for searches
   const getCacheKey = (

@@ -58,13 +58,6 @@ function SearchPageContent() {
       setSearchMethod(methodParam as SearchMethod);
     }
     
-    // Always save the full URL with parameters in sessionStorage for navigation back to this page
-    if (typeof window !== 'undefined') {
-      console.log('Saving search URL to sessionStorage:', window.location.href);
-      sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
-      sessionStorage.setItem('car_manual_referrer_type', 'search');
-    }
-    
     // Determine method to use for search
     const method = methodParam && ['vector', 'text', 'hybrid'].includes(methodParam) 
       ? (methodParam as SearchMethod) 
@@ -75,21 +68,24 @@ function SearchPageContent() {
       queryParam !== prevSearchRef.current.query || 
       method !== prevSearchRef.current.method;
     
-    // Update the ref with current search parameters
-    prevSearchRef.current = { query: queryParam, method };
+    // Only perform search if it's actually a new search
+    if (isNewSearch) {
+      // Update the ref with current search parameters
+      prevSearchRef.current = { query: queryParam, method };
       
-    // Check if we have results already (from cache restoration in useSearch hook)
-    if (isNewSearch || !results) {
-      console.log('Performing search from URL params, new search or no results');
+      // Save the URL to sessionStorage only for new searches
+      if (typeof window !== 'undefined') {
+        console.log('Performing new search, saving URL to sessionStorage');
+        sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
+        sessionStorage.setItem('car_manual_referrer_type', 'search');
+      }
       
       // Use the direct search function without URL manipulation to avoid loops
       search(method, queryParam, 10);
-    } else {
-      console.log('Using existing results, no need to search again');
     }
     
-  // Be selective about which parameters to watch to avoid excessive rerenders
-  }, [queryParam, methodParam, search, results]);
+  // Remove 'results' from dependencies to prevent re-triggers when results update
+  }, [queryParam, methodParam, search]);
   
   const updateSearchParams = () => {
     const params = new URLSearchParams();
