@@ -49,9 +49,9 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
                 fill={palette.blue.base} 
               />
               <div>
-                <Body>Keyword Search</Body>
+                <Body>Full-text Search</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
-                  Traditional lexical search by exact words and phrases
+                  Lexical search with fuzzy matching, stemming, and typo tolerance
                 </Body>
               </div>
             </div>
@@ -83,7 +83,7 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
               <div>
                 <Body>Hybrid Search ($rankFusion)</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
-                  Combine vector and keyword search using MongoDB's native $rankFusion
+                  Combine vector and full-text search using MongoDB's native $rankFusion
                 </Body>
               </div>
             </div>
