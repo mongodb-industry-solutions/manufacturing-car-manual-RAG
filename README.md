@@ -98,16 +98,30 @@ Car Manual Explorer leverages MongoDB Atlas Vector Search for semantic search ca
 
    ```json
    {
-     "mappings": {
-       "dynamic": true,
-       "fields": {
-         "embedding": {
-           "type": "knnVector",
-           "dimensions": 768,
-           "similarity": "cosine"
-         }
+     "fields": [
+       {
+         "numDimensions": 768,
+         "path": "embedding",
+         "similarity": "cosine",
+         "type": "vector"
+       },
+       {
+         "path": "id",
+         "type": "filter"
+       },
+       {
+         "path": "content_type",
+         "type": "filter"
+       },
+       {
+         "path": "vehicle_systems",
+         "type": "filter"
+       },
+       {
+         "path": "page_numbers",
+         "type": "filter"
        }
-     }
+     ]
    }
    ```
 
@@ -296,7 +310,7 @@ Your frontend application should now be running at [http://localhost:3000](http:
 
 ### Search Interface
 
-The search interface provides three powerful methods to find information in car manuals:
+The search interface provides four powerful methods to find information in car manuals:
 
 1. Navigate to [http://localhost:3000/search](http://localhost:3000/search).
 
@@ -305,12 +319,14 @@ The search interface provides three powerful methods to find information in car 
    - **Vector Search**: Finds semantically similar content using AI embeddings
    - **Text Search**: Traditional keyword-based search with fuzzy matching
    - **Hybrid Search**: Combines both methods using MongoDB's native $rankFusion
+   - **GraphRAG Search**: Relationship-aware search using document connections and knowledge graphs
 
 3. Enter your query:
 
    - Vector Search examples: "How do I fix a flat tire?", "What causes engine overheating?"
-   - Text Search examples: "battery replacement", "oil change interval"
+   - Text Search examples: "battery replacement", "oil change interval"  
    - Hybrid Search: Works well with any query type
+   - GraphRAG Search examples: "tire replacement steps", "engine oil maintenance", "brake system components"
 
 4. Review the results:
 
@@ -391,6 +407,13 @@ For containerized deployment in production environments:
    - Displays combined RRF scores and individual contribution percentages
    - Visual percentage slider showing vector (blue) vs text (green) contributions
    - Provides the most comprehensive results with intelligent score weighting
+
+4. **GraphRAG Search**:
+   - Uses MongoDB's $graphLookup for relationship-aware document traversal
+   - Two expansion methods: Vector→Graph and Graph→Vector
+   - Configurable traversal depth (1-4 levels) for broader context discovery
+   - Leverages four relationship types: SEQUENTIAL_TO, RELATED_TO, MENTIONS_SYSTEM, IS_OF_TYPE
+   - Knowledge graph visualization (coming soon) for interactive exploration
 
 ### Enhanced Compound Search Pipeline
 

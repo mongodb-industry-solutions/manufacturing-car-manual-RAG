@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
-from app.api.routes import chunks, search, health
+from app.api.routes import chunks, search, health, graph_search
 
 # Configure logging
 logging.basicConfig(
@@ -42,6 +42,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(chunks.router, prefix=f"{settings.API_V1_STR}/chunks", tags=["chunks"])
 app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=["search"])
+app.include_router(graph_search.router, prefix=f"{settings.API_V1_STR}/search", tags=["search"])
 
 # Allow redirects for slash handling (default behavior)
 # Our frontend will consistently use trailing slashes

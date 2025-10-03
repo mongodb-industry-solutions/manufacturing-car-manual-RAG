@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 
 from app.models.search import (
-    SearchRequest, VectorSearchRequest, TextSearchRequest, HybridSearchRequest,
+    SearchRequest, VectorSearchRequest, TextSearchRequest, HybridSearchRequest, GraphSearchRequest,
     SearchResponse, SearchResult
 )
 from app.services.embedding import EmbeddingService

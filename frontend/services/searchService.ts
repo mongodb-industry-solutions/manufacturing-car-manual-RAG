@@ -7,7 +7,9 @@ import {
   VectorSearchRequest, 
   TextSearchRequest, 
   HybridSearchRequest, 
+  GraphSearchRequest,
   SearchResponse,
+  KnowledgeGraphResponse,
   AskResponse
 } from '../types/Search';
 import { Chunk, ChunkList } from '../types/Chunk';
@@ -110,6 +112,64 @@ export const searchService = {
     }
     
     return response;
+  },
+
+  /**
+   * Perform GraphRAG search using relationship expansion
+   */
+  graphSearch: async (request: GraphSearchRequest): Promise<SearchResponse> => {
+    // Add debug header for GraphRAG searches to get pipeline information
+    const response = await apiPost<SearchResponse>('/search/graph', request, undefined, {
+      'X-Debug': 'true'
+    });
+    
+    // Ensure backward compatibility for frontend components
+    if (response && response.results) {
+      response.results = response.results.map(result => {
+        // If the result uses the new flattened format, wrap it in a chunk structure
+        // to maintain compatibility with the UI components that still expect chunk.id
+        if (result.chunk_id && !result.chunk) {
+          return {
+            ...result,
+            chunk: {
+              id: result.chunk_id,
+              text: result.text || '',
+              context: result.context,
+              breadcrumb_trail: result.breadcrumb_trail,
+              page_numbers: result.page_numbers || [],
+              content_type: result.content_type,
+              metadata: result.metadata,
+              vehicle_systems: result.vehicle_systems
+            }
+          };
+        }
+        return result;
+      });
+    }
+    
+    return response;
+  },
+
+  /**
+   * Get knowledge graph data for visualization
+   */
+  getKnowledgeGraph: async (
+    query?: string,
+    chunkIds?: string[],
+    maxNodes: number = 50,
+    maxDepth: number = 2
+  ): Promise<KnowledgeGraphResponse> => {
+    const params: any = { max_nodes: maxNodes, max_depth: maxDepth };
+    
+    if (query) {
+      params.query = query;
+    }
+    
+    if (chunkIds && chunkIds.length > 0) {
+      params.chunk_ids = chunkIds;
+    }
+    
+    return apiGet<KnowledgeGraphResponse>('/search/knowledge-graph', params);
   },
   
   

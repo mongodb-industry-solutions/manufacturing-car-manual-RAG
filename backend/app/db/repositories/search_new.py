@@ -8,7 +8,7 @@ from pymongo.errors import OperationFailure
 from app.db.mongodb import get_mongodb
 from app.core.config import get_settings
 from app.models.chunks import Chunk
-from app.models.search import SearchResult
+from app.models.search import SearchResult, KnowledgeGraphResponse, CytoscapeNode, CytoscapeEdge
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ class SearchRepository:
         self.settings = get_settings()
         self.mongodb = get_mongodb()
         self.debug_mode = debug_mode
+        self.last_debug_info = None  # Store debug info from last search
         
         # MongoDB index names
         self.vector_index_name = self.settings.VECTOR_INDEX_NAME
@@ -590,6 +591,645 @@ class SearchRepository:
             if self.debug_mode:
                 debug_info["error"] = str(e)
             return []
+
+    async def graph_to_vector_search(
+        self,
+        query_text: str,
+        query_embedding: List[float], 
+        max_depth: int = 2,
+        limit: int = 10,
+        relationship_types: Optional[List[str]] = None
+    ) -> List[SearchResult]:
+        """Graph-first expansion search using $graphLookup"""
+        
+        debug_info = {} if self.debug_mode else None
+        
+        if not query_embedding:
+            logger.error("Error: Cannot run graph-to-vector search without a query embedding.")
+            return []
+            
+        # Check if collection is initialized
+        if not hasattr(self, 'collection') or self.collection is None:
+            logger.error("MongoDB collection is not available")
+            return []
+            
+        try:
+            # Phase 1: Graph Discovery using $graphLookup
+            graph_seed_pipeline = [
+                # Initial text search on metadata to find conceptual starting points
+                {
+                    "$search": {
+                        "index": self.text_index_name,
+                        "compound": {
+                            "should": [
+                                {"text": {"query": query_text, "path": "metadata.systems", "score": {"boost": {"value": 3}}}},
+                                {"text": {"query": query_text, "path": "content_type", "score": {"boost": {"value": 2}}}},
+                                {"text": {"query": query_text, "path": "context", "score": {"boost": {"value": 1}}}}
+                            ]
+                        }
+                    }
+                },
+                {"$limit": 5},  # Start with top conceptual matches
+                # Use $graphLookup to traverse relationship network
+                {
+                    "$graphLookup": {
+                        "from": self.collection_name,
+                        "startWith": "$relationships.target_id",
+                        "connectFromField": "relationships.target_id", 
+                        "connectToField": "id",
+                        "as": "graph_expansion",
+                        "maxDepth": max_depth,
+                        "restrictSearchWithMatch": self._build_relationship_filter(relationship_types),
+                        "depthField": "traversal_depth"
+                    }
+                },
+                # Combine original and expanded results
+                {
+                    "$addFields": {
+                        "all_related": {
+                            "$concatArrays": [
+                                [{"doc": "$$ROOT", "source": "seed", "depth": 0}],
+                                {
+                                    "$map": {
+                                        "input": "$graph_expansion",
+                                        "as": "expanded",
+                                        "in": {"doc": "$$expanded", "source": "graph", "depth": {"$ifNull": ["$$expanded.traversal_depth", 1]}}
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {"$unwind": "$all_related"},
+                {"$replaceRoot": {"newRoot": "$all_related.doc"}},
+                {"$group": {"_id": "$id", "doc": {"$first": "$$ROOT"}}},  # Deduplicate
+                {"$replaceRoot": {"newRoot": "$doc"}},
+                {"$limit": limit * 3}  # Get more candidates for vector filtering
+            ]
+            
+            if self.debug_mode:
+                debug_info["graph_pipeline"] = graph_seed_pipeline
+                debug_info["pipeline_steps"] = {}
+                start_time = get_current_time()
+                
+            graph_candidates = list(self.collection.aggregate(graph_seed_pipeline))
+            
+            if self.debug_mode:
+                debug_info["graph_candidates_count"] = len(graph_candidates)
+                debug_info["graph_execution_time_ms"] = (get_current_time() - start_time) * 1000
+                
+                # Step-by-step breakdown for visualization
+                debug_info["pipeline_steps"] = {
+                    "step1_text_search": {
+                        "description": "Text search on metadata (systems=3x, content_type=2x, context=1x)",
+                        "query": query_text,
+                        "expected_results": 5,
+                        "pipeline": [graph_seed_pipeline[0], graph_seed_pipeline[1]]
+                    },
+                    "step2_graph_expansion": {
+                        "description": f"$graphLookup expansion (maxDepth={max_depth})",
+                        "relationship_types": relationship_types or ["all"],
+                        "pipeline": [graph_seed_pipeline[2]]
+                    },
+                    "step3_combine_dedupe": {
+                        "description": f"Combine seeds + expanded, deduplicate, get {limit * 3} candidates",
+                        "candidates_multiplier": 3,
+                        "actual_candidates": len(graph_candidates),
+                        "pipeline": graph_seed_pipeline[3:6]
+                    }
+                }
+                
+            logger.info(f"Graph-to-Vector: Found {len(graph_candidates)} graph candidates")
+            
+            # Phase 2: Vector filtering on graph candidates
+            if query_embedding and graph_candidates:
+                candidate_ids = [doc["id"] for doc in graph_candidates]
+                
+                vector_filter_pipeline = [
+                    {
+                        "$vectorSearch": {
+                            "index": self.vector_index_name,
+                            "path": self.vector_field_name,
+                            "queryVector": query_embedding,
+                            "numCandidates": len(candidate_ids) * 2,
+                            "limit": limit,
+                            "filter": {"id": {"$in": candidate_ids}}
+                        }
+                    },
+                    self._get_common_projection("vectorSearchScore")
+                ]
+                
+                if self.debug_mode:
+                    debug_info["vector_filter_pipeline"] = vector_filter_pipeline
+                    start_time = get_current_time()
+                    
+                    # Add step 4 debug info
+                    debug_info["pipeline_steps"]["step4_vector_filter"] = {
+                        "description": f"Vector search filter on {len(candidate_ids)} candidates → {limit} final results",
+                        "input_candidates": len(candidate_ids),
+                        "final_limit": limit,
+                        "pipeline": vector_filter_pipeline
+                    }
+                    
+                vector_results = list(self.collection.aggregate(vector_filter_pipeline))
+                
+                if self.debug_mode:
+                    debug_info["vector_results_count"] = len(vector_results)
+                    debug_info["vector_execution_time_ms"] = (get_current_time() - start_time) * 1000
+                    debug_info["pipeline_steps"]["step4_vector_filter"]["actual_results"] = len(vector_results)
+                    
+                logger.info(f"Graph-to-Vector: Filtered to {len(vector_results)} final results")
+                
+                # Store debug info for retrieval
+                if self.debug_mode:
+                    self.last_debug_info = debug_info
+                    
+                return self._format_search_results(vector_results)
+            
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error in graph-to-vector search: {str(e)}")
+            traceback.print_exc()
+            if self.debug_mode:
+                debug_info["error"] = str(e)
+            return []
+    
+    async def vector_to_graph_search(
+        self,
+        query_text: str,
+        query_embedding: List[float],
+        max_depth: int = 2, 
+        limit: int = 10,
+        relationship_types: Optional[List[str]] = None
+    ) -> List[SearchResult]:
+        """Vector-first expansion search using $graphLookup"""
+        
+        debug_info = {} if self.debug_mode else None
+        
+        if not query_embedding:
+            logger.error("Error: Cannot run vector-to-graph search without a query embedding.")
+            return []
+            
+        # Check if collection is initialized
+        if not hasattr(self, 'collection') or self.collection is None:
+            logger.error("MongoDB collection is not available")
+            return []
+            
+        try:
+            debug_info = {} if self.debug_mode else None
+            
+            # Phase 1: Vector Discovery with Graph Expansion
+            vector_seed_pipeline = [
+                {
+                    "$vectorSearch": {
+                        "index": self.vector_index_name,
+                        "path": self.vector_field_name,
+                        "queryVector": query_embedding,
+                        "numCandidates": 50,
+                        "limit": 5  # Start with top vector matches
+                    }
+                },
+                # Use $graphLookup to expand from vector seeds
+                {
+                    "$graphLookup": {
+                        "from": self.collection_name,
+                        "startWith": "$relationships.target_id",
+                        "connectFromField": "relationships.target_id",
+                        "connectToField": "id", 
+                        "as": "graph_neighbors",
+                        "maxDepth": max_depth,
+                        "restrictSearchWithMatch": self._build_relationship_filter(relationship_types),
+                        "depthField": "traversal_depth"
+                    }
+                },
+                # Combine seeds and neighbors with metadata
+                {
+                    "$addFields": {
+                        "all_docs": {
+                            "$concatArrays": [
+                                [{
+                                    "doc": "$$ROOT", 
+                                    "source": "vector_seed",
+                                    "score": {"$meta": "vectorSearchScore"},
+                                    "depth": 0
+                                }],
+                                {
+                                    "$map": {
+                                        "input": "$graph_neighbors",
+                                        "as": "neighbor", 
+                                        "in": {
+                                            "doc": "$$neighbor",
+                                            "source": "graph_expansion",
+                                            "score": {"$subtract": [0.5, {"$multiply": [0.1, {"$ifNull": ["$$neighbor.traversal_depth", 1]}]}]},  # Decay score by depth
+                                            "depth": {"$ifNull": ["$$neighbor.traversal_depth", 1]}
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {"$unwind": "$all_docs"},
+                {"$replaceRoot": {"newRoot": "$all_docs"}},
+                # Deduplicate and sort
+                {
+                    "$group": {
+                        "_id": "$doc.id",
+                        "doc": {"$first": "$doc"},
+                        "max_score": {"$max": "$score"},
+                        "source": {"$first": "$source"},
+                        "min_depth": {"$min": "$depth"}
+                    }
+                },
+                {"$sort": {"max_score": -1, "min_depth": 1}},
+                {"$limit": limit},
+                {
+                    "$project": {
+                        "_id": 0,
+                        "score": "$max_score",
+                        "chunk_id": "$doc.id",
+                        "text": "$doc.text",
+                        "context": "$doc.context",
+                        "breadcrumb_trail": "$doc.breadcrumb_trail",
+                        "page_numbers": "$doc.page_numbers",
+                        "content_type": "$doc.content_type",
+                        "metadata": "$doc.metadata",
+                        "vehicle_systems": "$doc.vehicle_systems",
+                        "source": "$source",
+                        "depth": "$min_depth"
+                    }
+                }
+            ]
+            
+            if self.debug_mode:
+                debug_info["vector_graph_pipeline"] = vector_seed_pipeline
+                debug_info["pipeline_steps"] = {
+                    "step1_vector_search": {
+                        "description": "Vector search for 5 seed documents",
+                        "query": query_text,
+                        "expected_results": 5,
+                        "numCandidates": 50,
+                        "pipeline": [vector_seed_pipeline[0]]
+                    },
+                    "step2_graph_expansion": {
+                        "description": f"$graphLookup expansion from seeds (maxDepth={max_depth})",
+                        "relationship_types": relationship_types or ["all"],
+                        "pipeline": [vector_seed_pipeline[1]]
+                    },
+                    "step3_combine_score": {
+                        "description": f"Combine seeds + graph neighbors with score decay, final limit={limit}",
+                        "score_decay": "0.5 - (0.1 × depth)",
+                        "final_limit": limit,
+                        "pipeline": vector_seed_pipeline[2:7]
+                    }
+                }
+                start_time = get_current_time()
+                
+            results = list(self.collection.aggregate(vector_seed_pipeline))
+            
+            if self.debug_mode:
+                debug_info["result_count"] = len(results)
+                debug_info["execution_time_ms"] = (get_current_time() - start_time) * 1000
+                debug_info["pipeline_steps"]["step3_combine_score"]["actual_results"] = len(results)
+                
+            logger.info(f"Vector-to-Graph: Found {len(results)} results")
+            
+            # Store debug info for retrieval
+            if self.debug_mode:
+                self.last_debug_info = debug_info
+                
+            return self._format_search_results(results)
+            
+        except Exception as e:
+            logger.error(f"Error in vector-to-graph search: {str(e)}")
+            traceback.print_exc()
+            if self.debug_mode:
+                debug_info["error"] = str(e)
+            return []
+        
+    def _build_relationship_filter(self, relationship_types: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Build MongoDB filter for $graphLookup restrictSearchWithMatch"""
+        if relationship_types:
+            return {"relationships.type": {"$in": relationship_types}}
+        return {}
+        
+    def _format_search_results(self, results: List[Dict[str, Any]]) -> List[SearchResult]:
+        """Format database results into SearchResult objects"""
+        search_results = []
+        
+        for result in results:
+            search_result = SearchResult(
+                score=result.get("score", 0.0),
+                vector_score=result.get("score", 0.0) if result.get("source") == "vector_seed" else None,
+                chunk_id=result.get("chunk_id"),
+                text=result.get("text", ""),
+                context=result.get("context"),
+                breadcrumb_trail=result.get("breadcrumb_trail"),
+                page_numbers=result.get("page_numbers"),
+                content_type=result.get("content_type"),
+                metadata=result.get("metadata"),
+                vehicle_systems=result.get("vehicle_systems")
+            )
+            search_results.append(search_result)
+            
+        return search_results
+    
+    async def get_knowledge_graph_data(
+        self,
+        query: Optional[str] = None,
+        chunk_ids: Optional[List[str]] = None,
+        max_nodes: int = 50,
+        max_depth: int = 2
+    ) -> KnowledgeGraphResponse:
+        """Generate knowledge graph data in Cytoscape.js format using $graphLookup"""
+        
+        debug_info = {} if self.debug_mode else None
+        
+        # Check if collection is initialized
+        if not hasattr(self, 'collection') or self.collection is None:
+            logger.error("MongoDB collection is not available")
+            return KnowledgeGraphResponse(elements=[], style=[])
+            
+        try:
+            # Determine starting points for graph traversal
+            if chunk_ids:
+                # Start from specific chunk IDs
+                match_stage = {"$match": {"id": {"$in": chunk_ids}}}
+                limit_seed = len(chunk_ids)
+            elif query:
+                # Start from text search results
+                match_stage = {
+                    "$search": {
+                        "index": self.text_index_name,
+                        "text": {"query": query, "path": ["text", "context", "breadcrumb_trail"]}
+                    }
+                }
+                limit_seed = 5
+            else:
+                # Get a random sample of chunks for general graph
+                match_stage = {"$sample": {"size": 5}}
+                limit_seed = 5
+                
+            # Build graph using $graphLookup
+            graph_pipeline = [
+                match_stage,
+                {"$limit": limit_seed},
+                {
+                    "$graphLookup": {
+                        "from": self.collection_name,
+                        "startWith": "$relationships.target_id",
+                        "connectFromField": "relationships.target_id",
+                        "connectToField": "id",
+                        "as": "connected_chunks",
+                        "maxDepth": max_depth,
+                        "depthField": "graph_depth"
+                    }
+                },
+                # Create nodes and edges data structure
+                {
+                    "$addFields": {
+                        "all_nodes": {
+                            "$concatArrays": [
+                                [{"chunk": "$$ROOT", "is_seed": True, "depth": 0}],
+                                {
+                                    "$map": {
+                                        "input": "$connected_chunks",
+                                        "as": "connected",
+                                        "in": {
+                                            "chunk": "$$connected", 
+                                            "is_seed": False, 
+                                            "depth": {"$ifNull": ["$$connected.graph_depth", 1]}
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {"$unwind": "$all_nodes"},
+                {"$replaceRoot": {"newRoot": "$all_nodes"}},
+                {
+                    "$group": {
+                        "_id": "$chunk.id",
+                        "chunk_data": {"$first": "$chunk"},
+                        "is_seed": {"$max": "$is_seed"},
+                        "min_depth": {"$min": "$depth"}
+                    }
+                },
+                {"$limit": max_nodes}
+            ]
+            
+            if self.debug_mode:
+                debug_info["graph_pipeline"] = graph_pipeline
+                start_time = get_current_time()
+                
+            graph_data = list(self.collection.aggregate(graph_pipeline))
+            
+            if self.debug_mode:
+                debug_info["graph_data_count"] = len(graph_data)
+                debug_info["execution_time_ms"] = (get_current_time() - start_time) * 1000
+                
+            logger.info(f"Knowledge Graph: Found {len(graph_data)} nodes via $graphLookup")
+            
+            # Convert to Cytoscape format
+            nodes = []
+            edges = []
+            highlighted_node_ids = []
+            
+            # Create a set to track processed edges (avoid duplicates)
+            processed_edges = set()
+            
+            # Create nodes
+            for item in graph_data:
+                chunk = item["chunk_data"]
+                node_id = chunk["id"]
+                
+                # Determine node type and styling
+                node_class = "chunk-node"
+                if item["is_seed"]:
+                    node_class += " seed-node"
+                    highlighted_node_ids.append(node_id)
+                
+                # Create shorter, meaningful labels
+                context = chunk.get("context", "")
+                breadcrumb = chunk.get("breadcrumb_trail", "")
+                label = context if len(context) <= 50 else (context[:47] + "...")
+                if not label and breadcrumb:
+                    label = breadcrumb if len(breadcrumb) <= 50 else (breadcrumb[:47] + "...")
+                if not label:
+                    label = f"Chunk {node_id[-4:]}"  # Use last 4 chars of ID
+                
+                nodes.append(CytoscapeNode(
+                    data={
+                        "id": node_id,
+                        "label": label,
+                        "type": "Chunk",
+                        "text": chunk.get("text", "")[:200] + "..." if len(chunk.get("text", "")) > 200 else chunk.get("text", ""),
+                        "page_numbers": chunk.get("page_numbers", []),
+                        "content_type": chunk.get("content_type", []),
+                        "context": chunk.get("context", ""),
+                        "breadcrumb_trail": chunk.get("breadcrumb_trail", ""),
+                        "is_seed": item["is_seed"],
+                        "depth": item["min_depth"]
+                    },
+                    classes=node_class
+                ))
+                
+                # Create edges from relationships
+                for rel in chunk.get("relationships", []):
+                    if rel["target_type"] == "Chunk":
+                        # Only create edges to chunks that exist in our graph
+                        target_chunk_ids = {item["chunk_data"]["id"] for item in graph_data}
+                        if rel["target_id"] in target_chunk_ids:
+                            edge_id = f"{node_id}-{rel['target_id']}-{rel['type']}"
+                            if edge_id not in processed_edges:
+                                processed_edges.add(edge_id)
+                                edges.append(CytoscapeEdge(
+                                    data={
+                                        "id": edge_id,
+                                        "source": node_id,
+                                        "target": rel["target_id"],
+                                        "relationship_type": rel["type"]
+                                    },
+                                    classes=f"edge-{rel['type'].lower().replace('_', '-')}"
+                                ))
+                    else:
+                        # Add concept nodes (Systems, ContentTypes) if they don't exist
+                        concept_id = f"{rel['target_type']}-{rel['target_id']}"
+                        
+                        # Check if concept node already exists
+                        if not any(n.data["id"] == concept_id for n in nodes):
+                            concept_class = f"{rel['target_type'].lower()}-node"
+                            nodes.append(CytoscapeNode(
+                                data={
+                                    "id": concept_id,
+                                    "label": rel["target_id"],
+                                    "type": rel["target_type"],
+                                    "is_concept": True
+                                },
+                                classes=concept_class
+                            ))
+                        
+                        # Add edge to concept
+                        edge_id = f"{node_id}-{concept_id}-{rel['type']}"
+                        if edge_id not in processed_edges:
+                            processed_edges.add(edge_id)
+                            edges.append(CytoscapeEdge(
+                                data={
+                                    "id": edge_id,
+                                    "source": node_id,
+                                    "target": concept_id,
+                                    "relationship_type": rel["type"]
+                                },
+                                classes=f"edge-{rel['type'].lower().replace('_', '-')}"
+                            ))
+            
+            # Cytoscape styling
+            cytoscape_style = [
+                {
+                    "selector": "node",
+                    "style": {
+                        "background-color": "#00ED64",  # MongoDB Green
+                        "label": "data(label)",
+                        "text-valign": "center",
+                        "text-halign": "center",
+                        "font-size": "12px",
+                        "width": "40px",
+                        "height": "40px",
+                        "text-wrap": "wrap",
+                        "text-max-width": "120px"
+                    }
+                },
+                {
+                    "selector": ".seed-node", 
+                    "style": {
+                        "background-color": "#001E2B",  # MongoDB Navy
+                        "color": "#FFFFFF",
+                        "border-width": "3px",
+                        "border-color": "#FFC010",  # MongoDB Yellow
+                        "width": "50px",
+                        "height": "50px"
+                    }
+                },
+                {
+                    "selector": ".system-node",
+                    "style": {
+                        "background-color": "#FFC010",  # MongoDB Yellow
+                        "shape": "square",
+                        "width": "35px",
+                        "height": "35px"
+                    }
+                },
+                {
+                    "selector": ".contenttype-node", 
+                    "style": {
+                        "background-color": "#FF6B47",  # MongoDB Orange
+                        "shape": "diamond",
+                        "width": "35px",
+                        "height": "35px"
+                    }
+                },
+                {
+                    "selector": "edge",
+                    "style": {
+                        "width": 2,
+                        "line-color": "#89979B",
+                        "target-arrow-color": "#89979B",
+                        "target-arrow-shape": "triangle",
+                        "curve-style": "bezier"
+                    }
+                },
+                {
+                    "selector": ".edge-sequential-to",
+                    "style": {
+                        "line-color": "#00ED64", 
+                        "target-arrow-color": "#00ED64",
+                        "width": 3
+                    }
+                },
+                {
+                    "selector": ".edge-related-to", 
+                    "style": {
+                        "line-color": "#001E2B", 
+                        "target-arrow-color": "#001E2B"
+                    }
+                },
+                {
+                    "selector": ".edge-mentions-system",
+                    "style": {
+                        "line-color": "#FFC010", 
+                        "target-arrow-color": "#FFC010",
+                        "line-style": "dashed"
+                    }
+                },
+                {
+                    "selector": ".edge-is-of-type",
+                    "style": {
+                        "line-color": "#FF6B47", 
+                        "target-arrow-color": "#FF6B47",
+                        "line-style": "dotted"
+                    }
+                }
+            ]
+            
+            elements = nodes + edges
+            
+            logger.info(f"Knowledge Graph: Generated {len(nodes)} nodes and {len(edges)} edges")
+            
+            return KnowledgeGraphResponse(
+                elements=elements,
+                query_context=query,
+                highlighted_node_ids=highlighted_node_ids,
+                style=cytoscape_style
+            )
+            
+        except Exception as e:
+            logger.error(f"Error in knowledge graph generation: {str(e)}")
+            traceback.print_exc()
+            if self.debug_mode:
+                debug_info["error"] = str(e)
+            return KnowledgeGraphResponse(elements=[], style=[])
 
 # Helper function for timing
 def get_current_time():

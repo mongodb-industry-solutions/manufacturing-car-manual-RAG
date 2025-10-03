@@ -75,8 +75,11 @@ export const apiGet = async <T>(url: string, params?: any): Promise<T> => {
   return response.data;
 };
 
-export const apiPost = async <T>(url: string, data?: any, params?: any): Promise<T> => {
-  const response = await api.post<T>(normalizeUrl(url), data, { params });
+export const apiPost = async <T>(url: string, data?: any, params?: any, headers?: any): Promise<T> => {
+  const response = await api.post<T>(normalizeUrl(url), data, { 
+    params,
+    headers: headers ? { ...api.defaults.headers, ...headers } : undefined
+  });
   return response.data;
 };
 

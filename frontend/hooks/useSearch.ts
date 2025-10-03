@@ -6,8 +6,10 @@ import {
   SearchMethod, 
   SearchRequest, 
   HybridSearchRequest,
+  GraphSearchRequest,
   SearchResponse,
-  HybridMethod
+  HybridMethod,
+  GraphExpansionMethod
 } from '../types/Search';
 import { searchService } from '../services/searchService';
 
@@ -19,14 +21,18 @@ interface SearchCache {
 // Create a static cache that persists between component mounts
 const GLOBAL_SEARCH_CACHE: SearchCache = {};
 
-// Cache version to invalidate old results after $rankFusion implementation
-const CACHE_VERSION = 'v3_rrf_contribution_scores';
+// Cache version to invalidate old results after GraphRAG implementation
+const CACHE_VERSION = 'v4_graphrag_support';
 
 export interface UseSearchResult {
   search: (
     method: SearchMethod, 
     query: string, 
-    limit?: number
+    limit?: number,
+    // GraphRAG-specific parameters
+    expansionMethod?: GraphExpansionMethod,
+    maxDepth?: number,
+    relationshipTypes?: string[]
   ) => Promise<SearchResponse>;
   loading: boolean;
   error: string | null;
@@ -46,18 +52,28 @@ export const useSearch = (): UseSearchResult => {
   const getCacheKey = (
     method: SearchMethod, 
     query: string, 
-    limit: number = 5
+    limit: number = 5,
+    expansionMethod?: GraphExpansionMethod,
+    maxDepth?: number,
+    relationshipTypes?: string[]
   ): string => {
+    if (method === 'graph') {
+      const relTypes = relationshipTypes?.sort().join(',') || '';
+      return `${CACHE_VERSION}:${method}:${query}:${limit}:${expansionMethod}:${maxDepth}:${relTypes}`;
+    }
     return `${CACHE_VERSION}:${method}:${query}:${limit}`;
   };
   
   const search = async (
     method: SearchMethod, 
     query: string, 
-    limit: number = 5
+    limit: number = 5,
+    expansionMethod: GraphExpansionMethod = 'vector_to_graph',
+    maxDepth: number = 2,
+    relationshipTypes?: string[]
   ): Promise<SearchResponse> => {
     // Generate a cache key for this search
-    const cacheKey = getCacheKey(method, query, limit);
+    const cacheKey = getCacheKey(method, query, limit, expansionMethod, maxDepth, relationshipTypes);
     
     // Check if we have a cached result for this exact search
     if (GLOBAL_SEARCH_CACHE[cacheKey]) {
@@ -103,6 +119,18 @@ export const useSearch = (): UseSearchResult => {
           response = await searchService.hybridSearch({
             query,
             limit
+          });
+          break;
+          
+        case 'graph':
+          response = await searchService.graphSearch({
+            query,
+            limit,
+            expansion_method: expansionMethod,
+            max_depth: maxDepth,
+            relationship_types: relationshipTypes,
+            graph_weight: 0.6,
+            vector_weight: 0.4
           });
           break;
           

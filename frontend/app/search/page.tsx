@@ -22,7 +22,7 @@ const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
 const QueryVisualizationPanel = dynamic(() => import('@/components/content/QueryVisualizationPanel'));
 
 import { useSearch } from '@/hooks/useSearch';
-import { SearchMethod, HybridMethod } from '@/types/Search';
+import { SearchMethod, HybridMethod, GraphExpansionMethod } from '@/types/Search';
 
 // Client Component that uses searchParams
 function SearchPageContent() {
@@ -37,6 +37,10 @@ function SearchPageContent() {
   const [searchMethod, setSearchMethod] = useState<SearchMethod>('text'); // Default to keyword (text) search
   const [activeTab] = useState<'search'>('search');
   const [searchPlaceholder, setSearchPlaceholder] = useState('How do I change a flat tire?');
+  
+  // GraphRAG-specific state
+  const [expansionMethod, setExpansionMethod] = useState<GraphExpansionMethod>('vector_to_graph');
+  const [maxDepth, setMaxDepth] = useState<number>(2);
   
   // Custom hooks
   const { search, loading, error, results, clearCache } = useSearch();
@@ -54,12 +58,12 @@ function SearchPageContent() {
     // Update local state from URL params
     setQuery(queryParam);
     
-    if (methodParam && ['vector', 'text', 'hybrid'].includes(methodParam)) {
+    if (methodParam && ['vector', 'text', 'hybrid', 'graph'].includes(methodParam)) {
       setSearchMethod(methodParam as SearchMethod);
     }
     
     // Determine method to use for search
-    const method = methodParam && ['vector', 'text', 'hybrid'].includes(methodParam) 
+    const method = methodParam && ['vector', 'text', 'hybrid', 'graph'].includes(methodParam) 
       ? (methodParam as SearchMethod) 
       : 'hybrid';
     
@@ -81,7 +85,7 @@ function SearchPageContent() {
       }
       
       // Use the direct search function without URL manipulation to avoid loops
-      search(method, queryParam, 10);
+      search(method, queryParam, 10, expansionMethod, maxDepth);
     }
     
   // Remove 'results' from dependencies to prevent re-triggers when results update
@@ -350,6 +354,78 @@ function SearchPageContent() {
             </Button>
           </div>
         </div>
+
+        {/* GraphRAG Search Suggestions */}
+        <div style={{ 
+          marginBottom: spacing[3],
+          borderBottom: '1px solid #E1E1E1',
+          paddingBottom: spacing[2]
+        }}>
+          <div style={{ 
+            marginBottom: spacing[1],
+            paddingLeft: spacing[1]
+          }}>
+            <span style={{ 
+              fontWeight: 'bold', 
+              fontSize: '14px',
+              color: palette.gray.dark2 
+            }}>
+              Relationship-Aware Queries (GraphRAG Search)
+            </span>
+          </div>
+          
+          <div style={{ 
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: spacing[2],
+            paddingBottom: spacing[2]
+          }}>
+            <Button 
+              size="small"
+              variant="dangerOutline"
+              onClick={() => handleSearch("tire replacement steps")}
+              leftGlyph={<Icon glyph="Relationship" size="small" />}
+            >
+              Tire replacement steps
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="dangerOutline"
+              onClick={() => handleSearch("engine oil maintenance")}
+              leftGlyph={<Icon glyph="Relationship" size="small" />}
+            >
+              Engine oil maintenance
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="dangerOutline"
+              onClick={() => handleSearch("brake system components")}
+              leftGlyph={<Icon glyph="Relationship" size="small" />}
+            >
+              Brake system components
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="dangerOutline"
+              onClick={() => handleSearch("electrical system troubleshooting")}
+              leftGlyph={<Icon glyph="Relationship" size="small" />}
+            >
+              Electrical system troubleshooting
+            </Button>
+            
+            <Button 
+              size="small" 
+              variant="dangerOutline"
+              onClick={() => handleSearch("transmission fluid check")}
+              leftGlyph={<Icon glyph="Relationship" size="small" />}
+            >
+              Transmission fluid check
+            </Button>
+          </div>
+        </div>
         
         {/* Search Results */}
           <div style={{ 
@@ -365,6 +441,10 @@ function SearchPageContent() {
                 <SearchMethodSelector 
                   selectedMethod={searchMethod}
                   onChange={handleMethodChange}
+                  selectedExpansionMethod={expansionMethod}
+                  onExpansionMethodChange={setExpansionMethod}
+                  maxDepth={maxDepth}
+                  onMaxDepthChange={setMaxDepth}
                 />
               </Card>
             </div>
@@ -399,11 +479,16 @@ function SearchPageContent() {
                   <QueryVisualizationPanel
                     searchMethod={results.method as SearchMethod}
                     query={results.query}
+                    debugInfo={results.debug_info}
+                    expansionMethod={expansionMethod}
+                    maxDepth={maxDepth}
                   />
                   
                   <SearchResultList 
                     results={results.results}
                     highlight={query}
+                    query={query}
+                    searchMethod={results.method}
                   />
                 </>
               )}

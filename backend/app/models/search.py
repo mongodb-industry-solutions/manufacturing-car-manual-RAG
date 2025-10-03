@@ -68,6 +68,59 @@ class HybridSearchRequest(SearchRequest):
         description="Multiplier for determining initial candidates (limit * multiplier)"
     )
 
+class GraphSearchRequest(SearchRequest):
+    """Request model for GraphRAG search using $graphLookup"""
+    expansion_method: Literal["graph_to_vector", "vector_to_graph"] = Field(
+        "vector_to_graph", 
+        description="Method for expanding search results"
+    )
+    max_depth: int = Field(
+        2, 
+        ge=1, 
+        le=4, 
+        description="Maximum $graphLookup traversal depth (up to 4)"
+    )
+    relationship_types: Optional[List[str]] = Field(
+        None, 
+        description="Filter specific relationship types for $graphLookup (SEQUENTIAL_TO, RELATED_TO, MENTIONS_SYSTEM, IS_OF_TYPE)"
+    )
+    graph_weight: float = Field(
+        0.6, 
+        ge=0.0, 
+        le=1.0,
+        description="Weight applied to graph expansion results"
+    )
+    vector_weight: float = Field(
+        0.4, 
+        ge=0.0, 
+        le=1.0,
+        description="Weight applied to vector search results"
+    )
+    num_candidates_multiplier: int = Field(
+        15,
+        ge=1,
+        le=50,
+        description="Multiplier for determining vector search candidates"
+    )
+
+class CytoscapeNode(BaseModel):
+    """Cytoscape.js node format for knowledge graph visualization"""
+    data: Dict[str, Any] = Field(..., description="Node data including id, label, type")
+    position: Optional[Dict[str, float]] = Field(None, description="x, y coordinates")
+    classes: Optional[str] = Field(None, description="CSS classes for styling")
+    
+class CytoscapeEdge(BaseModel):
+    """Cytoscape.js edge format for knowledge graph visualization"""
+    data: Dict[str, Any] = Field(..., description="Edge data including source, target, type")
+    classes: Optional[str] = Field(None, description="CSS classes for styling")
+
+class KnowledgeGraphResponse(BaseModel):
+    """Knowledge graph data in Cytoscape.js format"""
+    elements: List[Union[CytoscapeNode, CytoscapeEdge]]
+    query_context: Optional[str] = None
+    highlighted_node_ids: List[str] = []
+    style: List[Dict[str, Any]] = Field(..., description="Cytoscape styling definitions")
+
 class SearchResponse(BaseModel):
     """Response model for search endpoints"""
     query: str = Field(..., description="The original search query")

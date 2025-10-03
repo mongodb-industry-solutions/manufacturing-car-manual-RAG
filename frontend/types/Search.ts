@@ -3,8 +3,9 @@
  */
 import { Chunk } from './Chunk';
 
-export type SearchMethod = 'vector' | 'text' | 'hybrid';
+export type SearchMethod = 'vector' | 'text' | 'hybrid' | 'graph';
 export type HybridMethod = 'rrf';
+export type GraphExpansionMethod = 'graph_to_vector' | 'vector_to_graph';
 
 export interface SearchResult {
   score: number;
@@ -45,6 +46,46 @@ export interface VectorSearchRequest extends SearchRequest {}
 export interface TextSearchRequest extends SearchRequest {}
 
 export interface HybridSearchRequest extends SearchRequest {}
+
+export interface GraphSearchRequest extends SearchRequest {
+  expansion_method: GraphExpansionMethod;
+  max_depth?: number;
+  relationship_types?: string[];
+  graph_weight?: number;
+  vector_weight?: number;
+}
+
+/**
+ * Interface for knowledge graph visualization
+ */
+export interface CytoscapeNode {
+  data: {
+    id: string;
+    label: string;
+    type: string;
+    [key: string]: any;
+  };
+  position?: { x: number; y: number };
+  classes?: string;
+}
+
+export interface CytoscapeEdge {
+  data: {
+    id: string;
+    source: string;
+    target: string;
+    relationship_type: string;
+    [key: string]: any;
+  };
+  classes?: string;
+}
+
+export interface KnowledgeGraphResponse {
+  elements: (CytoscapeNode | CytoscapeEdge)[];
+  query_context?: string;
+  highlighted_node_ids: string[];
+  style: any[];
+}
 
 /**
  * Interface for question-answering results
