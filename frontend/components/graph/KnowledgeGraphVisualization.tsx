@@ -9,7 +9,7 @@ import dagre from 'cytoscape-dagre';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/themes/light-border.css';
-import Modal from '@leafygreen-ui/modal';
+import * as Dialog from '@radix-ui/react-dialog';
 import { MyButton as Button, MyCard as Card } from '@/components/ui/TypographyWrapper';
 import { MyH3 as H3, MyBody as Body, MyLabel as Label } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
@@ -50,7 +50,6 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
   const [selectedLayout, setSelectedLayout] = useState<'cose' | 'circle' | 'breadthfirst' | 'dagre'>('cose');
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [exportSuccess, setExportSuccess] = useState(false);
   
   // Fetch knowledge graph data from API
   const fetchKnowledgeGraph = useCallback(async () => {
@@ -171,8 +170,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
           },
           'font-weight': '600',
           'color': palette.gray.dark3,
-          'text-outline-width': '2px',
-          'text-outline-color': 'rgba(255, 255, 255, 0.8)',
+          'text-outline-width': '0px',
           'width': (ele: any) => {
             const depth = ele.data('depth');
             const isSeed = ele.data('is_seed');
@@ -203,11 +201,12 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       {
         selector: '.seed-node',
         style: {
-          'background-gradient-stop-colors': `${palette.blue.dark2} ${palette.blue.dark1}`,
-          'color': palette.white,
+          'background-gradient-stop-colors': `${palette.blue.light2} ${palette.blue.light1}`,
+          'color': palette.gray.dark3,
           'border-width': '4px',
           'border-color': palette.yellow.base,
-          'font-size': '14px'
+          'font-size': '14px',
+          'text-outline-width': '0px'
         }
       },
       {
@@ -215,10 +214,19 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         style: {
           'background-gradient-stop-colors': `${palette.purple.light2} ${palette.purple.base}`,
           'shape': 'round-rectangle',
-          'width': '45px',
-          'height': '35px',
+          'width': (ele: any) => {
+            const label = ele.data('label') || '';
+            // Dynamic width based on label length: min 55px, grows with text
+            return Math.max(55, label.length * 7 + 15) + 'px';
+          },
+          'height': '40px',
           'color': palette.gray.dark3,
-          'text-outline-width': '0px'
+          'text-outline-width': '0px',
+          'text-wrap': 'wrap',
+          'text-max-width': (ele: any) => {
+            const label = ele.data('label') || '';
+            return Math.max(50, label.length * 7 + 10) + 'px';
+          }
         }
       },
       {
@@ -226,10 +234,23 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         style: {
           'background-gradient-stop-colors': `${palette.red.base} ${palette.red.dark2}`,
           'shape': 'diamond',
-          'width': '40px',
-          'height': '40px',
+          'width': (ele: any) => {
+            const label = ele.data('label') || '';
+            // Dynamic width based on label length: min 50px, grows with text
+            return Math.max(50, label.length * 6 + 20) + 'px';
+          },
+          'height': (ele: any) => {
+            const label = ele.data('label') || '';
+            // Keep diamond proportional
+            return Math.max(50, label.length * 6 + 20) + 'px';
+          },
           'color': palette.gray.dark3,
-          'text-outline-width': '0px'
+          'text-outline-width': '0px',
+          'text-wrap': 'wrap',
+          'text-max-width': (ele: any) => {
+            const label = ele.data('label') || '';
+            return Math.max(45, label.length * 6 + 15) + 'px';
+          }
         }
       },
       {
@@ -260,7 +281,8 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         style: {
           'border-width': '3px',
           'border-color': palette.blue.dark1,
-          'z-index': 998
+          'z-index': 998,
+          'color': palette.gray.dark3
         }
       },
       {
@@ -268,8 +290,8 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         style: {
           'border-color': palette.red.base,
           'border-width': '4px',
-          'text-outline-width': '1px',
-          'text-outline-color': palette.white
+          'text-outline-width': '0px',
+          'color': palette.gray.dark3
         }
       },
       {
@@ -277,7 +299,9 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         style: {
           'border-color': palette.green.dark1,
           'border-width': '3px',
-          'opacity': 0.8
+          'opacity': 0.8,
+          'color': palette.gray.dark3,
+          'text-outline-width': '0px'
         }
       },
       {
@@ -606,6 +630,8 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       const node = event.target;
       const nodeData = node.data();
       
+      console.log('Node clicked:', nodeData);
+      
       // Clear previous highlights
       cyInstance.current!.nodes().removeClass('highlighted connected');
       cyInstance.current!.edges().removeClass('highlighted');
@@ -622,13 +648,25 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       const incomingCount = node.incomers('edge').length;
       const outgoingCount = node.outgoers('edge').length;
       
-      setSelectedNode({
-        ...nodeData,
+      // Always set the selected node with complete data
+      const selectedNodeData = {
+        id: nodeData.id || 'unknown',
+        label: nodeData.label || 'Unknown Node',
+        type: nodeData.type || 'Node',
+        breadcrumb_trail: nodeData.breadcrumb_trail || null,
+        text: nodeData.text || null,
+        page_numbers: nodeData.page_numbers || [],
+        content_type: nodeData.content_type || [],
+        context: nodeData.context || null,
+        is_seed: nodeData.is_seed || false,
+        depth: nodeData.depth || 0,
+        is_concept: nodeData.is_concept || false,
         incoming: incomingCount,
         outgoing: outgoingCount
-      });
+      };
       
-      console.log('Node clicked:', nodeData);
+      console.log('Setting selectedNode with data:', selectedNodeData);
+      setSelectedNode(selectedNodeData);
     });
 
     // Double-click to focus on node neighborhood
@@ -681,32 +719,6 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
     }
   };
 
-  const exportGraph = () => {
-    if (cyInstance.current) {
-      try {
-        const png = cyInstance.current.png({ 
-          scale: 2,
-          full: true,
-          bg: palette.gray.light3
-        });
-        
-        // Create download link
-        const link = document.createElement('a');
-        link.download = `knowledge-graph-${query || 'export'}.png`;
-        link.href = png;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Show success feedback
-        setExportSuccess(true);
-        setTimeout(() => setExportSuccess(false), 2000);
-      } catch (err) {
-        console.error('Error exporting graph:', err);
-      }
-    }
-  };
-
   const refreshGraph = async () => {
     setIsRefreshing(true);
     await fetchKnowledgeGraph();
@@ -747,25 +759,48 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
   };
 
   return (
-    <Modal open={isOpen} setOpen={onClose} size="large">
-      <div style={{ 
-        width: '95vw',
-        maxWidth: '1400px',
-        height: '85vh',
-        maxHeight: '900px',
-        padding: spacing[4],
-        display: 'flex',
-        flexDirection: 'column',
-        backgroundColor: palette.white
-      }}>
+    <Dialog.Root open={isOpen} onOpenChange={onClose}>
+      <Dialog.Portal>
+        {/* Backdrop overlay with blur effect */}
+        <Dialog.Overlay style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 9998,
+          animation: 'fadeIn 200ms ease-out'
+        }} />
+        
+        {/* Modal content with modern styling */}
+        <Dialog.Content style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '90vw',
+          maxWidth: '1400px',
+          minWidth: '1000px',
+          height: '88vh',
+          maxHeight: '1100px',
+          minHeight: '700px',
+          backgroundColor: palette.white,
+          borderRadius: '16px',
+          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.16), 0 8px 16px rgba(0, 0, 0, 0.08)',
+          zIndex: 9999,
+          padding: spacing[4],
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          animation: 'slideIn 250ms cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
         {/* Header - Fixed */}
         <div style={{ 
           flexShrink: 0,
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          marginBottom: spacing[3],
-          paddingBottom: spacing[2],
+          marginBottom: spacing[2],
+          paddingBottom: spacing[1],
           borderBottom: `1px solid ${palette.gray.light2}`
         }}>
           <div>
@@ -779,13 +814,13 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
           
           <div style={{ display: 'flex', gap: spacing[3], alignItems: 'center' }}>
             {/* Layout Selector */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+            <div style={{ display: 'flex', flexDirection: 'row', gap: spacing[2], alignItems: 'center' }}>
               <Body size="small" weight="medium">Layout:</Body>
               <RadioGroup
                 size="small"
                 value={selectedLayout}
                 onChange={(e) => changeLayout(e.target.value as 'cose' | 'circle' | 'breadthfirst' | 'dagre')}
-                style={{ display: 'flex', gap: spacing[2] }}
+                style={{ display: 'flex', flexDirection: 'row', gap: spacing[2] }}
               >
                 <Radio value="cose" id="layout-cose">
                   <Body size="xsmall">Force</Body>
@@ -830,24 +865,6 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 disabled={!graphData}
               >
                 Reset
-              </Button>
-              <Button 
-                size="small" 
-                variant="default"
-                onClick={() => setSelectedNode(null)}
-                leftGlyph={<Icon glyph="X" size="small" />}
-                disabled={!selectedNode}
-              >
-                Clear Selection
-              </Button>
-              <Button 
-                size="small" 
-                variant={exportSuccess ? "primary" : "primaryOutline"}
-                onClick={exportGraph}
-                leftGlyph={<Icon glyph={exportSuccess ? "Checkmark" : "Download"} size="small" />}
-                disabled={!graphData}
-              >
-                {exportSuccess ? 'Exported!' : 'Export'}
               </Button>
             </div>
           </div>
@@ -967,9 +984,24 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 </button>
               </div>
               
-              {/* Breadcrumb trail */}
+              {/* Node Type */}
+              {selectedNode.type && (
+                <>
+                  <Label htmlFor="node-type" style={{ marginBottom: spacing[1] }}>
+                    Type:
+                  </Label>
+                  <Body size="small" style={{ 
+                    color: palette.gray.dark2,
+                    marginBottom: spacing[2]
+                  }}>
+                    {selectedNode.type}
+                  </Body>
+                </>
+              )}
+              
+              {/* Breadcrumb trail / Label */}
               <Label htmlFor="node-location" style={{ marginBottom: spacing[1] }}>
-                Location:
+                {selectedNode.is_concept ? 'Name:' : 'Location:'}
               </Label>
               <Body size="small" style={{ 
                 color: palette.blue.dark2,
@@ -1006,8 +1038,8 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 </>
               )}
               
-              {/* Full text content */}
-              {selectedNode.text && (
+              {/* Full text content or concept description */}
+              {selectedNode.text ? (
                 <>
                   <Label htmlFor="node-content" style={{ marginBottom: spacing[1] }}>
                     Content:
@@ -1026,7 +1058,20 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                     </Body>
                   </div>
                 </>
-              )}
+              ) : selectedNode.is_concept ? (
+                <>
+                  <Label htmlFor="node-description" style={{ marginBottom: spacing[1] }}>
+                    Description:
+                  </Label>
+                  <Body size="small" style={{ 
+                    color: palette.gray.dark1,
+                    marginBottom: spacing[3],
+                    fontStyle: 'italic'
+                  }}>
+                    This is a {selectedNode.type === 'System' ? 'vehicle system' : 'content type'} node that represents a category or classification in the knowledge graph.
+                  </Body>
+                </>
+              ) : null}
               
               {/* Connections summary */}
               <Label htmlFor="node-connections" style={{ marginBottom: spacing[1] }}>
@@ -1074,8 +1119,8 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         {!loading && !error && graphData && (
           <ExpandableCard 
             title="Legend"
-            defaultOpen={true}
-            style={{ marginTop: spacing[3] }}
+            defaultOpen={false}
+            style={{ marginTop: spacing[2] }}
           >
             <div style={{ 
               display: 'grid', 
@@ -1139,8 +1184,9 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
           </ExpandableCard>
         )}
         </div>
-      </div>
-    </Modal>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 };
 

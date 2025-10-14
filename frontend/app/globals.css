@@ -41,3 +41,24 @@
 [data-leafygreen-ui="modal-container"] {
   z-index: 10000;
 }
+
+/* Radix UI Dialog animations */
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+  }
+  to { 
+    opacity: 1; 
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
