@@ -106,19 +106,6 @@ export default function Home() {
               marginBottom: spacing[4],
             }}
           >
-            <Link href="/search">
-              <div style={{ display: 'inline-block' }}>
-                <Button
-                  variant="primary"
-                  size="large"
-                  leftGlyph={<Icon glyph="MagnifyingGlass" />}
-                  style={{ fontWeight: 600 }}
-                >
-                  Start Searching
-                </Button>
-              </div>
-            </Link>
-
             <Link href="/browse">
               <div style={{ display: 'inline-block' }}>
                 <Button
@@ -128,6 +115,19 @@ export default function Home() {
                   style={{ fontWeight: 600 }}
                 >
                   Browse Chunks
+                </Button>
+              </div>
+            </Link>
+
+            <Link href="/search">
+              <div style={{ display: 'inline-block' }}>
+                <Button
+                  variant="primary"
+                  size="large"
+                  leftGlyph={<Icon glyph="MagnifyingGlass" />}
+                  style={{ fontWeight: 600 }}
+                >
+                  Start Searching
                 </Button>
               </div>
             </Link>
@@ -154,7 +154,8 @@ export default function Home() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gridTemplateColumns:
+                'repeat(auto-fit, minmax(300px, 1fr))',
               gap: spacing[3],
             }}
           >
@@ -182,7 +183,7 @@ export default function Home() {
                   fill={palette.red.base}
                 />
                 <H3
-                  style={{ 
+                  style={{
                     color: palette.gray.dark3,
                     margin: 0,
                   }}
@@ -191,7 +192,11 @@ export default function Home() {
                 </H3>
               </div>
               <Body style={{ color: palette.gray.dark1 }}>
-                Automotive technicians waste hours searching through fragmented documentation systems for repair procedures, while customers struggle with static PDF manuals for simple questions like dashboard warning explanations.
+                Automotive technicians waste hours searching through
+                fragmented documentation systems for repair
+                procedures, while customers struggle with static PDF
+                manuals for simple questions like dashboard warning
+                explanations.
               </Body>
             </Card>
 
@@ -219,7 +224,7 @@ export default function Home() {
                   fill={palette.blue.base}
                 />
                 <H3
-                  style={{ 
+                  style={{
                     color: palette.gray.dark3,
                     margin: 0,
                   }}
@@ -228,7 +233,10 @@ export default function Home() {
                 </H3>
               </div>
               <Body style={{ color: palette.gray.dark1 }}>
-                Transform static technical documentation into intelligent, searchable knowledge bases that serve both professional technicians and everyday customers through the same unified platform.
+                Transform static technical documentation into
+                intelligent, searchable knowledge bases that serve
+                both professional technicians and everyday customers
+                through the same unified platform.
               </Body>
             </Card>
 
@@ -256,7 +264,7 @@ export default function Home() {
                   fill={palette.green.base}
                 />
                 <H3
-                  style={{ 
+                  style={{
                     color: palette.gray.dark3,
                     margin: 0,
                   }}
@@ -265,12 +273,14 @@ export default function Home() {
                 </H3>
               </div>
               <Body style={{ color: palette.gray.dark1 }}>
-                How MongoDB Atlas enables semantic search across automotive manuals - finding relevant content whether you search for specific keywords or natural language like "why is my engine making a clicking noise."
+                How MongoDB Atlas enables semantic search across
+                automotive manuals - finding relevant content whether
+                you search for specific keywords or natural language
+                like "why is my engine making a clicking noise."
               </Body>
             </Card>
           </div>
         </div>
-
       </div>
     </MainLayout>
   );

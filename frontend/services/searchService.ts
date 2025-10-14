@@ -156,10 +156,9 @@ export const searchService = {
   getKnowledgeGraph: async (
     query?: string,
     chunkIds?: string[],
-    maxNodes: number = 50,
-    maxDepth: number = 2
+    maxNodes: number = 50
   ): Promise<KnowledgeGraphResponse> => {
-    const params: any = { max_nodes: maxNodes, max_depth: maxDepth };
+    const params: any = { max_nodes: maxNodes, max_depth: 2 };
     
     if (query) {
       params.query = query;

@@ -33,13 +33,13 @@ async def graph_search(request: GraphSearchRequest, x_debug: Optional[str] = Hea
     
     try:
         # Log the request parameters
-        logger.info(f"GraphRAG search request: query='{request.query}', method={request.expansion_method}, depth={request.max_depth}")
+        logger.info(f"GraphRAG search request: query='{request.query}', method={request.expansion_method}, depth=2 (fixed)")
         if debug_mode:
             debug_info["request"] = {
                 "query": request.query,
                 "limit": request.limit,
                 "expansion_method": request.expansion_method,
-                "max_depth": request.max_depth,
+                "max_depth": 2,
                 "relationship_types": request.relationship_types,
                 "graph_weight": request.graph_weight,
                 "vector_weight": request.vector_weight
@@ -81,11 +81,12 @@ async def graph_search(request: GraphSearchRequest, x_debug: Optional[str] = Hea
             )
         
         # Perform GraphRAG search based on expansion method
+        # Fixed traversal depth at 2 for optimal performance
         if request.expansion_method == "graph_to_vector":
             search_results = await search_repo.graph_to_vector_search(
                 query_text=request.query,
                 query_embedding=query_embedding,
-                max_depth=request.max_depth,
+                max_depth=2,
                 limit=request.limit,
                 relationship_types=request.relationship_types
             )
@@ -93,7 +94,7 @@ async def graph_search(request: GraphSearchRequest, x_debug: Optional[str] = Hea
             search_results = await search_repo.vector_to_graph_search(
                 query_text=request.query,
                 query_embedding=query_embedding,
-                max_depth=request.max_depth,
+                max_depth=2,
                 limit=request.limit,
                 relationship_types=request.relationship_types
             )

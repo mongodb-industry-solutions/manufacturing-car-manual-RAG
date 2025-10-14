@@ -16,16 +16,16 @@ interface QueryVisualizationPanelProps {
   query: string;
   debugInfo?: any; // Debug information from search response
   expansionMethod?: string; // GraphRAG expansion method
-  maxDepth?: number; // GraphRAG max depth
 }
 
 const QueryVisualizationPanel: React.FC<QueryVisualizationPanelProps> = ({ 
   searchMethod, 
   query,
   debugInfo,
-  expansionMethod,
-  maxDepth 
+  expansionMethod
 }) => {
+  // GraphRAG uses a fixed depth of 2 for optimal performance
+  const maxDepth = 2;
   // Generate GraphRAG pipeline flow analysis
   const getGraphRAGFlowAnalysis = (expansionMethod: string, debugInfo: any): string => {
     const steps = debugInfo?.pipeline_steps || {};
@@ -47,7 +47,7 @@ Step 1: Vector Search
 
 Step 2: Graph Expansion  
 ├── $graphLookup from ${step1.expected_results || 5} seeds
-├── maxDepth: ${maxDepth || 2} (configurable 1-4)
+├── maxDepth: 2 (fixed for optimal performance)
 ├── Traverses: ${step2.relationship_types?.join(', ') || 'SEQUENTIAL_TO, RELATED_TO, MENTIONS_SYSTEM, IS_OF_TYPE'}
 └── Expands relationship network
 
@@ -83,7 +83,7 @@ Step 1: Text Search (Conceptual)
 
 Step 2: Graph Expansion
 ├── $graphLookup from ${step1.expected_results || 5} seeds  
-├── maxDepth: ${maxDepth || 2} (configurable 1-4)
+├── maxDepth: 2 (fixed for optimal performance)
 └── Relationship network traversal
 
 Step 3: Candidates Collection

@@ -24,6 +24,9 @@ export interface SearchResult {
   heading_level_1?: string;
   heading_level_2?: string;
   heading_level_3?: string;
+  // GraphRAG fields
+  source?: string; // 'vector_seed', 'graph_expansion', 'seed', 'graph'
+  depth?: number; // 0 for seeds, 1+ for expanded results
   // Backward compatibility with older structure
   chunk?: Chunk;
 }
@@ -49,7 +52,6 @@ export interface HybridSearchRequest extends SearchRequest {}
 
 export interface GraphSearchRequest extends SearchRequest {
   expansion_method: GraphExpansionMethod;
-  max_depth?: number;
   relationship_types?: string[];
   graph_weight?: number;
   vector_weight?: number;

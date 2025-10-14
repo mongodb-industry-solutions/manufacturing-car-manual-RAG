@@ -42,8 +42,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
-        backgroundColor: palette.gray.light3,
-        backgroundImage: `linear-gradient(to bottom, ${palette.green.light3}, ${palette.gray.light3} 300px)`
+        backgroundColor: 'white'
       }}
     >
       <Header />

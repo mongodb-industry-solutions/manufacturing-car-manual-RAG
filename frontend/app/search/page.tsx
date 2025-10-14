@@ -30,25 +30,21 @@ function SearchPageContent() {
   const searchParams = useSearchParams();
   const queryParam = searchParams.get('q');
   const methodParam = searchParams.get('method');
-  const modeParam = searchParams.get('mode');
+  const expansionParam = searchParams.get('expansion');
   
-  // State
+  // State - derived from URL params
   const [query, setQuery] = useState('');
   const [searchMethod, setSearchMethod] = useState<SearchMethod>('text'); // Default to keyword (text) search
   const [activeTab] = useState<'search'>('search');
   const [searchPlaceholder, setSearchPlaceholder] = useState('How do I change a flat tire?');
   
-  // GraphRAG-specific state
+  // GraphRAG-specific state - derived from URL params
   const [expansionMethod, setExpansionMethod] = useState<GraphExpansionMethod>('vector_to_graph');
-  const [maxDepth, setMaxDepth] = useState<number>(2);
   
   // Custom hooks
   const { search, loading, error, results, clearCache } = useSearch();
   
-  // This ref helps us keep track of previous searches to avoid duplicates
-  const prevSearchRef = useRef({ query: '', method: '' });
-  
-  // Handle search based on URL parameters
+  // Handle search based on URL parameters - URL is the single source of truth
   useEffect(() => {
     // Skip if no query parameter is present
     if (!queryParam) {
@@ -58,43 +54,44 @@ function SearchPageContent() {
     // Update local state from URL params
     setQuery(queryParam);
     
-    if (methodParam && ['vector', 'text', 'hybrid', 'graph'].includes(methodParam)) {
-      setSearchMethod(methodParam as SearchMethod);
-    }
-    
     // Determine method to use for search
-    const method = methodParam && ['vector', 'text', 'hybrid', 'graph'].includes(methodParam) 
-      ? (methodParam as SearchMethod) 
-      : 'hybrid';
+    const method = (methodParam && ['vector', 'text', 'hybrid', 'graph'].includes(methodParam) 
+      ? methodParam 
+      : 'text') as SearchMethod;
     
-    // Check if this is a new search (different from the last search we performed)
-    const isNewSearch = 
-      queryParam !== prevSearchRef.current.query || 
-      method !== prevSearchRef.current.method;
+    setSearchMethod(method);
     
-    // Only perform search if it's actually a new search
-    if (isNewSearch) {
-      // Update the ref with current search parameters
-      prevSearchRef.current = { query: queryParam, method };
-      
-      // Save the URL to sessionStorage only for new searches
-      if (typeof window !== 'undefined') {
-        console.log('Performing new search, saving URL to sessionStorage');
-        sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
-        sessionStorage.setItem('car_manual_referrer_type', 'search');
+    // For graph searches, read expansion method from URL
+    let expansion: GraphExpansionMethod = 'vector_to_graph';
+    if (method === 'graph') {
+      if (expansionParam && ['vector_to_graph', 'graph_to_vector'].includes(expansionParam)) {
+        expansion = expansionParam as GraphExpansionMethod;
       }
-      
-      // Use the direct search function without URL manipulation to avoid loops
-      search(method, queryParam, 10, expansionMethod, maxDepth);
+      setExpansionMethod(expansion);
     }
     
-  // Remove 'results' from dependencies to prevent re-triggers when results update
-  }, [queryParam, methodParam, search]);
+    // Save URL to sessionStorage for navigation tracking
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
+      sessionStorage.setItem('car_manual_referrer_type', 'search');
+    }
+    
+    // Execute search with appropriate limit
+    const resultLimit = method === 'graph' ? 30 : 10;
+    search(method, queryParam, resultLimit, expansion);
+    
+  // Dependencies: Only URL params - React will automatically skip if they haven't changed
+  }, [queryParam, methodParam, expansionParam, search]);
   
   const updateSearchParams = () => {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     params.set('method', searchMethod);
+    
+    // Add expansion method for graph searches
+    if (searchMethod === 'graph') {
+      params.set('expansion', expansionMethod);
+    }
     
     // Update URL without causing a navigation/reload
     if (typeof window !== 'undefined') {
@@ -115,6 +112,10 @@ function SearchPageContent() {
     params.set('q', searchQuery);
     params.set('method', methodToUse);
     
+    // Add expansion method for graph searches
+    if (methodToUse === 'graph') {
+      params.set('expansion', expansionMethod);
+    }
     
     return `/search?${params.toString()}`;
   };
@@ -159,6 +160,32 @@ function SearchPageContent() {
     } else {
       // If no query, just update the state without navigation
       setSearchMethod(method);
+    }
+  };
+  
+  const handleExpansionMethodChange = (expansion: GraphExpansionMethod) => {
+    console.log(`Expansion method changed to: ${expansion}`);
+    
+    // Update state first
+    setExpansionMethod(expansion);
+    
+    // Only update the URL and re-search if we have a query and we're in graph mode
+    if (query.trim() && searchMethod === 'graph') {
+      const params = new URLSearchParams();
+      params.set('q', query);
+      params.set('method', 'graph');
+      params.set('expansion', expansion);
+      
+      const searchUrl = `/search?${params.toString()}`;
+      
+      // Save to sessionStorage before navigation
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
+        sessionStorage.setItem('car_manual_referrer_type', 'search');
+      }
+      
+      // Use router.push to navigate, which will trigger useEffect to perform the search
+      router.push(searchUrl);
     }
   };
   
@@ -302,33 +329,6 @@ function SearchPageContent() {
             <Button 
               size="small" 
               variant="default"
-              onClick={() => handleSearch("What noise indicates a problem with the transmission?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Noise indicating transmission problem
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("How do I know when it's time to replace my brakes?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              When to replace brakes
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("Why does my steering wheel shake when I brake?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Steering wheel shakes during braking
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
               onClick={() => handleSearch("What causes my car to pull to one side when driving?")}
               leftGlyph={<Icon glyph="Bulb" size="small" />}
             >
@@ -342,15 +342,6 @@ function SearchPageContent() {
               leftGlyph={<Icon glyph="Bulb" size="small" />}
             >
               Driving habits impact on car lifespan
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("What maintenance should I do before a long road trip?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Maintenance before road trip
             </Button>
           </div>
         </div>
@@ -442,9 +433,7 @@ function SearchPageContent() {
                   selectedMethod={searchMethod}
                   onChange={handleMethodChange}
                   selectedExpansionMethod={expansionMethod}
-                  onExpansionMethodChange={setExpansionMethod}
-                  maxDepth={maxDepth}
-                  onMaxDepthChange={setMaxDepth}
+                  onExpansionMethodChange={handleExpansionMethodChange}
                 />
               </Card>
             </div>
@@ -481,7 +470,6 @@ function SearchPageContent() {
                     query={results.query}
                     debugInfo={results.debug_info}
                     expansionMethod={expansionMethod}
-                    maxDepth={maxDepth}
                   />
                   
                   <SearchResultList 

@@ -4,17 +4,27 @@
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import cytoscape from 'cytoscape';
+// @ts-ignore - cytoscape-dagre doesn't have types
+import dagre from 'cytoscape-dagre';
+import tippy, { Instance as TippyInstance } from 'tippy.js';
+import 'tippy.js/dist/tippy.css';
+import 'tippy.js/themes/light-border.css';
 import Modal from '@leafygreen-ui/modal';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
-import { MyH3 as H3, MyBody as Body } from '@/components/ui/TypographyWrapper';
+import { MyButton as Button, MyCard as Card } from '@/components/ui/TypographyWrapper';
+import { MyH3 as H3, MyBody as Body, MyLabel as Label } from '@/components/ui/TypographyWrapper';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import Icon from '@leafygreen-ui/icon';
+import Badge from '@leafygreen-ui/badge';
 import { ParagraphSkeleton } from '@leafygreen-ui/skeleton-loader';
 import { RadioGroup, Radio } from '@leafygreen-ui/radio-group';
+import ExpandableCard from '@leafygreen-ui/expandable-card';
 
 import { searchService } from '@/services/searchService';
 import { KnowledgeGraphResponse } from '@/types/Search';
+
+// Register the dagre layout extension
+cytoscape.use(dagre);
 
 interface KnowledgeGraphVisualizationProps {
   isOpen: boolean;
@@ -22,7 +32,6 @@ interface KnowledgeGraphVisualizationProps {
   query?: string;
   chunkIds?: string[];
   maxNodes?: number;
-  maxDepth?: number;
 }
 
 const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = ({
@@ -30,15 +39,18 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
   onClose,
   query,
   chunkIds,
-  maxNodes = 50,
-  maxDepth = 2
+  maxNodes = 50
 }) => {
   const cyRef = useRef<HTMLDivElement>(null);
   const cyInstance = useRef<cytoscape.Core | null>(null);
+  const tippyInstances = useRef<TippyInstance[]>([]);
   const [graphData, setGraphData] = useState<KnowledgeGraphResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedLayout, setSelectedLayout] = useState<'cose' | 'circle' | 'breadthfirst'>('cose');
+  const [selectedLayout, setSelectedLayout] = useState<'cose' | 'circle' | 'breadthfirst' | 'dagre'>('cose');
+  const [selectedNode, setSelectedNode] = useState<any | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
   
   // Fetch knowledge graph data from API
   const fetchKnowledgeGraph = useCallback(async () => {
@@ -51,8 +63,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       const data = await searchService.getKnowledgeGraph(
         query,
         chunkIds,
-        maxNodes,
-        maxDepth
+        maxNodes
       );
       setGraphData(data);
     } catch (err) {
@@ -62,7 +73,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
     } finally {
       setLoading(false);
     }
-  }, [query, chunkIds, maxNodes, maxDepth]);
+  }, [query, chunkIds, maxNodes]);
 
   // Fetch data when modal opens and parameters change
   useEffect(() => {
@@ -79,6 +90,10 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
 
     // Cleanup on unmount or modal close
     return () => {
+      // Destroy all tooltips
+      tippyInstances.current.forEach(instance => instance.destroy());
+      tippyInstances.current = [];
+      
       if (cyInstance.current) {
         cyInstance.current.destroy();
         cyInstance.current = null;
@@ -89,7 +104,8 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
   const getLayoutConfig = (layoutName: string) => {
     const baseConfig = {
       animate: true,
-      animationDuration: 1000,
+      animationDuration: 800,
+      animationEasing: 'ease-in-out-cubic',
       fit: true,
       padding: 40
     };
@@ -110,6 +126,16 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
           spacingFactor: 1.5,
           avoidOverlap: true,
           nodeDimensionsIncludeLabels: true
+        };
+      case 'dagre':
+        return {
+          ...baseConfig,
+          name: 'dagre',
+          directed: true,
+          rankDir: 'TB',
+          nodeSep: 50,
+          rankSep: 100,
+          ranker: 'tight-tree'
         };
       case 'cose':
       default:
@@ -133,82 +159,123 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       {
         selector: 'node',
         style: {
-          'background-color': '#00ED64',
+          'background-color': palette.blue.light2,
           'label': 'data(label)',
           'text-valign': 'center',
           'text-halign': 'center',
-          'font-size': '12px',
+          'font-size': (ele: any) => {
+            const depth = ele.data('depth') || 0;
+            if (depth === 0) return '13px';
+            if (depth === 1) return '12px';
+            return '11px';
+          },
           'font-weight': '600',
-          'color': '#001E2B',
+          'color': palette.gray.dark3,
           'text-outline-width': '2px',
-          'text-outline-color': '#FFFFFF',
-          'width': '50px',
-          'height': '50px',
+          'text-outline-color': 'rgba(255, 255, 255, 0.8)',
+          'width': (ele: any) => {
+            const depth = ele.data('depth');
+            const isSeed = ele.data('is_seed');
+            if (isSeed) return '70px';
+            if (depth === 0) return '60px';
+            if (depth === 1) return '50px';
+            return '40px';
+          },
+          'height': (ele: any) => {
+            const depth = ele.data('depth');
+            const isSeed = ele.data('is_seed');
+            if (isSeed) return '70px';
+            if (depth === 0) return '60px';
+            if (depth === 1) return '50px';
+            return '40px';
+          },
           'border-width': '2px',
-          'border-color': '#FFFFFF',
+          'border-color': palette.blue.base,
           'background-gradient-direction': 'to-bottom-right',
-          'background-gradient-stop-colors': '#00ED64 #13AA52',
-          'box-shadow': '0 4px 8px rgba(0,0,0,0.15)',
+          'background-gradient-stop-colors': `${palette.blue.light2} ${palette.blue.base}`,
           'text-wrap': 'wrap',
           'text-max-width': '120px',
           'transition-property': 'background-color, border-color, width, height',
-          'transition-duration': '0.3s'
+          'transition-duration': '0.2s',
+          'transition-timing-function': 'ease-in-out'
         }
       },
       {
         selector: '.seed-node',
         style: {
-          'background-gradient-stop-colors': '#001E2B #13274B',
-          'color': '#FFFFFF',
-          'border-width': '3px',
-          'border-color': '#FFC010',
-          'width': '60px',
-          'height': '60px',
-          'box-shadow': '0 6px 12px rgba(255,192,16,0.3)'
+          'background-gradient-stop-colors': `${palette.blue.dark2} ${palette.blue.dark1}`,
+          'color': palette.white,
+          'border-width': '4px',
+          'border-color': palette.yellow.base,
+          'font-size': '14px'
         }
       },
       {
         selector: '.system-node',
         style: {
-          'background-gradient-stop-colors': '#FFC010 #E6AC00',
+          'background-gradient-stop-colors': `${palette.purple.light2} ${palette.purple.base}`,
           'shape': 'round-rectangle',
           'width': '45px',
           'height': '35px',
-          'color': '#001E2B'
+          'color': palette.gray.dark3,
+          'text-outline-width': '0px'
         }
       },
       {
         selector: '.contenttype-node',
         style: {
-          'background-gradient-stop-colors': '#FF6B47 #E85A42',
+          'background-gradient-stop-colors': `${palette.red.base} ${palette.red.dark2}`,
           'shape': 'diamond',
           'width': '40px',
           'height': '40px',
-          'color': '#FFFFFF'
+          'color': palette.gray.dark3,
+          'text-outline-width': '0px'
         }
       },
       {
-        selector: 'node:hover, .hovered',
+        selector: 'node:active',
         style: {
-          'width': '65px',
-          'height': '65px',
-          'box-shadow': '0 8px 16px rgba(0,0,0,0.25)',
+          'width': (ele: any) => {
+            const depth = ele.data('depth');
+            const isSeed = ele.data('is_seed');
+            if (isSeed) return '80px';
+            if (depth === 0) return '70px';
+            if (depth === 1) return '60px';
+            return '50px';
+          },
+          'height': (ele: any) => {
+            const depth = ele.data('depth');
+            const isSeed = ele.data('is_seed');
+            if (isSeed) return '80px';
+            if (depth === 0) return '70px';
+            if (depth === 1) return '60px';
+            return '50px';
+          },
           'border-width': '3px',
           'z-index': 999
         }
       },
       {
+        selector: 'node.hover',
+        style: {
+          'border-width': '3px',
+          'border-color': palette.blue.dark1,
+          'z-index': 998
+        }
+      },
+      {
         selector: '.highlighted',
         style: {
-          'border-color': '#FF6B47',
+          'border-color': palette.red.base,
           'border-width': '4px',
-          'box-shadow': '0 0 20px rgba(255,107,71,0.5)'
+          'text-outline-width': '1px',
+          'text-outline-color': palette.white
         }
       },
       {
         selector: '.connected',
         style: {
-          'border-color': '#13AA52',
+          'border-color': palette.green.dark1,
           'border-width': '3px',
           'opacity': 0.8
         }
@@ -216,20 +283,35 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       {
         selector: 'edge',
         style: {
-          'width': 3,
-          'line-color': '#89979B',
-          'target-arrow-color': '#89979B',
-          'target-arrow-shape': 'triangle',
-          'target-arrow-size': '8px',
-          'curve-style': 'bezier',
+          'width': 2,
+          'line-color': palette.gray.base,
+          'target-arrow-color': palette.gray.base,
+          'target-arrow-shape': 'triangle-backcurve',
           'arrow-scale': 1.2,
-          'opacity': 0.8,
-          'transition-property': 'line-color, target-arrow-color, width',
-          'transition-duration': '0.3s'
+          'opacity': 0.7,
+          'curve-style': 'bezier',
+          'transition-property': 'line-color, target-arrow-color, width, opacity',
+          'transition-duration': '0.2s',
+          // Edge labels
+          'label': 'data(relationship_type)',
+          'font-size': '9px',
+          'text-rotation': 'autorotate',
+          'text-margin-y': -8,
+          'text-background-color': palette.white,
+          'text-background-opacity': 0.95,
+          'text-background-padding': '3px',
+          'text-background-shape': 'roundrectangle',
+          'text-border-width': 1,
+          'text-border-color': palette.gray.light2,
+          'text-border-opacity': 0.5,
+          'color': palette.gray.dark2,
+          'font-weight': '600',
+          'text-wrap': 'wrap',
+          'text-max-width': '100px'
         }
       },
       {
-        selector: 'edge:hover, .hovered',
+        selector: 'edge:active',
         style: {
           'width': 4,
           'opacity': 1,
@@ -239,45 +321,62 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       {
         selector: '.edge-sequential-to',
         style: {
-          'line-color': '#00ED64',
-          'target-arrow-color': '#00ED64',
-          'width': 4,
-          'line-style': 'solid'
+          'line-color': palette.green.base,
+          'target-arrow-color': palette.green.base,
+          'width': 3,
+          'line-style': 'solid',
+          'opacity': 0.9
         }
       },
       {
         selector: '.edge-related-to',
         style: {
-          'line-color': '#001E2B',
-          'target-arrow-color': '#001E2B',
-          'width': 3
+          'line-color': palette.blue.base,
+          'target-arrow-color': palette.blue.base,
+          'width': 2.5,
+          'line-style': 'solid',
+          'opacity': 0.8
         }
       },
       {
         selector: '.edge-mentions-system',
         style: {
-          'line-color': '#FFC010',
-          'target-arrow-color': '#FFC010',
+          'line-color': palette.purple.base,
+          'target-arrow-color': palette.purple.base,
           'line-style': 'dashed',
-          'width': 2
+          'line-dash-pattern': [6, 3],
+          'width': 2,
+          'opacity': 0.7
         }
       },
       {
         selector: '.edge-is-of-type',
         style: {
-          'line-color': '#FF6B47',
-          'target-arrow-color': '#FF6B47',
-          'line-style': 'dotted',
-          'width': 2
+          'line-color': palette.gray.dark2,
+          'target-arrow-color': palette.gray.dark2,
+          // Using line-dash-pattern instead of line-style for consistent rendering
+          'line-dash-pattern': [2, 4],
+          'width': 2,
+          'opacity': 0.7
         }
       },
       {
-        selector: '.highlighted',
+        selector: 'edge.highlighted',
         style: {
-          'line-color': '#FF6B47',
-          'target-arrow-color': '#FF6B47',
-          'width': 5,
+          'line-color': palette.red.base,
+          'target-arrow-color': palette.red.base,
+          'width': 4,
           'opacity': 1
+        }
+      },
+      {
+        selector: 'edge.hovered',
+        style: {
+          'width': 3,
+          'opacity': 1,
+          'line-color': palette.blue.dark1,
+          'target-arrow-color': palette.blue.dark1,
+          'z-index': 999
         }
       }
     ];
@@ -293,9 +392,11 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
 
     try {
       // Initialize Cytoscape with modern styling and selected layout
+      // @ts-ignore - Cytoscape style typing is overly strict for our use case
       cyInstance.current = cytoscape({
         container: cyRef.current,
         elements: data.elements,
+        // @ts-ignore - Style type incompatibility with Cytoscape definitions
         style: getModernStyle(data.style),
         layout: getLayoutConfig(selectedLayout),
         wheelSensitivity: 0.3,
@@ -322,10 +423,185 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
     }
   };
 
+  // Helper function to create tooltip HTML content
+  const createTooltipContent = (node: any) => {
+    const data = node.data();
+    
+    // Determine node type for color coordination
+    const isSystemNode = node.hasClass('system-node');
+    const isContentTypeNode = node.hasClass('contenttype-node');
+    
+    // Set badge colors to match node type
+    let badgeBackground, badgeColor;
+    if (isSystemNode) {
+      badgeBackground = palette.purple.light2;
+      badgeColor = palette.purple.dark2;
+    } else if (isContentTypeNode) {
+      badgeBackground = palette.gray.light2;
+      badgeColor = palette.gray.dark2;
+    } else {
+      // Default document chunks
+      badgeBackground = palette.blue.light2;
+      badgeColor = palette.blue.dark2;
+    }
+    
+    const tooltipDiv = document.createElement('div');
+    tooltipDiv.style.cssText = `
+      max-width: 320px;
+      padding: ${spacing[3]}px;
+      background: ${palette.white};
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      font-family: Euclid Circular A, sans-serif;
+    `;
+    
+    // Title
+    const title = document.createElement('div');
+    title.style.cssText = `
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: ${spacing[2]}px;
+      color: ${palette.gray.dark3};
+      word-wrap: break-word;
+    `;
+    title.textContent = data.breadcrumb_trail || data.label || data.id;
+    tooltipDiv.appendChild(title);
+    
+    // Pages
+    if (data.page_numbers && data.page_numbers.length > 0) {
+      const pagesDiv = document.createElement('div');
+      pagesDiv.style.cssText = `margin-bottom: ${spacing[2]}px;`;
+      
+      const pagesLabel = document.createElement('span');
+      pagesLabel.style.cssText = `font-size: 12px; font-weight: 600; color: ${palette.gray.dark1};`;
+      pagesLabel.textContent = 'Pages: ';
+      pagesDiv.appendChild(pagesLabel);
+      
+      const pagesValue = document.createElement('span');
+      pagesValue.style.cssText = `font-size: 12px; color: ${palette.blue.dark2};`;
+      pagesValue.textContent = data.page_numbers.join(', ');
+      pagesDiv.appendChild(pagesValue);
+      
+      tooltipDiv.appendChild(pagesDiv);
+    }
+    
+    // Content preview
+    if (data.text) {
+      const textPreview = document.createElement('div');
+      textPreview.style.cssText = `
+        font-size: 11px;
+        line-height: 1.4;
+        color: ${palette.gray.dark1};
+        max-height: 100px;
+        overflow-y: auto;
+        padding: ${spacing[2]}px;
+        background: ${palette.gray.light3};
+        border-radius: 4px;
+        margin-bottom: ${spacing[2]}px;
+      `;
+      textPreview.textContent = data.text.length > 200 ? data.text.substring(0, 200) + '...' : data.text;
+      tooltipDiv.appendChild(textPreview);
+    }
+    
+    // Content types
+    if (data.content_type && data.content_type.length > 0) {
+      const typesDiv = document.createElement('div');
+      typesDiv.style.cssText = `display: flex; gap: ${spacing[1]}px; flex-wrap: wrap;`;
+      
+      data.content_type.forEach((type: string) => {
+        const badge = document.createElement('span');
+        badge.style.cssText = `
+          display: inline-block;
+          padding: 2px ${spacing[2]}px;
+          background: ${badgeBackground};
+          color: ${badgeColor};
+          border-radius: 12px;
+          font-size: 10px;
+          font-weight: 600;
+        `;
+        badge.textContent = type;
+        typesDiv.appendChild(badge);
+      });
+      
+      tooltipDiv.appendChild(typesDiv);
+    }
+    
+    return tooltipDiv;
+  };
+
   const setupCytoscapeEventHandlers = () => {
     if (!cyInstance.current) return;
+    
+    // Clear existing tooltips
+    tippyInstances.current.forEach(instance => instance.destroy());
+    tippyInstances.current = [];
+    
+    // Create tooltips for all nodes using manual positioning
+    cyInstance.current.nodes().forEach((node) => {
+      const dummyDomEle = document.createElement('div');
+      
+      // Function to get node's screen position
+      const getNodePosition = () => {
+        const position = node.renderedPosition();
+        const rect = {
+          width: 0,
+          height: 0,
+          top: position.y,
+          bottom: position.y,
+          left: position.x,
+          right: position.x,
+          x: position.x,
+          y: position.y,
+          toJSON: () => rect
+        };
+        return {
+          getBoundingClientRect: () => rect as DOMRect
+        };
+      };
+      
+      const tip = tippy(dummyDomEle, {
+        getReferenceClientRect: () => getNodePosition().getBoundingClientRect(),
+        content: () => createTooltipContent(node),
+        trigger: 'manual',
+        arrow: true,
+        placement: 'top',
+        theme: 'light-border',
+        interactive: true,
+        maxWidth: 320,
+        appendTo: document.body
+      });
+      
+      tippyInstances.current.push(tip);
+      
+      // Show tooltip on hover
+      node.on('mouseover', () => {
+        tip.show();
+      });
+      
+      node.on('mouseout', () => {
+        tip.hide();
+      });
+      
+      // Update position on pan/zoom or node movement
+      node.on('position', () => {
+        if (tip.state.isVisible) {
+          tip.setProps({
+            getReferenceClientRect: () => getNodePosition().getBoundingClientRect()
+          });
+        }
+      });
+    });
 
-    // Node click handler - highlight connected nodes
+    // Hide all tooltips on pan/zoom
+    cyInstance.current.on('pan zoom', () => {
+      tippyInstances.current.forEach(tip => {
+        if (tip.state.isVisible) {
+          tip.hide();
+        }
+      });
+    });
+
+    // Node click handler - highlight connected nodes and show detail panel
     cyInstance.current.on('tap', 'node', (event) => {
       const node = event.target;
       const nodeData = node.data();
@@ -342,6 +618,16 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       connectedNodes.addClass('connected');
       connectedEdges.addClass('highlighted');
       
+      // Set selected node to show detail panel
+      const incomingCount = node.incomers('edge').length;
+      const outgoingCount = node.outgoers('edge').length;
+      
+      setSelectedNode({
+        ...nodeData,
+        incoming: incomingCount,
+        outgoing: outgoingCount
+      });
+      
       console.log('Node clicked:', nodeData);
     });
 
@@ -353,19 +639,15 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
       cyInstance.current!.fit(neighborhood, 50);
     });
 
-    // Hover effects for better interactivity
+    // Node hover effects
     cyInstance.current.on('mouseover', 'node', (event) => {
       const node = event.target;
-      node.addClass('hovered');
-      
-      // Show basic tooltip (you could enhance this with a proper tooltip library)
-      const nodeData = node.data();
-      console.log('Hovering over:', nodeData.label, nodeData.type);
+      node.addClass('hover');
     });
 
     cyInstance.current.on('mouseout', 'node', (event) => {
       const node = event.target;
-      node.removeClass('hovered');
+      node.removeClass('hover');
     });
 
     // Edge hover effects
@@ -377,6 +659,11 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
     cyInstance.current.on('mouseout', 'edge', (event) => {
       const edge = event.target;
       edge.removeClass('hovered');
+    });
+    
+    // Update tooltips on viewport changes
+    cyInstance.current.on('pan zoom', () => {
+      tippyInstances.current.forEach(tip => tip.hide());
     });
   };
 
@@ -400,7 +687,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         const png = cyInstance.current.png({ 
           scale: 2,
           full: true,
-          bg: '#FAFBFC'
+          bg: palette.gray.light3
         });
         
         // Create download link
@@ -410,17 +697,23 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        
+        // Show success feedback
+        setExportSuccess(true);
+        setTimeout(() => setExportSuccess(false), 2000);
       } catch (err) {
         console.error('Error exporting graph:', err);
       }
     }
   };
 
-  const refreshGraph = () => {
-    fetchKnowledgeGraph();
+  const refreshGraph = async () => {
+    setIsRefreshing(true);
+    await fetchKnowledgeGraph();
+    setIsRefreshing(false);
   };
 
-  const changeLayout = (newLayout: 'cose' | 'circle' | 'breadthfirst') => {
+  const changeLayout = (newLayout: 'cose' | 'circle' | 'breadthfirst' | 'dagre') => {
     if (cyInstance.current) {
       const layoutConfig = getLayoutConfig(newLayout);
       const layout = cyInstance.current.layout(layoutConfig);
@@ -429,16 +722,45 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
     setSelectedLayout(newLayout);
   };
 
+  const focusOnNode = (nodeId: string) => {
+    if (cyInstance.current) {
+      const node = cyInstance.current.getElementById(nodeId);
+      if (node.length > 0) {
+        const neighborhood = node.neighborhood().union(node);
+        cyInstance.current.fit(neighborhood, 50);
+        cyInstance.current.animate({
+          zoom: cyInstance.current.zoom() * 1.5,
+          center: { eles: node }
+        }, { duration: 500 });
+      }
+    }
+  };
+
+  const copyNodeContent = (node: any) => {
+    if (node && node.text) {
+      navigator.clipboard.writeText(node.text).then(() => {
+        console.log('Content copied to clipboard');
+      }).catch(err => {
+        console.error('Failed to copy content:', err);
+      });
+    }
+  };
+
   return (
     <Modal open={isOpen} setOpen={onClose} size="large">
       <div style={{ 
-        width: '900px', 
-        height: '700px', 
+        width: '95vw',
+        maxWidth: '1400px',
+        height: '85vh',
+        maxHeight: '900px',
         padding: spacing[4],
-        backgroundColor: '#FFFFFF'
+        display: 'flex',
+        flexDirection: 'column',
+        backgroundColor: palette.white
       }}>
-        {/* Header */}
+        {/* Header - Fixed */}
         <div style={{ 
+          flexShrink: 0,
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
@@ -462,7 +784,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
               <RadioGroup
                 size="small"
                 value={selectedLayout}
-                onChange={(e) => changeLayout(e.target.value as 'cose' | 'circle' | 'breadthfirst')}
+                onChange={(e) => changeLayout(e.target.value as 'cose' | 'circle' | 'breadthfirst' | 'dagre')}
                 style={{ display: 'flex', gap: spacing[2] }}
               >
                 <Radio value="cose" id="layout-cose">
@@ -474,6 +796,9 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 <Radio value="breadthfirst" id="layout-breadth">
                   <Body size="xsmall">Tree</Body>
                 </Radio>
+                <Radio value="dagre" id="layout-dagre">
+                  <Body size="xsmall">Hierarchy</Body>
+                </Radio>
               </RadioGroup>
             </div>
 
@@ -484,9 +809,9 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 variant="default"
                 onClick={refreshGraph}
                 leftGlyph={<Icon glyph="Refresh" size="small" />}
-                disabled={loading}
+                disabled={loading || isRefreshing}
               >
-                Refresh
+                {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
               <Button 
                 size="small" 
@@ -508,25 +833,41 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
               </Button>
               <Button 
                 size="small" 
-                variant="primaryOutline"
+                variant="default"
+                onClick={() => setSelectedNode(null)}
+                leftGlyph={<Icon glyph="X" size="small" />}
+                disabled={!selectedNode}
+              >
+                Clear Selection
+              </Button>
+              <Button 
+                size="small" 
+                variant={exportSuccess ? "primary" : "primaryOutline"}
                 onClick={exportGraph}
-                leftGlyph={<Icon glyph="Download" size="small" />}
+                leftGlyph={<Icon glyph={exportSuccess ? "Checkmark" : "Download"} size="small" />}
                 disabled={!graphData}
               >
-                Export
+                {exportSuccess ? 'Exported!' : 'Export'}
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Graph Container */}
+        {/* Main Content - Flexible split view */}
         <div style={{ 
-          height: '580px',
-          border: `1px solid ${palette.gray.light2}`,
-          borderRadius: '6px',
-          backgroundColor: '#FAFBFC',
-          position: 'relative'
+          flex: 1,
+          display: 'flex',
+          gap: spacing[3],
+          minHeight: 0
         }}>
+          {/* Graph Container */}
+          <div style={{ 
+            flex: selectedNode ? 2 : 3,
+            border: `1px solid ${palette.gray.light2}`,
+            borderRadius: '6px',
+            backgroundColor: palette.gray.light3,
+            position: 'relative'
+          }}>
           {loading && (
             <div style={{ 
               display: 'flex', 
@@ -588,31 +929,167 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
               </Body>
             </div>
           )}
+          </div>
+
+          {/* Detail Panel - Conditional */}
+          {selectedNode && (
+            <Card style={{ 
+              flex: 1,
+              minWidth: '320px',
+              maxWidth: '400px',
+              overflowY: 'auto'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: spacing[3]
+              }}>
+                <H3>Node Details</H3>
+                <button 
+                  aria-label="Close panel"
+                  onClick={() => setSelectedNode(null)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: spacing[1],
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '4px',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = palette.gray.light2}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <Icon glyph="X" />
+                </button>
+              </div>
+              
+              {/* Breadcrumb trail */}
+              <Label htmlFor="node-location" style={{ marginBottom: spacing[1] }}>
+                Location:
+              </Label>
+              <Body size="small" style={{ 
+                color: palette.blue.dark2,
+                marginBottom: spacing[3]
+              }}>
+                {selectedNode.breadcrumb_trail || selectedNode.label || selectedNode.id}
+              </Body>
+              
+              {/* Page numbers */}
+              {selectedNode.page_numbers && selectedNode.page_numbers.length > 0 && (
+                <>
+                  <Label htmlFor="node-pages" style={{ marginBottom: spacing[1] }}>
+                    Pages:
+                  </Label>
+                  <div style={{ display: 'flex', gap: spacing[1], marginBottom: spacing[3], flexWrap: 'wrap' }}>
+                    {selectedNode.page_numbers.map((page: number) => (
+                      <Badge key={page} variant="blue">{page}</Badge>
+                    ))}
+                  </div>
+                </>
+              )}
+              
+              {/* Content types */}
+              {selectedNode.content_type && selectedNode.content_type.length > 0 && (
+                <>
+                  <Label htmlFor="node-content-types" style={{ marginBottom: spacing[1] }}>
+                    Content Types:
+                  </Label>
+                  <div style={{ display: 'flex', gap: spacing[1], flexWrap: 'wrap', marginBottom: spacing[3] }}>
+                    {selectedNode.content_type.map((type: string) => (
+                      <Badge key={type} variant="green">{type}</Badge>
+                    ))}
+                  </div>
+                </>
+              )}
+              
+              {/* Full text content */}
+              {selectedNode.text && (
+                <>
+                  <Label htmlFor="node-content" style={{ marginBottom: spacing[1] }}>
+                    Content:
+                  </Label>
+                  <div style={{ 
+                    padding: spacing[2],
+                    backgroundColor: palette.gray.light3,
+                    borderRadius: '6px',
+                    border: `1px solid ${palette.gray.light2}`,
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    marginBottom: spacing[3]
+                  }}>
+                    <Body size="small" style={{ lineHeight: '1.6' }}>
+                      {selectedNode.text}
+                    </Body>
+                  </div>
+                </>
+              )}
+              
+              {/* Connections summary */}
+              <Label htmlFor="node-connections" style={{ marginBottom: spacing[1] }}>
+                Connections:
+              </Label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1], marginBottom: spacing[3] }}>
+                <Body size="small">
+                  <Icon glyph="ArrowRight" size="small" /> {selectedNode.outgoing} outgoing
+                </Body>
+                <Body size="small">
+                  <Icon glyph="ArrowLeft" size="small" /> {selectedNode.incoming} incoming
+                </Body>
+              </div>
+              
+              {/* Action buttons */}
+              <div style={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                gap: spacing[2]
+              }}>
+                <Button 
+                  size="small" 
+                  variant="primary"
+                  leftGlyph={<Icon glyph="MagnifyingGlass" size="small" />}
+                  onClick={() => focusOnNode(selectedNode.id)}
+                >
+                  Focus on Node
+                </Button>
+                <Button 
+                  size="small" 
+                  variant="default"
+                  leftGlyph={<Icon glyph="Copy" size="small" />}
+                  onClick={() => copyNodeContent(selectedNode)}
+                >
+                  Copy Content
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
 
+        {/* Legend - Fixed */}
+        <div style={{ flexShrink: 0 }}>
         {/* Legend */}
         {!loading && !error && graphData && (
-          <div style={{ 
-            marginTop: spacing[3], 
-            padding: spacing[3],
-            backgroundColor: palette.gray.light3,
-            borderRadius: '4px',
-            fontSize: '12px'
-          }}>
-            <Body weight="medium" style={{ marginBottom: spacing[2] }}>
-              Legend:
-            </Body>
+          <ExpandableCard 
+            title="Legend"
+            defaultOpen={true}
+            style={{ marginTop: spacing[3] }}
+          >
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: spacing[2]
+              gap: spacing[2],
+              padding: spacing[2]
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
                 <div style={{ 
                   width: '12px', 
                   height: '12px', 
                   borderRadius: '50%', 
-                  backgroundColor: '#00ED64' 
+                  backgroundColor: palette.blue.light2,
+                  border: `2px solid ${palette.blue.base}`
                 }} />
                 <Body size="small">Document Chunks</Body>
               </div>
@@ -620,7 +1097,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 <div style={{ 
                   width: '12px', 
                   height: '12px', 
-                  backgroundColor: '#FFC010' 
+                  backgroundColor: palette.purple.base 
                 }} />
                 <Body size="small">Vehicle Systems</Body>
               </div>
@@ -628,7 +1105,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 <div style={{ 
                   width: '12px', 
                   height: '12px', 
-                  backgroundColor: '#FF6B47',
+                  backgroundColor: palette.red.base,
                   transform: 'rotate(45deg)'
                 }} />
                 <Body size="small">Content Types</Body>
@@ -637,7 +1114,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 <div style={{ 
                   width: '20px', 
                   height: '2px', 
-                  backgroundColor: '#00ED64' 
+                  backgroundColor: palette.green.base 
                 }} />
                 <Body size="small">Sequential</Body>
               </div>
@@ -645,7 +1122,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 <div style={{ 
                   width: '20px', 
                   height: '2px', 
-                  backgroundColor: '#001E2B' 
+                  backgroundColor: palette.blue.base 
                 }} />
                 <Body size="small">Related</Body>
               </div>
@@ -653,14 +1130,15 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
                 <div style={{ 
                   width: '20px', 
                   height: '1px', 
-                  backgroundColor: '#FFC010',
-                  borderTop: '1px dashed #FFC010'
+                  backgroundColor: palette.purple.base,
+                  borderTop: `1px dashed ${palette.purple.base}`
                 }} />
                 <Body size="small">System References</Body>
               </div>
             </div>
-          </div>
+          </ExpandableCard>
         )}
+        </div>
       </div>
     </Modal>
   );

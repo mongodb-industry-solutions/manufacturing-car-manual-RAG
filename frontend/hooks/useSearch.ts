@@ -1,7 +1,7 @@
 /**
  * Custom hook for search functionality with caching support
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   SearchMethod, 
   SearchRequest, 
@@ -31,7 +31,6 @@ export interface UseSearchResult {
     limit?: number,
     // GraphRAG-specific parameters
     expansionMethod?: GraphExpansionMethod,
-    maxDepth?: number,
     relationshipTypes?: string[]
   ) => Promise<SearchResponse>;
   loading: boolean;
@@ -50,30 +49,28 @@ export const useSearch = (): UseSearchResult => {
   
   // Generate a consistent cache key for searches
   const getCacheKey = (
-    method: SearchMethod, 
-    query: string, 
+    method: SearchMethod,
+    query: string,
     limit: number = 5,
     expansionMethod?: GraphExpansionMethod,
-    maxDepth?: number,
     relationshipTypes?: string[]
   ): string => {
     if (method === 'graph') {
       const relTypes = relationshipTypes?.sort().join(',') || '';
-      return `${CACHE_VERSION}:${method}:${query}:${limit}:${expansionMethod}:${maxDepth}:${relTypes}`;
+      return `${CACHE_VERSION}:${method}:${query}:${limit}:${expansionMethod}:${relTypes}`;
     }
     return `${CACHE_VERSION}:${method}:${query}:${limit}`;
   };
   
-  const search = async (
-    method: SearchMethod, 
-    query: string, 
+  const search = useCallback(async (
+    method: SearchMethod,
+    query: string,
     limit: number = 5,
     expansionMethod: GraphExpansionMethod = 'vector_to_graph',
-    maxDepth: number = 2,
     relationshipTypes?: string[]
   ): Promise<SearchResponse> => {
     // Generate a cache key for this search
-    const cacheKey = getCacheKey(method, query, limit, expansionMethod, maxDepth, relationshipTypes);
+    const cacheKey = getCacheKey(method, query, limit, expansionMethod, relationshipTypes);
     
     // Check if we have a cached result for this exact search
     if (GLOBAL_SEARCH_CACHE[cacheKey]) {
@@ -127,7 +124,6 @@ export const useSearch = (): UseSearchResult => {
             query,
             limit,
             expansion_method: expansionMethod,
-            max_depth: maxDepth,
             relationship_types: relationshipTypes,
             graph_weight: 0.6,
             vector_weight: 0.4
@@ -150,7 +146,7 @@ export const useSearch = (): UseSearchResult => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Empty deps - function doesn't depend on any state
   
   // Function to clear the cache if needed
   const clearCache = () => {

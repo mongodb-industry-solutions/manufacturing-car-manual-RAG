@@ -8,7 +8,8 @@ import {
   Body as LeafyBody,
   Subtitle as LeafySubtitle,
   InlineCode as LeafyInlineCode,
-  Link as LeafyLink
+  Link as LeafyLink,
+  Label as LeafyLabel
 } from '@leafygreen-ui/typography';
 import LeafyCard from '@leafygreen-ui/card';
 import LeafyButton from '@leafygreen-ui/button';
@@ -25,6 +26,7 @@ export const MyBody = (props) => <LeafyBody {...props}>{props.children}</LeafyBo
 export const MySubtitle = (props) => <LeafySubtitle {...props}>{props.children}</LeafySubtitle>;
 export const MyInlineCode = (props) => <LeafyInlineCode {...props}>{props.children}</LeafyInlineCode>;
 export const MyLink = (props) => <LeafyLink {...props}>{props.children}</LeafyLink>;
+export const MyLabel = (props) => <LeafyLabel {...props}>{props.children}</LeafyLabel>;
 
 // Card wrapper
 export const MyCard = (props) => <LeafyCard {...props}>{props.children}</LeafyCard>;

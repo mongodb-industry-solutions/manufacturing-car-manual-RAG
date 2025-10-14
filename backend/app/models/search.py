@@ -16,6 +16,13 @@ class SearchResult(BaseModel):
     content_type: Optional[List[str]] = Field(None, description="Types of content in the chunk")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata about the chunk")
     vehicle_systems: Optional[List[str]] = Field(None, description="Vehicle systems referenced")
+    # GraphRAG-specific fields
+    source: Optional[str] = Field(None, description="Source of result: 'vector_seed', 'graph_expansion', 'seed', 'graph'")
+    depth: Optional[int] = Field(None, description="Graph traversal depth (0 for seeds, 1+ for expanded)")
+    # Heading hierarchy fields
+    heading_level_1: Optional[str] = Field(None, description="Top-level heading")
+    heading_level_2: Optional[str] = Field(None, description="Second-level heading")
+    heading_level_3: Optional[str] = Field(None, description="Third-level heading")
     
     # This is still supported for backward compatibility
     chunk: Optional[Chunk] = Field(None, description="The full matching chunk object (deprecated)")
@@ -23,7 +30,7 @@ class SearchResult(BaseModel):
 class SearchRequest(BaseModel):
     """Request model for search endpoints"""
     query: str = Field(..., description="The search query")
-    limit: int = Field(5, ge=1, le=20, description="Maximum number of results to return")
+    limit: int = Field(5, ge=1, le=50, description="Maximum number of results to return")
 
 class VectorSearchRequest(SearchRequest):
     """Request model for vector search"""
@@ -73,12 +80,6 @@ class GraphSearchRequest(SearchRequest):
     expansion_method: Literal["graph_to_vector", "vector_to_graph"] = Field(
         "vector_to_graph", 
         description="Method for expanding search results"
-    )
-    max_depth: int = Field(
-        2, 
-        ge=1, 
-        le=4, 
-        description="Maximum $graphLookup traversal depth (up to 4)"
     )
     relationship_types: Optional[List[str]] = Field(
         None, 

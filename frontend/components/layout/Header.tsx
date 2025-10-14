@@ -39,7 +39,7 @@ const Header: React.FC = () => {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        borderBottom: `3px solid ${palette.green.base}`,
+        borderBottom: `1px solid ${palette.gray.light2}`,
       }}
     >
       <div
@@ -102,20 +102,6 @@ const Header: React.FC = () => {
             </li>
             
             <li>
-              <Link href="/search">
-                <div style={{ display: 'inline-block' }}>
-                  <Button
-                    variant={pathname?.startsWith('/search') ? 'primary' : 'default'}
-                    size="large"
-                    leftGlyph={<Icon glyph="MagnifyingGlass" />}
-                  >
-                    {TERMINOLOGY.search}
-                  </Button>
-                </div>
-              </Link>
-            </li>
-            
-            <li>
               <Link href="/browse">
                 <div style={{ display: 'inline-block' }}>
                   <Button
@@ -124,6 +110,20 @@ const Header: React.FC = () => {
                     leftGlyph={<Icon glyph="Table" />}
                   >
                     {TERMINOLOGY.browse}
+                  </Button>
+                </div>
+              </Link>
+            </li>
+            
+            <li>
+              <Link href="/search">
+                <div style={{ display: 'inline-block' }}>
+                  <Button
+                    variant={pathname?.startsWith('/search') ? 'primary' : 'default'}
+                    size="large"
+                    leftGlyph={<Icon glyph="MagnifyingGlass" />}
+                  >
+                    {TERMINOLOGY.search}
                   </Button>
                 </div>
               </Link>

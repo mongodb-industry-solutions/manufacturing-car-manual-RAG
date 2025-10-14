@@ -51,6 +51,15 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
   const heading_level_3 = result.heading_level_3 || chunk.heading_level_3;
   const chunk_id = result.chunk_id || chunk.id;
   
+  // GraphRAG source and depth info
+  const source = result.source;
+  const depth = result.depth;
+  const isGraphRAG = source !== undefined && source !== null;
+  const isSeed = source && (source.includes('seed') || depth === 0);
+  
+  // Determine if this is hybrid search (has both vector and text scores but no source field)
+  const isHybridSearch = (vector_score !== undefined && text_score !== undefined) && !isGraphRAG;
+  
   // Raw score from $rankFusion (typically 0-1 range)
   const displayScore = score;
   
@@ -105,8 +114,8 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
           marginBottom: spacing[2],
           flexDirection: 'column'
         }}>
-          {/* For hybrid search: show combined score and percentage breakdown */}
-          {(vector_score !== undefined && text_score !== undefined) && (
+          {/* For hybrid search only: show combined score and percentage breakdown */}
+          {isHybridSearch && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1], alignItems: 'flex-end' }}>
               {/* Combined Score */}
               <Tooltip
@@ -231,15 +240,32 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
         </div>
         
         {/* Header */}
-        <H3 style={{ marginBottom: spacing[1] }}>{title}</H3>
-        {subtitle && (
-          <Subtitle style={{ marginBottom: spacing[2], color: palette.gray.dark1 }}>
-            {subtitle}
-          </Subtitle>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[1] }}>
+          <H3 style={{ margin: 0 }}>{title}</H3>
+          
+          {/* GraphRAG Source Badge */}
+          {isGraphRAG && (
+            <Tooltip
+              trigger={
+                <Badge variant={isSeed ? 'blue' : 'green'}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                    {isSeed ? 'Seed' : 'Expanded'}
+                    {depth !== undefined && depth !== null && ` (D${depth})`}
+                  </span>
+                </Badge>
+              }
+              triggerEvent="hover"
+            >
+              {isSeed 
+                ? `Initial search result (depth ${depth || 0})` 
+                : `Found via graph traversal at depth ${depth}`
+              }
+            </Tooltip>
+          )}
+        </div>
         
-        {/* Breadcrumb */}
-        {breadcrumb_trail && (
+        {/* Breadcrumb - only show if different from title and has hierarchy */}
+        {breadcrumb_trail && breadcrumb_trail !== title && breadcrumb_trail.includes(' > ') && (
           <Body size="small" style={{ 
             marginBottom: spacing[2], 
             color: palette.gray.dark1,

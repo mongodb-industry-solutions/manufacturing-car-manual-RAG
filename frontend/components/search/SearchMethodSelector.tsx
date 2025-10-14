@@ -20,8 +20,6 @@ interface SearchMethodSelectorProps {
   // GraphRAG-specific props
   selectedExpansionMethod?: GraphExpansionMethod;
   onExpansionMethodChange?: (method: GraphExpansionMethod) => void;
-  maxDepth?: number;
-  onMaxDepthChange?: (depth: number) => void;
 }
 
 // $rankFusion explanation tooltip content
@@ -37,16 +35,14 @@ const GRAPHRAG_EXPLANATION = `
 GraphRAG uses relationship data between document chunks to expand search results.
 Vector→Graph: Start with vector search, then expand via relationships.
 Graph→Vector: Start with text matching, expand via graph, then vector search.
-MongoDB's $graphLookup traverses relationships up to 4 levels deep.
+MongoDB's $graphLookup traverses relationships at a fixed depth of 2 for optimal performance.
 `;
 
 const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
   selectedMethod,
   onChange,
   selectedExpansionMethod = 'vector_to_graph',
-  onExpansionMethodChange,
-  maxDepth = 2,
-  onMaxDepthChange
+  onExpansionMethodChange
 }) => {
   return (
     <div>
@@ -181,27 +177,6 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
                       </Body>
                     </Radio>
                   </RadioGroup>
-                </div>
-
-                {/* Max Depth Selection */}
-                <div>
-                  <Body size="small" weight="medium" style={{ marginBottom: spacing[1] }}>
-                    Traversal Depth: {maxDepth}
-                  </Body>
-                  <input
-                    type="range"
-                    min="1"
-                    max="4"
-                    value={maxDepth}
-                    onChange={(e) => onMaxDepthChange?.(parseInt(e.target.value))}
-                    style={{ width: '100%' }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: spacing[1] }}>
-                    <Body size="xsmall" style={{ color: palette.gray.dark1 }}>1 (Direct)</Body>
-                    <Body size="xsmall" style={{ color: palette.gray.dark1 }}>2 (Default)</Body>
-                    <Body size="xsmall" style={{ color: palette.gray.dark1 }}>3 (Extended)</Body>
-                    <Body size="xsmall" style={{ color: palette.gray.dark1 }}>4 (Deep)</Body>
-                  </div>
                 </div>
               </div>
             </Banner>

@@ -20,7 +20,7 @@ export const TERMINOLOGY = {
   manual: "Car Manual",
   chunk: "Section",
   document: "Manual",
-  search: "Search Manuals",
+  search: "Search",
   browse: "Browse Chunks"
 };
 
