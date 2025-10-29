@@ -50,50 +50,26 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [selectedLayout, setSelectedLayout] = useState<'cose' | 'dagre' | 'circle'>('cose');
+  const [selectedLayout, setSelectedLayout] = useState<'cose' | 'dagre' | 'circle'>('circle');
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Graph mode state
-  const [graphMode, setGraphMode] = useState<'query' | 'full'>('query');
-  const [appliedFilters, setAppliedFilters] = useState({
-    systems: [] as string[],
-    contentTypes: [] as string[],
-    minConnections: 0
-  });
-  
-  // Layout caching state (only used for full graph mode with dagre)
-  const [cachedLayouts, setCachedLayouts] = useState<{
-    dagre?: Map<string, {x: number, y: number}>
-  }>({});
-  const [layoutsCalculated, setLayoutsCalculated] = useState(false);
-  const [cacheMode, setCacheMode] = useState<'query' | 'full' | null>(null);
-  const [calculationMessage, setCalculationMessage] = useState<string>('');
-  
   // Fetch knowledge graph data from API
   const fetchKnowledgeGraph = useCallback(async () => {
-    // Query mode requires query or chunk IDs
-    if (graphMode === 'query' && !query && (!chunkIds || chunkIds.length === 0)) return;
-    
+    // Query graph requires query or chunk IDs
+    if (!query && (!chunkIds || chunkIds.length === 0)) return;
+
     setLoading(true);
     setLoadingProgress(0);
     setError(null);
-    
+
     try {
-      const options = graphMode === 'full' 
-        ? {
-            includeAll: true,
-            maxNodes: 1000, // Higher limit for full graph
-            filterSystems: appliedFilters.systems.length > 0 ? appliedFilters.systems : undefined,
-            filterContentTypes: appliedFilters.contentTypes.length > 0 ? appliedFilters.contentTypes : undefined,
-            minConnections: appliedFilters.minConnections > 0 ? appliedFilters.minConnections : undefined
-          }
-        : {
-            query,
-            chunkIds,
-            maxNodes
-          };
-      
+      const options = {
+        query,
+        chunkIds,
+        maxNodes
+      };
+
       const data = await searchService.getKnowledgeGraph(options);
       setGraphData(data);
       setLoadingProgress(100);
@@ -104,33 +80,14 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
     } finally {
       setLoading(false);
     }
-  }, [graphMode, query, chunkIds, maxNodes, appliedFilters]);
+  }, [query, chunkIds, maxNodes]);
 
   // Fetch data when modal opens and parameters change
   useEffect(() => {
-    if (isOpen && (graphMode === 'full' || query || (chunkIds && chunkIds.length > 0))) {
+    if (isOpen && (query || (chunkIds && chunkIds.length > 0))) {
       fetchKnowledgeGraph();
     }
-  }, [isOpen, graphMode, fetchKnowledgeGraph]);
-
-  // Set default layout based on graph mode
-  useEffect(() => {
-    if (graphMode === 'full') {
-      setSelectedLayout('circle');  // Circle default for full graphs (instant, no freezing)
-    } else {
-      setSelectedLayout('cose');  // Force-directed default for query graphs (existing behavior)
-    }
-  }, [graphMode]);
-
-  // Clear cache when switching between query and full mode to prevent contamination
-  useEffect(() => {
-    if (cacheMode !== null && cacheMode !== graphMode) {
-      // Mode changed, clear cache to prevent mixing query and full graph layouts
-      setCachedLayouts({});
-      setLayoutsCalculated(false);
-      setCacheMode(null);
-    }
-  }, [graphMode, cacheMode]);
+  }, [isOpen, fetchKnowledgeGraph]);
 
   // Initialize and render Cytoscape graph
   useEffect(() => {
@@ -461,101 +418,6 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
     ];
   };
 
-  // Calculate dagre layout with manual yielding for responsiveness
-  // Note: Circle layout is instant and doesn't need pre-calculation
-  const calculateSingleLayout = async (
-    layoutName: 'dagre',  // Only dagre needs pre-calculation for full graphs
-    elements: any[], 
-    isLargeGraph: boolean,
-    onProgress?: (message: string) => void
-  ) => {
-    // Yield to browser before starting
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    onProgress?.('Calculating hierarchical layout...');
-    
-    // Create temporary Cytoscape instance for calculation
-    const tempDiv = document.createElement('div');
-    tempDiv.style.width = '1px';
-    tempDiv.style.height = '1px';
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
-    document.body.appendChild(tempDiv);
-
-    try {
-      const tempCy = cytoscape({
-        container: tempDiv,
-        elements: elements,
-        headless: true
-      });
-
-      // Run dagre layout
-      const layout = tempCy.layout(getLayoutConfig('dagre', isLargeGraph));
-      await new Promise(resolve => {
-        layout.on('layoutstop', resolve);
-        layout.run();
-      });
-
-      // Extract positions
-      const positions = new Map();
-      tempCy.nodes().forEach((node: any) => {
-        positions.set(node.id(), { x: node.position().x, y: node.position().y });
-      });
-
-      tempCy.destroy();
-      document.body.removeChild(tempDiv);
-
-      // Cache dagre positions for full graph
-      setCachedLayouts({ dagre: positions });
-      
-      return positions;
-      
-    } catch (err) {
-      console.error('Error calculating dagre layout:', err);
-      if (document.body.contains(tempDiv)) {
-        document.body.removeChild(tempDiv);
-      }
-      throw err;
-    }
-  };
-
-  // Apply cached dagre layout positions instantly
-  const applyLayoutPositions = (layoutName: 'dagre') => {
-    if (!cyInstance.current || !cachedLayouts.dagre) return;
-
-    console.log('Applying cached dagre positions');
-    
-    cyInstance.current.nodes().forEach((node: any) => {
-      const pos = cachedLayouts.dagre.get(node.id());
-      if (pos) {
-        node.position(pos);
-      }
-    });
-
-    cyInstance.current.fit(undefined, 40);
-  };
-
-  // Render graph in batches for better performance with large graphs
-  const renderGraphInBatches = async (elements: any[], batchSize: number = 150) => {
-    if (!cyInstance.current) return;
-    
-    const batches = Math.ceil(elements.length / batchSize);
-    setLoadingProgress(0);
-    
-    for (let i = 0; i < batches; i++) {
-      const batch = elements.slice(i * batchSize, (i + 1) * batchSize);
-      cyInstance.current.add(batch);
-      
-      // Update progress
-      const progress = Math.round(((i + 1) / batches) * 50); // 0-50% for adding elements
-      setLoadingProgress(progress);
-      
-      // Longer delay to let browser breathe and update UI
-      await new Promise(resolve => setTimeout(resolve, 50));  // 50ms per batch
-    }
-    
-    setLoadingProgress(50);
-  };
 
   const renderCytoscapeGraph = async (data: KnowledgeGraphResponse) => {
     if (!cyRef.current || !data?.elements) return;
@@ -566,78 +428,23 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
     }
 
     try {
-      const isLargeGraph = data.elements.length > 200;
-      
-      // Performance settings for large graphs
-      const performanceSettings = isLargeGraph ? {
-        hideEdgesOnViewport: false,  // Keep edges visible during pan/zoom
-        hideLabelsOnViewport: true,   // Can hide labels for performance
-        textureOnViewport: true,
-        motionBlur: false,
-        wheelSensitivity: 0.2
-      } : {
-        wheelSensitivity: 0.3
-      };
-      
-      // Initialize Cytoscape with preset layout (we'll set positions manually)
+      // Initialize Cytoscape
       // @ts-ignore - Cytoscape style typing is overly strict for our use case
       cyInstance.current = cytoscape({
         container: cyRef.current,
-        elements: isLargeGraph ? [] : data.elements, // Start empty for large graphs
+        elements: data.elements,
         // @ts-ignore - Style type incompatibility with Cytoscape definitions
         style: getModernStyle(data.style),
-        layout: { name: 'preset' },  // Always use preset
+        layout: { name: 'preset' },
         minZoom: 0.2,
         maxZoom: 4,
-        ...performanceSettings
+        wheelSensitivity: 0.3
       });
 
-      // For large graphs, render in batches
-      if (isLargeGraph) {
-        await renderGraphInBatches(data.elements);
-      }
-
-      // Handle layout based on graph mode
-      if (graphMode === 'full' && isLargeGraph) {
-        // Full graph mode with large dataset
-        
-        if (selectedLayout === 'circle') {
-          // Circle is always instant, no caching needed
-          console.log(`Full graph - using instant circle layout (${data.elements.length} elements)`);
-          const circleLayout = cyInstance.current.layout(getLayoutConfig('circle', isLargeGraph));
-          circleLayout.run();
-          setLoadingProgress(100);
-          
-        } else if (selectedLayout === 'dagre') {
-          // Dagre: use cache if available, otherwise calculate and cache
-          if (!cachedLayouts.dagre || cacheMode !== 'full') {
-            setLoadingProgress(50);
-            setCalculationMessage('Calculating hierarchical layout...');
-            
-            await calculateSingleLayout(
-              'dagre', 
-              data.elements, 
-              isLargeGraph,
-              (msg) => setCalculationMessage(msg)
-            );
-            
-            setCacheMode('full');
-            setLayoutsCalculated(true);
-            setLoadingProgress(75);
-            setCalculationMessage('');
-          }
-          
-          applyLayoutPositions('dagre');
-          setLoadingProgress(100);
-        }
-        
-      } else {
-        // Query mode: use selected layout directly (always fast for small graphs)
-        // No caching needed for query graphs
-        const layout = cyInstance.current.layout(getLayoutConfig(selectedLayout, isLargeGraph));
-        layout.run();
-        setLoadingProgress(100);
-      }
+      // Apply selected layout (query graphs are small, always fast)
+      const layout = cyInstance.current.layout(getLayoutConfig(selectedLayout, false));
+      layout.run();
+      setLoadingProgress(100);
 
       // Add event handlers for interaction
       setupCytoscapeEventHandlers();
@@ -938,58 +745,12 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
 
   const changeLayout = async (newLayout: 'cose' | 'dagre' | 'circle') => {
     if (!cyInstance.current || newLayout === selectedLayout) return;
-    
+
     setSelectedLayout(newLayout);
-    
-    const elementCount = cyInstance.current.elements().length;
-    const isLargeGraph = elementCount > 200;
-    
-    // Handle based on graph mode
-    if (graphMode === 'full') {
-      // Full graph mode
-      
-      if (newLayout === 'circle') {
-        // Circle is always instant
-        const layout = cyInstance.current.layout(getLayoutConfig('circle', isLargeGraph));
-        layout.run();
-        
-      } else if (newLayout === 'dagre') {
-        // Dagre: check cache for large graphs
-        if (isLargeGraph && cachedLayouts.dagre && cacheMode === 'full') {
-          // Use cached positions
-          applyLayoutPositions('dagre');
-        } else if (isLargeGraph) {
-          // Calculate and cache
-          setLoading(true);
-          setCalculationMessage('Calculating hierarchical layout...');
-          
-          try {
-            await calculateSingleLayout(
-              'dagre',
-              cyInstance.current.elements().jsons(),
-              true,
-              (msg) => setCalculationMessage(msg)
-            );
-            
-            applyLayoutPositions('dagre');
-            setCalculationMessage('');
-          } catch (err) {
-            console.error('Error calculating dagre layout:', err);
-          } finally {
-            setLoading(false);
-          }
-        } else {
-          // Small graph: calculate directly
-          const layout = cyInstance.current.layout(getLayoutConfig('dagre', false));
-          layout.run();
-        }
-      }
-      
-    } else {
-      // Query mode: always calculate directly (small graphs, fast)
-      const layout = cyInstance.current.layout(getLayoutConfig(newLayout, isLargeGraph));
-      layout.run();
-    }
+
+    // Query graphs are small, always fast
+    const layout = cyInstance.current.layout(getLayoutConfig(newLayout, false));
+    layout.run();
   };
 
   const focusOnNode = (nodeId: string) => {
@@ -1052,81 +813,75 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
           animation: 'slideIn 250ms cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
         {/* Header - Fixed */}
-        <div style={{ 
+        <div style={{
           flexShrink: 0,
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: spacing[2],
-          paddingBottom: spacing[1],
-          borderBottom: `1px solid ${palette.gray.light2}`
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: spacing[3],
+          paddingBottom: spacing[3],
+          borderBottom: `2px solid ${palette.gray.light2}`
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-            <H3>Knowledge Graph Visualization</H3>
-            <Badge variant={graphMode === 'full' ? 'blue' : 'green'}>
-              {graphMode === 'full' ? 'Full Graph' : 'Query Graph'}
-            </Badge>
+          {/* Left: Title + Metadata */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+            <H3 style={{
+              margin: 0,
+              color: palette.gray.dark3,
+              fontFamily: "'Euclid Circular A', sans-serif"
+            }}>
+              Knowledge Graph
+            </H3>
+
             {graphData?.total_nodes && (
-              <Badge variant="lightgray">{graphData.total_nodes} nodes</Badge>
+              <Badge variant="lightgray">
+                {graphData.total_nodes} nodes
+              </Badge>
             )}
-            {query && graphMode === 'query' && (
-              <Body size="small" style={{ color: palette.gray.dark1, marginLeft: spacing[2] }}>
-                Query: "{query}"
+
+            {query && (
+              <Body size="small" style={{
+                color: palette.gray.dark1,
+                fontStyle: 'italic'
+              }}>
+                "{query}"
               </Body>
             )}
           </div>
-          
+
+          {/* Right: Controls */}
           <div style={{ display: 'flex', gap: spacing[3], alignItems: 'center' }}>
-            {/* Mode Toggle Button */}
-            <Button
-              size="small"
-              variant={graphMode === 'full' ? 'primary' : 'default'}
-              onClick={() => {
-                const newMode = graphMode === 'query' ? 'full' : 'query';
-                setGraphMode(newMode);
-              }}
-              leftGlyph={<Icon glyph={graphMode === 'full' ? 'Diagram3' : 'Diagram'} size="small" />}
-            >
-              {graphMode === 'full' ? 'Switch to Query' : 'View Full Graph'}
-            </Button>
-            
             {/* Layout Selector */}
-            <div style={{ display: 'flex', flexDirection: 'row', gap: spacing[2], alignItems: 'center' }}>
-              <Body size="small" weight="medium">Layout:</Body>
+            <Card style={{
+              padding: `${spacing[2]}px ${spacing[3]}px`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              backgroundColor: palette.gray.light3,
+              border: `1px solid ${palette.gray.light2}`
+            }}>
+              <Label style={{ margin: 0, fontWeight: 600, fontSize: '13px' }}>Layout:</Label>
               <RadioGroup
                 size="small"
                 value={selectedLayout}
                 onChange={(e) => changeLayout(e.target.value as 'cose' | 'dagre' | 'circle')}
                 style={{ display: 'flex', flexDirection: 'row', gap: spacing[2] }}
               >
-                {graphMode === 'full' ? (
-                  // Full graph mode: Circle and Hierarchical only
-                  <>
-                    <Radio value="circle" id="layout-circle">
-                      <Body size="xsmall">Circle</Body>
-                    </Radio>
-                    <Radio value="dagre" id="layout-dagre">
-                      <Body size="xsmall">Hierarchical</Body>
-                    </Radio>
-                  </>
-                ) : (
-                  // Query mode: Keep existing options (Force-Directed and Hierarchical)
-                  <>
-                    <Radio value="cose" id="layout-cose">
-                      <Body size="xsmall">Force-Directed</Body>
-                    </Radio>
-                    <Radio value="dagre" id="layout-dagre">
-                      <Body size="xsmall">Hierarchical</Body>
-                    </Radio>
-                  </>
-                )}
+                <Radio value="cose" id="layout-cose">
+                  <Body size="xsmall">Force-Directed</Body>
+                </Radio>
+                <Radio value="circle" id="layout-circle">
+                  <Body size="xsmall">Circle</Body>
+                </Radio>
+                <Radio value="dagre" id="layout-dagre">
+                  <Body size="xsmall">Hierarchical</Body>
+                </Radio>
               </RadioGroup>
-            </div>
+            </Card>
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: spacing[2] }}>
-              <Button 
-                size="small" 
+              <Button
+                size="small"
                 variant="default"
                 onClick={refreshGraph}
                 leftGlyph={<Icon glyph="Refresh" size="small" />}
@@ -1134,8 +889,8 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
               >
                 {isRefreshing ? 'Refreshing...' : 'Refresh'}
               </Button>
-              <Button 
-                size="small" 
+              <Button
+                size="small"
                 variant="default"
                 onClick={fitToView}
                 leftGlyph={<Icon glyph="FullScreenEnter" size="small" />}
@@ -1143,8 +898,8 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
               >
                 Fit
               </Button>
-              <Button 
-                size="small" 
+              <Button
+                size="small"
                 variant="default"
                 onClick={resetHighlighting}
                 leftGlyph={<Icon glyph="Unsorted" size="small" />}
@@ -1172,47 +927,27 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
             position: 'relative'
           }}>
           {loading && (
-            <div style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              justifyContent: 'center', 
-              alignItems: 'center', 
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
               height: '100%',
-              gap: spacing[3],
-              position: 'relative',
-              zIndex: 1000
+              backgroundColor: palette.gray.light3
             }}>
-              <div style={{
+              <Card style={{
                 padding: spacing[4],
-                background: palette.white,
-                borderRadius: '12px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
                 textAlign: 'center',
-                minWidth: '300px'
+                minWidth: '300px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
               }}>
                 <ParagraphSkeleton />
-                <Body weight="medium" style={{ marginTop: spacing[2] }}>
-                  {calculationMessage || (
-                    graphMode === 'full' && !layoutsCalculated 
-                      ? 'Preparing full knowledge graph...'
-                      : loadingProgress > 0 
-                        ? `Loading... ${loadingProgress}%` 
-                        : 'Loading graph...'
-                  )}
+                <Body weight="medium" style={{
+                  marginTop: spacing[3],
+                  color: palette.gray.dark2
+                }}>
+                  Loading knowledge graph...
                 </Body>
-                {graphMode === 'full' && !layoutsCalculated && !calculationMessage && (
-                  <Body size="small" style={{ color: palette.gray.dark1, marginTop: spacing[2] }}>
-                    Calculating layout for 750+ nodes...
-                    <br />
-                    This may take 5-10 seconds
-                  </Body>
-                )}
-                {calculationMessage && (
-                  <Body size="small" style={{ color: palette.gray.dark1, marginTop: spacing[2] }}>
-                    Please wait while we optimize the layout
-                  </Body>
-                )}
-              </div>
+              </Card>
             </div>
           )}
           
@@ -1267,38 +1002,38 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
 
           {/* Detail Panel - Conditional */}
           {selectedNode && (
-            <Card style={{ 
+            <Card style={{
               flex: 1,
               minWidth: '320px',
               maxWidth: '400px',
-              overflowY: 'auto'
+              overflowY: 'auto',
+              backgroundColor: palette.gray.light3,
+              border: `1px solid ${palette.gray.light2}`,
+              borderRadius: '8px',
+              padding: spacing[4]
             }}>
-              <div style={{ 
-                display: 'flex', 
+              <div style={{
+                display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: spacing[3]
+                marginBottom: spacing[3],
+                paddingBottom: spacing[2],
+                borderBottom: `1px solid ${palette.gray.light2}`
               }}>
-                <H3>Node Details</H3>
-                <button 
-                  aria-label="Close panel"
+                <H3 style={{
+                  margin: 0,
+                  color: palette.gray.dark3,
+                  fontFamily: "'Euclid Circular A', sans-serif"
+                }}>
+                  Node Details
+                </H3>
+                <Button
+                  size="xsmall"
+                  variant="default"
                   onClick={() => setSelectedNode(null)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: spacing[1],
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: '4px',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = palette.gray.light2}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                  <Icon glyph="X" />
-                </button>
+                  <Icon glyph="X" size="small" />
+                </Button>
               </div>
               
               {/* Node Type */}

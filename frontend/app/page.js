@@ -1,7 +1,13 @@
 'use client';
 
 import React from 'react';
-import { H1, H2, H3, Body, Description } from '@leafygreen-ui/typography';
+import {
+  H1,
+  H2,
+  H3,
+  Body,
+  Description,
+} from '@leafygreen-ui/typography';
 import Card from '@leafygreen-ui/card';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
@@ -42,19 +48,33 @@ export default function Home() {
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.06)',
           }}
         >
-          <H1
+          <div
             style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[2],
               marginBottom: spacing[3],
-              textAlign: 'center',
-              color: palette.gray.dark3,
-              fontFamily: "'Euclid Circular A', sans-serif",
-              fontSize: '52px',
-              fontWeight: 400,
-              lineHeight: '60px',
             }}
           >
-            Car Manual Explorer
-          </H1>
+            <Icon
+              glyph="Resource"
+              size={54}
+              fill={palette.green.dark2}
+            />
+            <H1
+              style={{
+                margin: 0,
+                textAlign: 'center',
+                color: palette.gray.dark3,
+                fontFamily: "'Euclid Circular A', sans-serif",
+                fontSize: '52px',
+                fontWeight: 400,
+                lineHeight: '60px',
+              }}
+            >
+              Car Manual Explorer
+            </H1>
+          </div>
 
           <H2
             style={{
@@ -151,7 +171,11 @@ export default function Home() {
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
               }}
             >
-              <Icon glyph="Database" size={18} fill={palette.gray.dark1} />
+              <Icon
+                glyph="Database"
+                size={18}
+                fill={palette.gray.dark1}
+              />
               <span>MongoDB Atlas</span>
             </div>
 
@@ -170,7 +194,11 @@ export default function Home() {
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
               }}
             >
-              <Icon glyph="Diagram" size={18} fill={palette.gray.dark1} />
+              <Icon
+                glyph="Diagram"
+                size={18}
+                fill={palette.gray.dark1}
+              />
               <span>5 Retrieval Methods</span>
             </div>
 
@@ -189,7 +217,11 @@ export default function Home() {
                 boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
               }}
             >
-              <Icon glyph="Sparkle" size={18} fill={palette.gray.dark1} />
+              <Icon
+                glyph="Sparkle"
+                size={18}
+                fill={palette.gray.dark1}
+              />
               <span>Voyage AI Powered</span>
             </div>
           </div>
@@ -424,7 +456,9 @@ export default function Home() {
         </div>
 
         {/* Retrieval Methods & Reranking - Always Visible Cards */}
-        <div style={{ marginBottom: spacing[5], marginTop: spacing[6] }}>
+        <div
+          style={{ marginBottom: spacing[5], marginTop: spacing[6] }}
+        >
           <H2
             style={{
               textAlign: 'center',
@@ -441,7 +475,8 @@ export default function Home() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gridTemplateColumns:
+                'repeat(auto-fit, minmax(320px, 1fr))',
               gap: spacing[4],
             }}
           >
@@ -451,15 +486,25 @@ export default function Home() {
               style={{
                 ...CARD_STYLES.base,
                 padding: spacing[4],
-                border: `2px solid ${palette.blue.base}`,
+                border: `2px solid ${palette.green.base}`,
                 borderRadius: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: spacing[3],
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <Icon glyph="MagnifyingGlass" size={32} fill={palette.blue.base} />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                }}
+              >
+                <Icon
+                  glyph="MagnifyingGlass"
+                  size={32}
+                  fill={palette.green.base}
+                />
                 <div>
                   <H3
                     style={{
@@ -493,7 +538,7 @@ export default function Home() {
                   borderRadius: '16px',
                   fontSize: '12px',
                   fontWeight: 600,
-                  color: palette.blue.dark2,
+                  color: palette.green.dark2,
                   alignSelf: 'flex-start',
                 }}
               >
@@ -532,15 +577,25 @@ export default function Home() {
               style={{
                 ...CARD_STYLES.base,
                 padding: spacing[4],
-                border: `2px solid ${palette.green.base}`,
+                border: `2px solid ${palette.blue.base}`,
                 borderRadius: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: spacing[3],
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <Icon glyph="Diagram" size={32} fill={palette.green.base} />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                }}
+              >
+                <Icon
+                  glyph="Diagram"
+                  size={32}
+                  fill={palette.blue.base}
+                />
                 <div>
                   <H3
                     style={{
@@ -570,11 +625,11 @@ export default function Home() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   padding: `${spacing[1]}px ${spacing[2]}px`,
-                  backgroundColor: palette.green.light2,
+                  backgroundColor: palette.blue.light2,
                   borderRadius: '16px',
                   fontSize: '12px',
                   fontWeight: 600,
-                  color: palette.green.dark2,
+                  color: palette.blue.dark2,
                   alignSelf: 'flex-start',
                 }}
               >
@@ -623,8 +678,18 @@ export default function Home() {
                 gap: spacing[3],
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <Icon glyph="Sparkle" size={32} fill={palette.purple.dark1} />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                }}
+              >
+                <Icon
+                  glyph="Sparkle"
+                  size={32}
+                  fill={palette.purple.dark1}
+                />
                 <div>
                   <H3
                     style={{
@@ -697,15 +762,25 @@ export default function Home() {
               style={{
                 ...CARD_STYLES.base,
                 padding: spacing[4],
-                border: `2px solid ${palette.purple.base}`,
+                border: `2px solid ${palette.red.base}`,
                 borderRadius: '12px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: spacing[3],
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <Icon glyph="Relationship" size={32} fill={palette.purple.base} />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                }}
+              >
+                <Icon
+                  glyph="Relationship"
+                  size={32}
+                  fill={palette.red.base}
+                />
                 <div>
                   <H3
                     style={{
@@ -735,11 +810,11 @@ export default function Home() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   padding: `${spacing[1]}px ${spacing[2]}px`,
-                  backgroundColor: palette.purple.light2,
+                  backgroundColor: palette.red.light2,
                   borderRadius: '16px',
                   fontSize: '12px',
                   fontWeight: 600,
-                  color: palette.purple.dark2,
+                  color: palette.red.dark2,
                   alignSelf: 'flex-start',
                 }}
               >
@@ -785,8 +860,18 @@ export default function Home() {
                 gap: spacing[3],
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <Icon glyph="Camera" size={32} fill={palette.yellow.dark2} />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                }}
+              >
+                <Icon
+                  glyph="Camera"
+                  size={32}
+                  fill={palette.yellow.dark2}
+                />
                 <div>
                   <H3
                     style={{
@@ -867,8 +952,18 @@ export default function Home() {
                 background: `linear-gradient(135deg, white 0%, ${palette.purple.light2} 100%)`,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                <Icon glyph="Sparkle" size={32} fill={palette.purple.dark1} />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                }}
+              >
+                <Icon
+                  glyph="Sparkle"
+                  size={32}
+                  fill={palette.purple.dark1}
+                />
                 <div>
                   <H3
                     style={{
@@ -951,102 +1046,15 @@ export default function Home() {
         >
           <H2
             style={{
-              marginBottom: spacing[2],
+              marginBottom: spacing[3],
               color: palette.gray.dark3,
               fontFamily: "'Euclid Circular A', sans-serif",
               fontSize: '32px',
-              fontWeight: 700,
+              fontWeight: 450,
             }}
           >
             Ready to Explore?
           </H2>
-
-          <Body
-            style={{
-              marginBottom: spacing[4],
-              color: palette.gray.dark1,
-              fontSize: '16px',
-              maxWidth: '600px',
-              marginLeft: 'auto',
-              marginRight: 'auto',
-            }}
-          >
-            Experience 5 advanced search methods powered by MongoDB Atlas and Voyage AI.
-            Find the exact information you need in seconds.
-          </Body>
-
-          {/* Statistics */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              gap: spacing[5],
-              marginBottom: spacing[4],
-            }}
-          >
-            <div style={{ textAlign: 'center' }}>
-              <div
-                style={{
-                  fontSize: '28px',
-                  fontWeight: 700,
-                  color: palette.green.dark2,
-                }}
-              >
-                5
-              </div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: palette.gray.dark1,
-                  fontWeight: 500,
-                }}
-              >
-                Search Methods
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'center' }}>
-              <div
-                style={{
-                  fontSize: '28px',
-                  fontWeight: 700,
-                  color: palette.blue.dark1,
-                }}
-              >
-                1000+
-              </div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: palette.gray.dark1,
-                  fontWeight: 500,
-                }}
-              >
-                Manual Sections
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'center' }}>
-              <div
-                style={{
-                  fontSize: '28px',
-                  fontWeight: 700,
-                  color: palette.purple.dark1,
-                }}
-              >
-                AI
-              </div>
-              <div
-                style={{
-                  fontSize: '13px',
-                  color: palette.gray.dark1,
-                  fontWeight: 500,
-                }}
-              >
-                Powered
-              </div>
-            </div>
-          </div>
 
           {/* CTA Buttons */}
           <div

@@ -28,12 +28,12 @@ const QueryVisualizationPanel: React.FC<QueryVisualizationPanelProps> = ({
   const getHybridGraphFlowAnalysis = (debugInfo: any): string => {
     const steps = debugInfo?.pipeline_steps || {};
     const step1 = steps.step1_vector_search || {};
-    const step2 = steps.step2_graph_expansion || {};
+    const step2 = steps.step2_facet_split || {};
     const step3 = steps.step3_combine_dedupe_facet || {};
     
     return `📊 Hybrid Graph Pipeline Flow Analysis
 
-Vector → Graph Expansion Method:
+Vector → Graph Expansion Method ($facet-based):
 
 Step 1: Vector Search
 ├── Query: "${query}"
@@ -41,26 +41,32 @@ Step 1: Vector Search
 ├── numCandidates: ${step1.numCandidates || 50}
 └── Result: ${step1.expected_results || 5} highest similarity matches
 
-Step 2: Graph Expansion  
-├── $graphLookup from ${step1.expected_results || 5} seeds
+Step 2: $facet - Parallel Processing Paths
+├── Path A (seeds): ${step2.path_a || 'Preserve original 5 seeds with source=\'vector_seed\', depth=0'}
+├── Path B (expansion): ${step2.path_b || '$graphLookup expansion (maxDepth=2) from seeds, then filter out seed IDs'}
 ├── maxDepth: 2 (fixed for optimal performance)
-├── Traverses: ${step2.relationship_types?.join(', ') || 'SEQUENTIAL_TO, RELATED_TO, MENTIONS_SYSTEM, IS_OF_TYPE'}
-└── Expands relationship network
+├── Relationship Types: ${step2.relationship_types?.join(', ') || 'all'}
+└── Guarantees: 5 seeds preserved + expanded neighbors without duplicates
 
-Step 3: Combine & Score
+Step 3: Combine & Deduplicate
 ├── Score decay: ${step3.score_decay || '0.5 - (0.1 × depth)'}
-├── Seeds: Original vector scores
-├── Neighbors: Decreasing scores by depth
-├── Deduplicate: Keep highest score per document
-└── Final limit: ${step3.actual_results?.total || step3.final_limit || 'N/A'} results (configurable)
+├── Seeds: Original vector scores (depth=0)
+├── Neighbors: Decreasing scores by depth (depth>0)
+├── Deduplication: ${step3.deduplication || 'Expanded results exclude any seed IDs to prevent duplicates'}
+├── Guaranteed seeds: ${step3.guaranteed_seeds || 5}
+└── Final limit: ${step3.actual_results?.total || step3.final_limit || 'N/A'} results (${step3.guaranteed_seeds || 5} seeds + up to ${(step3.final_limit || 30) - (step3.guaranteed_seeds || 5)} expanded)
 
 🔍 Selection Process Details
 
 How Many Results Flow Between Steps:
-- Vector→Graph: ${step1.expected_results || 5} seeds → Graph expansion → ${step3.actual_results?.total || 'Final limit'}
+- Vector→$facet: ${step1.expected_results || 5} seeds → Split into 2 parallel paths
+- Path A preserves ${step3.guaranteed_seeds || 5} seeds exactly
+- Path B expands + filters → up to ${(step3.final_limit || 30) - (step3.guaranteed_seeds || 5)} neighbors
+- Combined result: ${step3.actual_results?.total || 'Final limit'} total documents
 
 Selection Criteria:
 - Best vector similarity + relationship proximity
+- No duplicate IDs between seeds and expanded neighbors
 `;
   };
 
@@ -214,60 +220,141 @@ db.chunks.aggregate([
   }
 ])`;
       case 'graph':
-        return `// Hybrid Graph Search: Vector → Graph Expansion
-// Step 1: Vector search for semantic seeds, Step 2: $graphLookup expansion
+        return `// Hybrid Graph Search: Vector → Graph Expansion using $facet
+// Guarantees exactly 5 seeds + expanded neighbors without duplicates
 db.chunks.aggregate([
-  // Step 1: Vector search for 5 seed documents
+  // Step 1: Vector search for exactly 5 seed documents
   {
     $vectorSearch: {
       index: "manual_vector_search_index",
       path: "embedding",
       queryVector: [0.123, 0.456, 0.789, ...], // Embedding for "${searchQuery}"
       numCandidates: 50,
-      limit: 5
+      limit: 5  // Get exactly 5 seed documents
     }
   },
-  // Step 2: $graphLookup expansion from vector seeds
+  // Step 2: $facet splits into two parallel processing paths
   {
-    $graphLookup: {
-      from: "chunks",
-      startWith: "$relationships.target_id",
-      connectFromField: "relationships.target_id",
-      connectToField: "id",
-      as: "graph_neighbors",
-      maxDepth: ${maxDepth || 2},
-      restrictSearchWithMatch: {}, // Optional relationship type filtering
-      depthField: "traversal_depth"
-    }
-  },
-  // Step 3: Combine seeds + neighbors with score decay
-  {
-    $addFields: {
-      all_docs: {
-        $concatArrays: [
-          [{ doc: "$$ROOT", source: "vector_seed", score: { $meta: "vectorSearchScore" }, depth: 0 }],
-          {
-            $map: {
-              input: "$graph_neighbors",
-              as: "neighbor",
-              in: {
-                doc: "$$neighbor",
-                source: "graph_expansion", 
-                score: { $subtract: [0.5, { $multiply: [0.1, { $ifNull: ["$$neighbor.traversal_depth", 1] }] }] },
-                depth: { $ifNull: ["$$neighbor.traversal_depth", 1] }
-              }
-            }
+    $facet: {
+      // Path A: Preserve original 5 seeds exactly as-is
+      seeds: [
+        {
+          $addFields: {
+            source: "vector_seed",
+            depth: 0,
+            score: { $meta: "vectorSearchScore" },
+            seed_id: "$id"  // Track seed IDs for exclusion
           }
-        ]
+        },
+        {
+          $project: {
+            _id: 0,
+            score: 1,
+            chunk_id: "$id",
+            text: 1,
+            context: 1,
+            breadcrumb_trail: 1,
+            page_numbers: 1,
+            content_type: 1,
+            metadata: 1,
+            vehicle_systems: 1,
+            source: 1,
+            depth: 1,
+            seed_id: 1
+          }
+        }
+      ],
+      // Path B: Graph expansion from seeds
+      expansion: [
+        // Store seed IDs for later exclusion
+        { $group: { _id: null, seed_ids: { $push: "$id" }, seed_docs: { $push: "$$ROOT" } } },
+        { $unwind: "$seed_docs" },
+        { $replaceRoot: { newRoot: "$seed_docs" } },
+        // Perform $graphLookup from each seed
+        {
+          $graphLookup: {
+            from: "chunks",
+            startWith: "$relationships.target_id",
+            connectFromField: "relationships.target_id",
+            connectToField: "id",
+            as: "graph_neighbors",
+            maxDepth: ${maxDepth || 2},
+            restrictSearchWithMatch: {},  // Optional relationship filtering
+            depthField: "traversal_depth"
+          }
+        },
+        // Extract and process neighbors
+        { $project: { neighbors: "$graph_neighbors" } },
+        { $unwind: "$neighbors" },
+        { $replaceRoot: { newRoot: "$neighbors" } },
+        {
+          $addFields: {
+            source: "graph_expansion",
+            depth: { $add: [{ $ifNull: ["$traversal_depth", 0] }, 1] },
+            score: { $subtract: [0.5, { $multiply: [0.1, { $add: [{ $ifNull: ["$traversal_depth", 0] }, 1] }] }] }
+          }
+        },
+        // Deduplicate expanded results
+        { $group: { _id: "$id", doc: { $first: "$$ROOT" }, max_score: { $max: "$score" }, min_depth: { $min: "$depth" } } },
+        {
+          $project: {
+            _id: 0,
+            score: "$max_score",
+            chunk_id: "$_id",
+            text: "$doc.text",
+            context: "$doc.context",
+            breadcrumb_trail: "$doc.breadcrumb_trail",
+            page_numbers: "$doc.page_numbers",
+            content_type: "$doc.content_type",
+            metadata: "$doc.metadata",
+            vehicle_systems: "$doc.vehicle_systems",
+            source: "$doc.source",
+            depth: "$min_depth"
+          }
+        },
+        { $sort: { score: -1, depth: 1 } },
+        { $limit: 60 }  // Get more candidates than needed
+      ]
+    }
+  },
+  // Step 3: Process facet results
+  {
+    $project: {
+      seeds: 1,
+      expansion: 1,
+      seed_ids: { $map: { input: "$seeds", as: "seed", in: "$$seed.chunk_id" } }
+    }
+  },
+  // Step 4: Filter expansion to exclude seed IDs (prevent duplicates)
+  {
+    $project: {
+      seeds: 1,
+      filtered_expansion: {
+        $filter: {
+          input: "$expansion",
+          as: "exp",
+          cond: { $not: { $in: ["$$exp.chunk_id", "$seed_ids"] } }
+        }
       }
     }
   },
-  { $unwind: "$all_docs" },
-  { $replaceRoot: { newRoot: "$all_docs" } },
-  { $group: { _id: "$doc.id", doc: { $first: "$doc" }, max_score: { $max: "$score" } } },
-  { $sort: { max_score: -1 } },
-  { $limit: 10 },
-  { $replaceRoot: { newRoot: "$doc" } }
+  // Step 5: Limit expanded results
+  {
+    $project: {
+      seeds: 1,
+      filtered_expansion: { $slice: ["$filtered_expansion", 25] }  // Up to 25 expanded (5 seeds + 25 = 30 total)
+    }
+  },
+  // Step 6: Combine seeds (always 5) + filtered expansion
+  {
+    $project: {
+      combined: { $concatArrays: ["$seeds", "$filtered_expansion"] }
+    }
+  },
+  { $unwind: "$combined" },
+  { $replaceRoot: { newRoot: "$combined" } },
+  // Remove seed_id field from final output
+  { $project: { seed_id: 0 } }
 ])`;
       default:
         return 'No query example available for this search method.';

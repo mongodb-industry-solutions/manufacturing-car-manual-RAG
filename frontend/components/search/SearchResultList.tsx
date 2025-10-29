@@ -102,12 +102,14 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
         {results.length > 0 && searchMethod?.includes('graph') && (
           <Button 
             size="large"
-            variant="primary"
+            variant="default"
             onClick={() => setShowKnowledgeGraph(true)}
             leftGlyph={<Icon glyph="Relationship" />}
             style={{ 
               fontWeight: 600,
-              boxShadow: '0 4px 8px rgba(0, 237, 100, 0.3)'
+              borderColor: palette.red.dark2,
+              color: palette.red.dark2,
+              boxShadow: `0 4px 8px ${palette.red.light3}`
             }}
           >
             Visualize Knowledge Graph
@@ -153,18 +155,14 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
             <ExpandableCard
               title={
                 <span style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                  <Icon glyph="Diagram" fill={palette.blue.dark2} />
+                  <Icon glyph="Diagram" />
                   Seed Results ({seedResults.length})
                 </span>
               }
               defaultOpen={false}
-              style={{
-                backgroundColor: palette.blue.light3,
-                border: `1px solid ${palette.blue.light2}`,
-              }}
             >
               <div style={{ padding: spacing[2] }}>
-                <Body size="small" style={{ color: palette.blue.dark2, marginBottom: spacing[2] }}>
+                <Body size="small" style={{ marginBottom: spacing[2] }}>
                   Initial {searchMethod?.includes('vector_to_graph') ? 'vector similarity' : 'graph-based'} search results
                 </Body>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
@@ -185,18 +183,14 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
             <ExpandableCard
               title={
                 <span style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                  <Icon glyph="Relationship" fill={palette.green.dark2} />
+                  <Icon glyph="Relationship" />
                   Graph-Expanded Results ({expandedResults.length})
                 </span>
               }
               defaultOpen={false}
-              style={{
-                backgroundColor: palette.green.light3,
-                border: `1px solid ${palette.green.light2}`,
-              }}
             >
               <div style={{ padding: spacing[2] }}>
-                <Body size="small" style={{ color: palette.green.dark2, marginBottom: spacing[2] }}>
+                <Body size="small" style={{ marginBottom: spacing[2] }}>
                   Found by traversing relationships from seed results
                 </Body>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>

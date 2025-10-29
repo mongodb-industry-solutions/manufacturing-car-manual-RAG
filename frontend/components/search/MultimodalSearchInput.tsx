@@ -2,7 +2,7 @@
  * Multimodal Search Input Component
  * Supports both text and image queries for multimodal search
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import TextInput from '@leafygreen-ui/text-input';
 import Card from '@leafygreen-ui/card';
 import { Body } from '@leafygreen-ui/typography';
@@ -16,6 +16,7 @@ import { CARD_STYLES } from '@/lib/styleConstants';
 interface MultimodalSearchInputProps {
   onSearch: (params: { query_type: 'text' | 'image'; query_text?: string; image_base64?: string }) => void;
   isLoading: boolean;
+  initialTextQuery?: string; // External value to sync with (like SearchInput)
 }
 
 // Sample images - update these IDs after ingesting actual images
@@ -27,14 +28,19 @@ const SAMPLE_IMAGES = [
   { id: "image_transmission_page_98", label: "Transmission" }
 ];
 
-function MultimodalSearchInput({ onSearch, isLoading }: MultimodalSearchInputProps) {
+function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: MultimodalSearchInputProps) {
   const [activeTab, setActiveTab] = useState<'text' | 'image'>('text');
-  const [textQuery, setTextQuery] = useState('');
+  const [textQuery, setTextQuery] = useState(initialTextQuery);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update internal state when initialTextQuery prop changes (same pattern as SearchInput)
+  useEffect(() => {
+    setTextQuery(initialTextQuery);
+  }, [initialTextQuery]);
 
   // Convert File to base64
   const fileToBase64 = (file: File): Promise<string> => {

@@ -50,6 +50,7 @@ function SearchPageContent() {
   const [multimodalResults, setMultimodalResults] = useState<MultimodalSearchResponse | null>(null);
   const [multimodalLoading, setMultimodalLoading] = useState(false);
   const [multimodalError, setMultimodalError] = useState<string | null>(null);
+  const [multimodalTextQuery, setMultimodalTextQuery] = useState('');
   
   // Custom hooks
   const { search, searchRef, loading, error, results, clearCache } = useSearch();
@@ -301,6 +302,7 @@ function SearchPageContent() {
           <MultimodalSearchInput 
             onSearch={handleMultimodalSearch}
             isLoading={multimodalLoading}
+            initialTextQuery={multimodalTextQuery}
           />
         )}
         
@@ -529,7 +531,10 @@ function SearchPageContent() {
                     key={query}
                     size="small"
                     variant="default"
-                    onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: query })}
+                    onClick={() => {
+                      setMultimodalTextQuery(query);
+                      handleMultimodalSearch({ query_type: 'text', query_text: query });
+                    }}
                     leftGlyph={<Icon glyph="Camera" size="small" />}
                     style={{
                       borderColor: palette.yellow.dark2,
@@ -571,7 +576,10 @@ function SearchPageContent() {
                 <Button
                   size="small"
                   variant="default"
-                  onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'símbolos del tablero' })}
+                  onClick={() => {
+                    setMultimodalTextQuery('símbolos del tablero');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'símbolos del tablero' });
+                  }}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
                     borderColor: palette.yellow.dark2,
@@ -585,7 +593,10 @@ function SearchPageContent() {
                 <Button
                   size="small"
                   variant="default"
-                  onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'système d\'infodivertissement' })}
+                  onClick={() => {
+                    setMultimodalTextQuery('système d\'infodivertissement');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'système d\'infodivertissement' });
+                  }}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
                     borderColor: palette.yellow.dark2,
@@ -599,7 +610,10 @@ function SearchPageContent() {
                 <Button
                   size="small"
                   variant="default"
-                  onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'Armaturenbrett-Symbole' })}
+                  onClick={() => {
+                    setMultimodalTextQuery('Armaturenbrett-Symbole');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'Armaturenbrett-Symbole' });
+                  }}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
                     borderColor: palette.yellow.dark2,
@@ -613,7 +627,10 @@ function SearchPageContent() {
                 <Button
                   size="small"
                   variant="default"
-                  onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'ダッシュボード記号' })}
+                  onClick={() => {
+                    setMultimodalTextQuery('ダッシュボード記号');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'ダッシュボード記号' });
+                  }}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
                     borderColor: palette.yellow.dark2,

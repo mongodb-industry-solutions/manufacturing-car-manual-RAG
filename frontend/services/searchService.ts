@@ -160,43 +160,21 @@ export const searchService = {
       query?: string;
       chunkIds?: string[];
       maxNodes?: number;
-      includeAll?: boolean;
-      filterSystems?: string[];
-      filterContentTypes?: string[];
-      minConnections?: number;
     }
   ): Promise<KnowledgeGraphResponse> => {
-    const params: any = { 
+    const params: any = {
       max_nodes: options.maxNodes || 50,
-      max_depth: 2 
+      max_depth: 2
     };
-    
-    // Query mode parameters
+
     if (options.query) {
       params.query = options.query;
     }
-    
+
     if (options.chunkIds && options.chunkIds.length > 0) {
       params.chunk_ids = options.chunkIds;
     }
-    
-    // Full graph mode parameters
-    if (options.includeAll) {
-      params.include_all = true;
-      
-      if (options.filterSystems && options.filterSystems.length > 0) {
-        params.filter_systems = options.filterSystems;
-      }
-      
-      if (options.filterContentTypes && options.filterContentTypes.length > 0) {
-        params.filter_content_types = options.filterContentTypes;
-      }
-      
-      if (options.minConnections && options.minConnections > 0) {
-        params.min_connections = options.minConnections;
-      }
-    }
-    
+
     return apiGet<KnowledgeGraphResponse>('/search/knowledge-graph', params);
   },
   

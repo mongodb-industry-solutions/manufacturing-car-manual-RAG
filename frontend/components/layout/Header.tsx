@@ -36,27 +36,30 @@ const Header: React.FC = () => {
           margin: '0 auto',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
-          <div style={{
-            margin: 0,
-            color: palette.gray.light3,
-            fontFamily: "'Euclid Circular A', sans-serif",
-            fontWeight: 700,
-            fontSize: '28px',
-            lineHeight: '32px'
-          }}>
-            {BRANDING.title}
-          </div>
-          <div style={{
-            margin: 0,
-            color: palette.gray.light2,
-            fontFamily: "'Euclid Circular A', sans-serif",
-            fontWeight: 400,
-            fontSize: '15px',
-            lineHeight: '20px',
-            opacity: 0.95
-          }}>
-            {BRANDING.subtitle}
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
+          <Icon glyph="Resource" size={56} fill={palette.gray.light3} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+            <div style={{
+              margin: 0,
+              color: palette.gray.light3,
+              fontFamily: "'Euclid Circular A', sans-serif",
+              fontWeight: 700,
+              fontSize: '28px',
+              lineHeight: '32px'
+            }}>
+              {BRANDING.title}
+            </div>
+            <div style={{
+              margin: 0,
+              color: palette.gray.light2,
+              fontFamily: "'Euclid Circular A', sans-serif",
+              fontWeight: 400,
+              fontSize: '15px',
+              lineHeight: '20px',
+              opacity: 0.95
+            }}>
+              {BRANDING.subtitle}
+            </div>
           </div>
         </div>
         
