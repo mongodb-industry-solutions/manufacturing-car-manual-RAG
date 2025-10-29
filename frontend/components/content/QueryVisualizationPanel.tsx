@@ -2,9 +2,9 @@
  * Query Visualization Panel component
  * Displays MongoDB queries used for different search methods
  */
-import React from 'react';
+import React, { useMemo } from 'react';
 import ExpandableCard from '@leafygreen-ui/expandable-card';
-import { MyBody as Body } from '@/components/ui/TypographyWrapper';
+import { Body } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import Code from '@leafygreen-ui/code';
@@ -15,27 +15,23 @@ interface QueryVisualizationPanelProps {
   searchMethod: string;
   query: string;
   debugInfo?: any; // Debug information from search response
-  expansionMethod?: string; // GraphRAG expansion method
 }
 
 const QueryVisualizationPanel: React.FC<QueryVisualizationPanelProps> = ({ 
   searchMethod, 
   query,
-  debugInfo,
-  expansionMethod
+  debugInfo
 }) => {
-  // GraphRAG uses a fixed depth of 2 for optimal performance
+  // Hybrid Graph uses a fixed depth of 2 for optimal performance
   const maxDepth = 2;
-  // Generate GraphRAG pipeline flow analysis
-  const getGraphRAGFlowAnalysis = (expansionMethod: string, debugInfo: any): string => {
+  // Generate Hybrid Graph pipeline flow analysis
+  const getHybridGraphFlowAnalysis = (debugInfo: any): string => {
     const steps = debugInfo?.pipeline_steps || {};
+    const step1 = steps.step1_vector_search || {};
+    const step2 = steps.step2_graph_expansion || {};
+    const step3 = steps.step3_combine_dedupe_facet || {};
     
-    if (expansionMethod === 'vector_to_graph') {
-      const step1 = steps.step1_vector_search || {};
-      const step2 = steps.step2_graph_expansion || {};
-      const step3 = steps.step3_combine_score || {};
-      
-      return `📊 GraphRAG Pipeline Flow Analysis
+    return `📊 Hybrid Graph Pipeline Flow Analysis
 
 Vector → Graph Expansion Method:
 
@@ -56,65 +52,22 @@ Step 3: Combine & Score
 ├── Seeds: Original vector scores
 ├── Neighbors: Decreasing scores by depth
 ├── Deduplicate: Keep highest score per document
-└── Final limit: ${step3.actual_results || step3.final_limit || 'N/A'} results (configurable)
+└── Final limit: ${step3.actual_results?.total || step3.final_limit || 'N/A'} results (configurable)
 
 🔍 Selection Process Details
 
 How Many Results Flow Between Steps:
-- Vector→Graph: ${step1.expected_results || 5} seeds → Graph expansion → ${step3.actual_results || 'Final limit'}
+- Vector→Graph: ${step1.expected_results || 5} seeds → Graph expansion → ${step3.actual_results?.total || 'Final limit'}
 
 Selection Criteria:
-- Vector→Graph: Best vector similarity + relationship proximity`;
-    } else if (expansionMethod === 'graph_to_vector') {
-      const step1 = steps.step1_text_search || {};
-      const step2 = steps.step2_graph_expansion || {};
-      const step3 = steps.step3_combine_dedupe || {};
-      const step4 = steps.step4_vector_filter || {};
-      
-      return `📊 GraphRAG Pipeline Flow Analysis
-
-Graph → Vector Expansion Method:
-
-Step 1: Text Search (Conceptual)
-├── Query: "${query}"
-├── Targets: metadata.systems (3×), content_type (2×), context (1×)
-├── Expected: ${step1.expected_results || 5} conceptual matches
-└── Result: Documents mentioning relevant systems
-
-Step 2: Graph Expansion
-├── $graphLookup from ${step1.expected_results || 5} seeds  
-├── maxDepth: 2 (fixed for optimal performance)
-└── Relationship network traversal
-
-Step 3: Candidates Collection
-├── Combine: Seeds + expanded documents
-├── Deduplicate: Remove duplicates
-└── Result: ${step3.actual_candidates || step3.candidates_multiplier ? `${step3.candidates_multiplier}× candidates` : 'N/A'} (e.g., ${step3.actual_candidates || '30'} for limit=10)
-
-Step 4: Vector Filtering
-├── Input: ${step4.input_candidates || step3.actual_candidates || '30'} candidates
-├── Vector search: Filter using semantic similarity
-├── Final limit: ${step4.actual_results || step4.final_limit || 'N/A'} results
-└── Result: Most semantically relevant from graph expansion
-
-🔍 Selection Process Details
-
-How Many Results Flow Between Steps:
-- Graph→Vector: ${step1.expected_results || 5} seeds → Graph expansion → ${step3.actual_candidates || step3.candidates_multiplier ? `${step3.candidates_multiplier}× candidates` : 'N/A'} → ${step4.actual_results || 'Final limit'}
-
-Selection Criteria:
-- Graph→Vector: Best conceptual match + graph connectivity + vector relevance`;
-    }
-    
-    return 'No GraphRAG flow analysis available.';
+- Best vector similarity + relationship proximity
+`;
   };
 
   // Generate query example based on search method
   const getQueryExample = (method: string, searchQuery: string): string => {
     // Normalize the method name - API might return "hybrid_rrf" but we want to match it to "hybrid"
     const normalizedMethod = method.includes('hybrid') ? 'hybrid' : method.includes('graph') ? 'graph' : method;
-    
-    console.log("Rendering query example for method:", method, "normalized to:", normalizedMethod);
     
     switch (normalizedMethod) {
       case 'vector':
@@ -261,8 +214,7 @@ db.chunks.aggregate([
   }
 ])`;
       case 'graph':
-        if (expansionMethod === 'vector_to_graph') {
-          return `// GraphRAG Vector → Graph Expansion
+        return `// Hybrid Graph Search: Vector → Graph Expansion
 // Step 1: Vector search for semantic seeds, Step 2: $graphLookup expansion
 db.chunks.aggregate([
   // Step 1: Vector search for 5 seed documents
@@ -317,81 +269,6 @@ db.chunks.aggregate([
   { $limit: 10 },
   { $replaceRoot: { newRoot: "$doc" } }
 ])`;
-        } else if (expansionMethod === 'graph_to_vector') {
-          return `// GraphRAG Graph → Vector Expansion  
-// Step 1: Text search on metadata, Step 2: $graphLookup, Step 3: Vector filtering
-db.chunks.aggregate([
-  // Step 1: Text search on metadata for conceptual starting points
-  {
-    $search: {
-      index: "manual_text_search_index",
-      compound: {
-        should: [
-          { text: { query: "${searchQuery}", path: "metadata.systems", score: { boost: { value: 3 } } } },
-          { text: { query: "${searchQuery}", path: "content_type", score: { boost: { value: 2 } } } },
-          { text: { query: "${searchQuery}", path: "context", score: { boost: { value: 1 } } } }
-        ]
-      }
-    }
-  },
-  { $limit: 5 }, // Get top 5 conceptual matches
-  
-  // Step 2: $graphLookup expansion from conceptual seeds
-  {
-    $graphLookup: {
-      from: "chunks",
-      startWith: "$relationships.target_id", 
-      connectFromField: "relationships.target_id",
-      connectToField: "id",
-      as: "graph_expansion",
-      maxDepth: ${maxDepth || 2},
-      restrictSearchWithMatch: {},
-      depthField: "traversal_depth"
-    }
-  },
-  
-  // Step 3: Combine and collect candidates (seeds + expanded)
-  {
-    $addFields: {
-      all_related: {
-        $concatArrays: [
-          [{ doc: "$$ROOT", source: "seed", depth: 0 }],
-          {
-            $map: {
-              input: "$graph_expansion",
-              as: "expanded", 
-              in: { doc: "$$expanded", source: "graph", depth: { $ifNull: ["$$expanded.traversal_depth", 1] } }
-            }
-          }
-        ]
-      }
-    }
-  },
-  { $unwind: "$all_related" },
-  { $replaceRoot: { newRoot: "$all_related.doc" } },
-  { $group: { _id: "$id", doc: { $first: "$$ROOT" } } },
-  { $replaceRoot: { newRoot: "$doc" } },
-  { $limit: 30 }, // Get 3× candidates for vector filtering
-  
-  // Step 4: Vector search filter on candidates
-  {
-    $vectorSearch: {
-      index: "manual_vector_search_index",
-      path: "embedding",
-      queryVector: [0.123, 0.456, 0.789, ...], // Embedding for "${searchQuery}"
-      numCandidates: 60,
-      limit: 10,
-      filter: { id: { $in: ["candidate_ids_from_step3"] } }
-    }
-  }
-])`;
-        }
-        return `// GraphRAG Search Pipeline
-// Relationship-aware search using $graphLookup
-db.chunks.aggregate([
-  // GraphRAG pipeline based on expansion method: ${expansionMethod || 'N/A'}
-  // See specific pipeline above based on selected expansion method
-])`;
       default:
         return 'No query example available for this search method.';
     }
@@ -445,7 +322,7 @@ db.chunks.aggregate([
       case 'hybrid':
         return 'Hybrid Search';
       case 'graph':
-        return `GraphRAG Search (${expansionMethod?.replace('_', '→').replace('to', ' ') || 'N/A'})`;
+        return 'Hybrid Graph Search';
       default:
         return 'Search';
     }
@@ -463,7 +340,7 @@ db.chunks.aggregate([
       case 'hybrid':
         return 'Combines Vector and Text search using MongoDB\'s native $rankFusion aggregation stage';
       case 'graph':
-        return `Relationship-aware search using MongoDB's $graphLookup with ${expansionMethod || 'unknown'} expansion method`;
+        return 'Semantic vector search expanded via MongoDB\'s $graphLookup for relationship traversal';
       default:
         return '';
     }
@@ -521,77 +398,71 @@ db.chunks.aggregate([
     if (normalizedMethod === 'graph') {
       badges.push(
         <Tooltip
+          key="vector-badge"
+          trigger={
+            <Badge variant="green">Atlas Vector Search</Badge>
+          }
+          triggerEvent="hover"
+        >
+          MongoDB Atlas Vector Search for semantic seed discovery
+        </Tooltip>
+      );
+      
+      badges.push(
+        <Tooltip
           key="graphlookup-badge"
           trigger={
             <Badge variant="red">$graphLookup</Badge>
           }
           triggerEvent="hover"
         >
-          MongoDB's native $graphLookup aggregation stage for relationship traversal
+          MongoDB&apos;s native $graphLookup aggregation stage for relationship traversal
         </Tooltip>
       );
-      
-      if (expansionMethod === 'vector_to_graph' || expansionMethod === 'graph_to_vector') {
-        badges.push(
-          <Tooltip
-            key="vector-badge"
-            trigger={
-              <Badge variant="green">Atlas Vector Search</Badge>
-            }
-            triggerEvent="hover"
-          >
-            Combined with MongoDB Atlas Vector Search for semantic filtering
-          </Tooltip>
-        );
-      }
-      
-      if (expansionMethod === 'graph_to_vector') {
-        badges.push(
-          <Tooltip
-            key="text-badge"
-            trigger={
-              <Badge variant="blue">Atlas Search</Badge>
-            }
-            triggerEvent="hover"
-          >
-            Uses MongoDB Atlas Search for conceptual seed discovery
-          </Tooltip>
-        );
-      }
     }
     
     return badges;
   };
 
+  // Memoize expensive computations to prevent infinite re-renders
+  const methodIcon = useMemo(() => getMethodIcon(searchMethod), [searchMethod]);
+  const methodName = useMemo(() => getMethodName(searchMethod), [searchMethod]);
+  const methodDescription = useMemo(() => getMethodDescription(searchMethod), [searchMethod]);
+  const methodColor = useMemo(() => getMethodColor(searchMethod), [searchMethod]);
+  const methodBadges = useMemo(() => getMethodBadges(searchMethod), [searchMethod]);
+  const queryExample = useMemo(() => getQueryExample(searchMethod, query), [searchMethod, query]);
+  const cardStyle = useMemo(() => ({ 
+    border: `1px solid ${methodColor}`,
+    boxShadow: '0 2px 5px rgba(0, 0, 0, 0.05)'
+  }), [methodColor]);
+  const titleElement = useMemo(() => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+      {methodIcon}
+      <span>MongoDB {methodName} Query</span>
+    </div>
+  ), [methodIcon, methodName]);
+
   return (
     <div style={{ marginBottom: spacing[3] }}>
       <ExpandableCard
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-            {getMethodIcon(searchMethod)}
-            <span>MongoDB {getMethodName(searchMethod)} Query</span>
-          </div>
-        }
-        description={getMethodDescription(searchMethod)}
+        title={titleElement}
+        description={methodDescription}
         defaultOpen={false}
-        style={{ 
-          border: `1px solid ${getMethodColor(searchMethod)}`,
-          boxShadow: '0 2px 5px rgba(0, 0, 0, 0.05)'
-        }}
+        style={cardStyle}
       >
         <div style={{ marginBottom: spacing[3] }}>
           <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[3], flexWrap: 'wrap' }}>
-            {getMethodBadges(searchMethod)}
+            {methodBadges}
           </div>
           
           <div style={{ backgroundColor: palette.gray.light3, padding: spacing[2], borderRadius: '4px' }}>
             <Code language="javascript">
-              {getQueryExample(searchMethod, query)}
+              {queryExample}
             </Code>
           </div>
           
-          {/* GraphRAG Flow Analysis */}
-          {searchMethod.includes('graph') && debugInfo && expansionMethod && (
+          {/* Hybrid Graph Flow Analysis */}
+          {searchMethod.includes('graph') && debugInfo && (
             <div style={{ 
               marginTop: spacing[3],
               padding: spacing[3],
@@ -604,11 +475,11 @@ db.chunks.aggregate([
                   color: palette.red.dark2,
                   fontSize: '16px'
                 }}>
-                  🔍 Real-time GraphRAG Pipeline Analysis
+                  🔍 Real-time Hybrid Graph Pipeline Analysis
                 </strong>
               </div>
               <Code language="none" style={{ fontSize: '12px' }}>
-                {getGraphRAGFlowAnalysis(expansionMethod, debugInfo)}
+                {getHybridGraphFlowAnalysis(debugInfo)}
               </Code>
             </div>
           )}
@@ -617,7 +488,7 @@ db.chunks.aggregate([
             marginTop: spacing[3],
             padding: spacing[2],
             backgroundColor: 'white',
-            borderLeft: `4px solid ${getMethodColor(searchMethod)}`,
+            borderLeft: `4px solid ${methodColor}`,
             borderRadius: '4px'
           }}>
             <Body size="small">
@@ -629,7 +500,7 @@ db.chunks.aggregate([
                     : searchMethod.includes('hybrid')
                       ? 'Hybrid search combines both approaches using MongoDB\'s native $rankFusion stage, which automatically performs Reciprocal Rank Fusion (RRF) to merge and rank results from both search methods.'
                       : searchMethod.includes('graph')
-                        ? `GraphRAG search uses relationship-aware retrieval with MongoDB's $graphLookup aggregation. The ${expansionMethod?.replace('_', '→').replace('to', ' ') || 'unknown'} method ${expansionMethod === 'vector_to_graph' ? 'starts with vector similarity and expands through document relationships' : 'begins with conceptual text matches and uses graph traversal to find related content, then filters semantically'}.`
+                        ? 'Hybrid Graph Search combines semantic vector search with relationship traversal. It starts with $vectorSearch to find the most semantically similar documents as seeds, then uses MongoDB\'s $graphLookup to expand through document relationships, providing both semantic relevance and contextual connectivity.'
                         : 'MongoDB Atlas Search for finding relevant documents.'
               }
             </Body>

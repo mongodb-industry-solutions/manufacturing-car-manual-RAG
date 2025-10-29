@@ -2,11 +2,11 @@
  * Search input component
  */
 import React, { useState, useEffect } from 'react';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MySpinner as Spinner } from '@/components/ui/TypographyWrapper';
+import { Spinner } from '@leafygreen-ui/loading-indicator';
 
 interface SearchInputProps {
   onSearch: (query: string) => void;

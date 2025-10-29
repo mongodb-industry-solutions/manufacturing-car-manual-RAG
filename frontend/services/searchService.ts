@@ -10,7 +10,9 @@ import {
   GraphSearchRequest,
   SearchResponse,
   KnowledgeGraphResponse,
-  AskResponse
+  AskResponse,
+  MultimodalSearchRequest,
+  MultimodalSearchResponse
 } from '../types/Search';
 import { Chunk, ChunkList } from '../types/Chunk';
 
@@ -18,7 +20,7 @@ export const searchService = {
   /**
    * Perform vector search using embeddings
    */
-  vectorSearch: async (request: VectorSearchRequest): Promise<SearchResponse> => {
+  vectorSearch: async (request: VectorSearchRequest & { use_reranker?: boolean }): Promise<SearchResponse> => {
     const response = await apiPost<SearchResponse>('/search/vector', request);
     
     // Ensure backward compatibility for frontend components
@@ -51,7 +53,7 @@ export const searchService = {
   /**
    * Perform text search using keywords
    */
-  textSearch: async (request: TextSearchRequest): Promise<SearchResponse> => {
+  textSearch: async (request: TextSearchRequest & { use_reranker?: boolean }): Promise<SearchResponse> => {
     const response = await apiPost<SearchResponse>('/search/text', request);
     
     // Ensure backward compatibility for frontend components
@@ -84,7 +86,7 @@ export const searchService = {
   /**
    * Perform hybrid search combining vector and text approaches
    */
-  hybridSearch: async (request: HybridSearchRequest): Promise<SearchResponse> => {
+  hybridSearch: async (request: HybridSearchRequest & { use_reranker?: boolean }): Promise<SearchResponse> => {
     const response = await apiPost<SearchResponse>('/search/hybrid', request);
     
     // Ensure backward compatibility for frontend components
@@ -115,10 +117,10 @@ export const searchService = {
   },
 
   /**
-   * Perform GraphRAG search using relationship expansion
+   * Perform Hybrid Graph Search using $vectorSearch + $graphLookup
    */
-  graphSearch: async (request: GraphSearchRequest): Promise<SearchResponse> => {
-    // Add debug header for GraphRAG searches to get pipeline information
+  graphSearch: async (request: GraphSearchRequest & { use_reranker?: boolean }): Promise<SearchResponse> => {
+    // Add debug header for hybrid graph searches to get pipeline information
     const response = await apiPost<SearchResponse>('/search/graph', request, undefined, {
       'X-Debug': 'true'
     });
@@ -154,18 +156,45 @@ export const searchService = {
    * Get knowledge graph data for visualization
    */
   getKnowledgeGraph: async (
-    query?: string,
-    chunkIds?: string[],
-    maxNodes: number = 50
+    options: {
+      query?: string;
+      chunkIds?: string[];
+      maxNodes?: number;
+      includeAll?: boolean;
+      filterSystems?: string[];
+      filterContentTypes?: string[];
+      minConnections?: number;
+    }
   ): Promise<KnowledgeGraphResponse> => {
-    const params: any = { max_nodes: maxNodes, max_depth: 2 };
+    const params: any = { 
+      max_nodes: options.maxNodes || 50,
+      max_depth: 2 
+    };
     
-    if (query) {
-      params.query = query;
+    // Query mode parameters
+    if (options.query) {
+      params.query = options.query;
     }
     
-    if (chunkIds && chunkIds.length > 0) {
-      params.chunk_ids = chunkIds;
+    if (options.chunkIds && options.chunkIds.length > 0) {
+      params.chunk_ids = options.chunkIds;
+    }
+    
+    // Full graph mode parameters
+    if (options.includeAll) {
+      params.include_all = true;
+      
+      if (options.filterSystems && options.filterSystems.length > 0) {
+        params.filter_systems = options.filterSystems;
+      }
+      
+      if (options.filterContentTypes && options.filterContentTypes.length > 0) {
+        params.filter_content_types = options.filterContentTypes;
+      }
+      
+      if (options.minConnections && options.minConnections > 0) {
+        params.min_connections = options.minConnections;
+      }
     }
     
     return apiGet<KnowledgeGraphResponse>('/search/knowledge-graph', params);
@@ -219,6 +248,13 @@ export const searchService = {
     const response = await apiGet<ChunkList>('/chunks', params);
     console.log(`[API] Received ${response.chunks?.length || 0} chunks (${response.total} total)`);
     return response;
+  },
+
+  /**
+   * Perform multimodal search using text or image input
+   */
+  multimodalSearch: async (request: MultimodalSearchRequest & { use_reranker?: boolean }): Promise<MultimodalSearchResponse> => {
+    return apiPost<MultimodalSearchResponse>('/search/multimodal', request);
   },
 
   /**

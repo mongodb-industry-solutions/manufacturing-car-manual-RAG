@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import ExpandableCard from '@leafygreen-ui/expandable-card';
-import { MyBody as Body, MyH3 as H3 } from '@/components/ui/TypographyWrapper';
+import { Body, H3 } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import Code from '@leafygreen-ui/code';

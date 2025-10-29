@@ -4,13 +4,16 @@
 import React, { useState } from 'react';
 import { SearchResult } from '../../types/Search';
 import SearchResultCard from './SearchResultCard';
-import { MyH2 as H2, MyBody as Body, MyButton as Button } from '@/components/ui/TypographyWrapper';
+import { H2, Body } from '@leafygreen-ui/typography';
+import Button from '@leafygreen-ui/button';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
+import Card from '@leafygreen-ui/card';
 import Icon from '@leafygreen-ui/icon';
 import ExpandableCard from '@leafygreen-ui/expandable-card';
 import KnowledgeGraphVisualization from '../graph/KnowledgeGraphVisualization';
+import Banner from '@leafygreen-ui/banner';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 interface SearchResultListProps {
   results: SearchResult[];
@@ -38,7 +41,7 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
   // This is more reliable than checking result fields which could be stale from cache
   const isGraphRAG = searchMethod?.includes('graph') || searchMethod?.startsWith('graph_');
   
-  // Group results by source for GraphRAG searches
+  // Group results by source for Hybrid Graph searches
   // Seeds: MUST have source='vector_seed' AND depth=0
   const seedResults = isGraphRAG 
     ? results.filter(r => r.source === 'vector_seed' && r.depth === 0)
@@ -48,8 +51,21 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
     ? results.filter(r => (r.source === 'graph_expansion' || r.source?.includes('expansion')) && (r.depth || 0) > 0)
     : [];
   
-  // Final top results (first 10 from the complete result set)
-  const finalResults = results.slice(0, 10);
+  // Validation: Check for data integrity issues in Hybrid Graph searches
+  const seedCount = seedResults.length;
+  const expandedCount = expandedResults.length;
+  const hasIntegrityIssue = isGraphRAG && (seedCount !== 5 || seedCount + expandedCount !== results.length);
+  
+  // Check for overlapping IDs (seeds appearing in expanded results)
+  const seedIds = new Set(seedResults.map(r => r.chunk_id || r.chunk?.id));
+  const expandedIds = new Set(expandedResults.map(r => r.chunk_id || r.chunk?.id));
+  const overlap = [...seedIds].filter(id => expandedIds.has(id));
+  const hasOverlap = overlap.length > 0;
+  
+  // Final top results
+  // For Hybrid Graph Search: show ALL results (seeds + expanded) - no limit
+  // For other methods: limit to 10 (though not used since they render results directly)
+  const finalResults = isGraphRAG ? results : results.slice(0, 10);
   if (results.length === 0) {
     return (
       <Card style={{ textAlign: 'center', padding: spacing[4] }}>
@@ -98,6 +114,35 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
           </Button>
         )}
       </div>
+      
+      {/* Validation Warning - Hybrid Graph Search Data Integrity */}
+      {isGraphRAG && (hasIntegrityIssue || hasOverlap) && (
+        <Banner 
+          variant="warning" 
+          style={{ marginBottom: spacing[3] }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+            <Body weight="medium">⚠️ Data Integrity Issue Detected</Body>
+            {seedCount !== 5 && (
+              <Body size="small">
+                Expected 5 seed results but found {seedCount}. This may indicate an issue with the vector search or pipeline.
+              </Body>
+            )}
+            {seedCount + expandedCount !== results.length && (
+              <Body size="small">
+                Results classification mismatch: {seedCount} seeds + {expandedCount} expanded ≠ {results.length} total. 
+                Some results may be missing source/depth metadata.
+              </Body>
+            )}
+            {hasOverlap && (
+              <Body size="small">
+                Found {overlap.length} duplicate ID(s) between seeds and expanded results. 
+                IDs: {overlap.slice(0, 3).join(', ')}{overlap.length > 3 ? '...' : ''}
+              </Body>
+            )}
+          </div>
+        </Banner>
+      )}
       
       {/* Results list */}
       {isGraphRAG ? (
@@ -167,9 +212,14 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
             </ExpandableCard>
           )}
           
-          {/* Top Results - Always Visible (Not Expandable) */}
+          {/* All Results - Always Visible (Not Expandable) */}
           <div style={{ marginTop: spacing[3] }}>
-            <H2 style={{ marginBottom: spacing[3] }}>Top Results</H2>
+            <H2 style={{ marginBottom: spacing[3] }}>
+              All Results ({results.length})
+            </H2>
+            <Body size="small" style={{ color: palette.gray.dark1, marginBottom: spacing[3] }}>
+              Combined view of all {seedCount} seed{seedCount !== 1 ? 's' : ''} and {expandedCount} expanded result{expandedCount !== 1 ? 's' : ''}
+            </Body>
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
               {finalResults.map((result) => (
                 <SearchResultCard 

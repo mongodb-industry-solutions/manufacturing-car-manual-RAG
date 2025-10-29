@@ -3,14 +3,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { MyH1 as H1, MyH2 as H2, MyH3 as H3, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
+import { H1, H2, H3, Body, Subtitle } from '@leafygreen-ui/typography';
+import Card from '@leafygreen-ui/card';
 import { spacing } from '@leafygreen-ui/tokens';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
 import { palette } from '@leafygreen-ui/palette';
 import Badge from '@leafygreen-ui/badge';
 import TextInput from '@leafygreen-ui/text-input';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 // No longer needed as we're using infinite scroll instead of pagination
 

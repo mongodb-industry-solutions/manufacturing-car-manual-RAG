@@ -2,13 +2,14 @@
  * Error state component
  */
 import React from 'react';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
-import { MyH3 as H3, MyBody as Body } from '@/components/ui/TypographyWrapper';
+import Card from '@leafygreen-ui/card';
+import { H3, Body } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
 import Banner from '@leafygreen-ui/banner';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 interface ErrorStateProps {
   title?: string;
@@ -77,14 +78,14 @@ const ErrorState: React.FC<ErrorStateProps> = ({
           width: '100%'
         }}
       >
-        <Card style={{ maxWidth: '600px', width: '100%' }}>
+        <Card style={{ ...CARD_STYLES.base, maxWidth: '600px', width: '100%' }}>
           {content}
         </Card>
       </div>
     );
   }
 
-  return <Card>{content}</Card>;
+  return <Card style={CARD_STYLES.base}>{content}</Card>;
 };
 
 export default ErrorState;

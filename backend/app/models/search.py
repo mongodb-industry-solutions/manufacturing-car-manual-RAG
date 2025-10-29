@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, Literal, Union
+from typing import List, Dict, Any, Optional, Union, Literal
 from pydantic import BaseModel, Field, validator
 from .chunks import Chunk
 
@@ -23,6 +23,11 @@ class SearchResult(BaseModel):
     heading_level_1: Optional[str] = Field(None, description="Top-level heading")
     heading_level_2: Optional[str] = Field(None, description="Second-level heading")
     heading_level_3: Optional[str] = Field(None, description="Third-level heading")
+    # Reranker fields
+    reranker_score: Optional[float] = Field(None, description="Voyage AI reranker relevance score")
+    original_position: Optional[int] = Field(None, description="Original position before reranking (1-based)")
+    new_position: Optional[int] = Field(None, description="New position after reranking (1-based)")
+    position_change: Optional[int] = Field(None, description="Position change (positive = moved up, negative = moved down)")
     
     # This is still supported for backward compatibility
     chunk: Optional[Chunk] = Field(None, description="The full matching chunk object (deprecated)")
@@ -40,6 +45,7 @@ class VectorSearchRequest(SearchRequest):
         le=50, 
         description="Multiplier for numCandidates parameter in vector search (limit * multiplier)"
     )
+    use_reranker: Optional[bool] = Field(False, description="Whether to apply Voyage AI reranking")
 
 class TextSearchRequest(SearchRequest):
     """Request model for text search"""
@@ -53,6 +59,7 @@ class TextSearchRequest(SearchRequest):
         le=2,
         description="Maximum edit distance for fuzzy matching (0-2)"
     )
+    use_reranker: Optional[bool] = Field(False, description="Whether to apply Voyage AI reranking")
 
 class HybridSearchRequest(SearchRequest):
     """Request model for hybrid search using MongoDB $rankFusion"""
@@ -74,28 +81,13 @@ class HybridSearchRequest(SearchRequest):
         le=50,
         description="Multiplier for determining initial candidates (limit * multiplier)"
     )
+    use_reranker: Optional[bool] = Field(False, description="Whether to apply Voyage AI reranking")
 
 class GraphSearchRequest(SearchRequest):
-    """Request model for GraphRAG search using $graphLookup"""
-    expansion_method: Literal["graph_to_vector", "vector_to_graph"] = Field(
-        "vector_to_graph", 
-        description="Method for expanding search results"
-    )
+    """Request model for Hybrid Graph Search using $vectorSearch + $graphLookup"""
     relationship_types: Optional[List[str]] = Field(
         None, 
         description="Filter specific relationship types for $graphLookup (SEQUENTIAL_TO, RELATED_TO, MENTIONS_SYSTEM, IS_OF_TYPE)"
-    )
-    graph_weight: float = Field(
-        0.6, 
-        ge=0.0, 
-        le=1.0,
-        description="Weight applied to graph expansion results"
-    )
-    vector_weight: float = Field(
-        0.4, 
-        ge=0.0, 
-        le=1.0,
-        description="Weight applied to vector search results"
     )
     num_candidates_multiplier: int = Field(
         15,
@@ -103,6 +95,7 @@ class GraphSearchRequest(SearchRequest):
         le=50,
         description="Multiplier for determining vector search candidates"
     )
+    use_reranker: Optional[bool] = Field(False, description="Whether to apply Voyage AI reranking")
 
 class CytoscapeNode(BaseModel):
     """Cytoscape.js node format for knowledge graph visualization"""
@@ -121,6 +114,9 @@ class KnowledgeGraphResponse(BaseModel):
     query_context: Optional[str] = None
     highlighted_node_ids: List[str] = []
     style: List[Dict[str, Any]] = Field(..., description="Cytoscape styling definitions")
+    total_nodes: Optional[int] = Field(None, description="Total number of nodes in the graph")
+    is_full_graph: bool = Field(False, description="Whether this is a full graph (all chunks) or query-based")
+    applied_filters: Optional[Dict[str, Any]] = Field(None, description="Filters applied to the graph")
 
 class SearchResponse(BaseModel):
     """Response model for search endpoints"""
@@ -129,3 +125,43 @@ class SearchResponse(BaseModel):
     results: List[SearchResult] = Field(..., description="Search results")
     total: int = Field(..., description="Total number of results found")
     debug_info: Optional[Dict[str, Any]] = Field(None, description="Debug information about the search (if enabled)")
+    reranking_metadata: Optional[Dict[str, Any]] = Field(None, description="Voyage AI reranking metadata (if applied)")
+
+class MultimodalSearchRequest(BaseModel):
+    """Request model for multimodal search (text or image input)"""
+    query_type: Literal["text", "image"] = Field(..., description="Type of query: text or image")
+    query_text: Optional[str] = Field(None, description="Text query (required if query_type='text')")
+    image_base64: Optional[str] = Field(None, description="Base64 encoded image (required if query_type='image')")
+    limit: int = Field(3, ge=1, le=50, description="Maximum number of image results to return")
+    include_text_chunks: bool = Field(True, description="Include associated text chunks in results")
+    num_candidates_multiplier: int = Field(10, ge=1, le=50, description="Multiplier for vector search candidates")
+    use_reranker: Optional[bool] = Field(False, description="Whether to apply Voyage AI reranking")
+
+class ImageResultWithChunks(BaseModel):
+    """Image search result with associated text chunks"""
+    score: float = Field(..., description="Relevance score")
+    image_id: str = Field(..., description="Image document ID")
+    gridfs_file_id: str = Field(..., description="GridFS file reference")
+
+    # NEW: Rich metadata fields
+    title: Optional[str] = Field(None, description="Image title")
+    description: Optional[str] = Field(None, description="Detailed description")
+    keywords: Optional[List[str]] = Field(None, description="Searchable keywords")
+    languages: Optional[List[str]] = Field(None, description="Languages in image")
+    category: Optional[str] = Field(None, description="Category/group")
+
+    # Existing fields
+    page_number: Optional[int] = Field(None, description="Page number")
+    breadcrumb_trail: Optional[str] = Field(None, description="Context path")
+    caption: Optional[str] = Field(None, description="Image caption (mapped from description)")
+    diagram_type: Optional[str] = Field(None, description="Type of diagram (mapped from category)")
+    associated_chunks: Optional[List[SearchResult]] = Field(None, description="Associated text chunks")
+
+class MultimodalSearchResponse(BaseModel):
+    """Response model for multimodal search"""
+    query_type: str = Field(..., description="Type of query used")
+    query_text: Optional[str] = Field(None, description="Original text query (if applicable)")
+    image_results: List[ImageResultWithChunks] = Field(..., description="Image search results with chunks")
+    text_results: Optional[List[SearchResult]] = Field(None, description="Parallel text search results (for text queries)")
+    total_images: int = Field(..., description="Total number of image results")
+    total_text: Optional[int] = Field(None, description="Total number of text results")

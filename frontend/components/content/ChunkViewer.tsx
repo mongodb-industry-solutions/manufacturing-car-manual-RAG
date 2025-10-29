@@ -3,10 +3,11 @@
  */
 import React, { useState } from 'react';
 import { Chunk } from '../../types/Chunk';
-import { MyH1 as H1, MyH2 as H2, MyH3 as H3, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
+import { H1, H2, H3, Body, Subtitle } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MyCard as Card, MyButton as Button } from '@/components/ui/TypographyWrapper';
+import Card from '@leafygreen-ui/card';
+import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
 import Badge from '@leafygreen-ui/badge';
 import ExpandableCard from '@leafygreen-ui/expandable-card';
@@ -14,6 +15,7 @@ import Tooltip from '@leafygreen-ui/tooltip';
 import Banner from '@leafygreen-ui/banner';
 import Link from 'next/link';
 import Code from '@leafygreen-ui/code';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 // Custom components
 import SafetyNotice from './SafetyNotice';

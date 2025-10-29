@@ -3,23 +3,19 @@
  */
 import React from 'react';
 import { RadioGroup, Radio } from '@leafygreen-ui/radio-group';
-import { MyBody as Body } from '@/components/ui/TypographyWrapper';
+import { Body } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
-import { SearchMethod, GraphExpansionMethod } from '../../types/Search';
+import { SearchMethod } from '../../types/Search';
 import Icon from '@leafygreen-ui/icon';
 import { palette } from '@leafygreen-ui/palette';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
-// For simplicity, using a custom slider instead of radix (which isn't installed)
-// This avoids needing to install new dependencies
+import Card from '@leafygreen-ui/card';
 import Tooltip from '@leafygreen-ui/tooltip';
 import Banner from '@leafygreen-ui/banner';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 interface SearchMethodSelectorProps {
   selectedMethod: SearchMethod;
   onChange: (method: SearchMethod) => void;
-  // GraphRAG-specific props
-  selectedExpansionMethod?: GraphExpansionMethod;
-  onExpansionMethodChange?: (method: GraphExpansionMethod) => void;
 }
 
 // $rankFusion explanation tooltip content
@@ -30,19 +26,18 @@ using optimized algorithms built into the database engine.
 This provides better performance and consistency than manual RRF implementations.
 `;
 
-// GraphRAG explanation tooltip content
-const GRAPHRAG_EXPLANATION = `
-GraphRAG uses relationship data between document chunks to expand search results.
-Vector→Graph: Start with vector search, then expand via relationships.
-Graph→Vector: Start with text matching, expand via graph, then vector search.
-MongoDB's $graphLookup traverses relationships at a fixed depth of 2 for optimal performance.
+// Hybrid Graph explanation tooltip content
+const HYBRID_GRAPH_EXPLANATION = `
+Hybrid Graph Search combines semantic vector search with relationship traversal.
+It starts with $vectorSearch to find semantically similar documents, then uses
+MongoDB's $graphLookup to expand through document relationships. This provides
+both semantic relevance and contextual connectivity. Graph traversal is fixed
+at depth 2 for optimal performance.
 `;
 
 const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
   selectedMethod,
-  onChange,
-  selectedExpansionMethod = 'vector_to_graph',
-  onExpansionMethodChange
+  onChange
 }) => {
   return (
     <div>
@@ -110,9 +105,25 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
                 fill={palette.red.base} 
               />
               <div>
-                <Body>GraphRAG Search ($graphLookup)</Body>
+                <Body>Hybrid Graph Search ($vectorSearch + $graphLookup)</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
-                  Relationship-aware search using document connections and knowledge graphs
+                  Semantic vector search expanded via document relationships using MongoDB&apos;s $graphLookup
+                </Body>
+              </div>
+            </div>
+          </Radio>
+          
+          <Radio value="multimodal" id="multimodal-search">
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+              <Icon 
+                glyph="Camera" 
+                size="small" 
+                fill={palette.yellow.dark2} 
+              />
+              <div>
+                <Body>Multimodal Search</Body>
+                <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
+                  Find images using text or image queries with Voyage AI multimodal embeddings
                 </Body>
               </div>
             </div>
@@ -138,46 +149,29 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
           </div>
         )}
 
-        {/* GraphRAG configuration banner - only show when graph is selected */}
+        {/* Hybrid Graph configuration banner - only show when graph is selected */}
         {selectedMethod === 'graph' && (
           <div style={{ marginTop: spacing[3] }}>
             <Banner variant="info">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3] }}>
-                <div className="flex items-center gap-1">
-                  <span>Using MongoDB's $graphLookup for relationship-aware search.&nbsp;</span>
-                  <Tooltip
-                    trigger={<span style={{ textDecoration: 'underline', cursor: 'help' }}>Learn more</span>}
-                    triggerEvent="hover"
-                  >
-                    {GRAPHRAG_EXPLANATION}
-                  </Tooltip>
-                </div>
-                
-                {/* Expansion Method Selection */}
-                <div>
-                  <Body size="small" weight="medium" style={{ marginBottom: spacing[1] }}>
-                    Expansion Method
-                  </Body>
-                  <RadioGroup
-                    name="expansion-method"
-                    onChange={(e) => onExpansionMethodChange?.(e.target.value as GraphExpansionMethod)}
-                    value={selectedExpansionMethod}
-                    size="small"
-                  >
-                    <Radio value="vector_to_graph" id="vector-to-graph">
-                      <Body size="small">Vector → Graph</Body>
-                      <Body size="xsmall" style={{ color: palette.gray.dark1, marginTop: spacing[1] }}>
-                        Start with semantic search, then expand via relationships
-                      </Body>
-                    </Radio>
-                    <Radio value="graph_to_vector" id="graph-to-vector">
-                      <Body size="small">Graph → Vector</Body>
-                      <Body size="xsmall" style={{ color: palette.gray.dark1, marginTop: spacing[1] }}>
-                        Start with text matching, expand via graph, then semantic search
-                      </Body>
-                    </Radio>
-                  </RadioGroup>
-                </div>
+              <div className="flex items-center gap-1">
+                <span>Using MongoDB&apos;s $vectorSearch + $graphLookup for hybrid graph search.&nbsp;</span>
+                <Tooltip
+                  trigger={<span style={{ textDecoration: 'underline', cursor: 'help' }}>Learn more</span>}
+                  triggerEvent="hover"
+                >
+                  {HYBRID_GRAPH_EXPLANATION}
+                </Tooltip>
+              </div>
+            </Banner>
+          </div>
+        )}
+
+        {/* Multimodal Search information banner - only show when multimodal is selected */}
+        {selectedMethod === 'multimodal' && (
+          <div style={{ marginTop: spacing[3] }}>
+            <Banner variant="info">
+              <div className="flex items-center gap-1">
+                <span>Using Voyage AI multimodal embeddings to search images by text or image similarity.&nbsp;</span>
               </div>
             </Banner>
           </div>

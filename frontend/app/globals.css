@@ -1,3 +1,162 @@
+/* LeafyGreen Color Palette - Complete 7-level scale */
+:root {
+  /* Green Palette */
+  --lg-green-light3: #f0fdf4;
+  --lg-green-light2: #dcfce7;
+  --lg-green-light1: #bbf7d0;
+  --lg-green-base: #22c55e;
+  --lg-green-dark1: #16a34a;
+  --lg-green-dark2: #15803d;
+  --lg-green-dark3: #14532d;
+  
+  /* Gray Palette */
+  --lg-gray-light3: #f9fafb;
+  --lg-gray-light2: #f3f4f6;
+  --lg-gray-light1: #e5e7eb;
+  --lg-gray-base: #6b7280;
+  --lg-gray-dark1: #4b5563;
+  --lg-gray-dark2: #374151;
+  --lg-gray-dark3: #1f2937;
+  
+  /* Blue Palette */
+  --lg-blue-light3: #eff6ff;
+  --lg-blue-light2: #dbeafe;
+  --lg-blue-light1: #bfdbfe;
+  --lg-blue-base: #3b82f6;
+  --lg-blue-dark1: #2563eb;
+  --lg-blue-dark2: #1d4ed8;
+  
+  /* Yellow Palette */
+  --lg-yellow-light2: #fef3c7;
+  --lg-yellow-light1: #fed7aa;
+  --lg-yellow-base: #f59e0b;
+  --lg-yellow-dark1: #d97706;
+  --lg-yellow-dark2: #b45309;
+  
+  /* Red Palette */
+  --lg-red-light2: #fecaca;
+  --lg-red-light1: #fca5a5;
+  --lg-red-base: #ef4444;
+  --lg-red-dark1: #dc2626;
+  --lg-red-dark2: #b91c1c;
+  
+  /* Purple Palette */
+  --lg-purple-light2: #e9d5ff;
+  --lg-purple-light1: #ddd6fe;
+  --lg-purple-base: #8b5cf6;
+  --lg-purple-dark1: #7c3aed;
+  --lg-purple-dark2: #6d28d9;
+  
+  /* MongoDB Brand Colors */
+  --mongodb-green: #00684A;
+  --mongodb-light-green: #00ED64;
+  --mongodb-dark-green: #023430;
+  
+  /* Spacing Scale */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 16px;
+  --spacing-4: 32px;
+  
+  /* Border Radius */
+  --radius: 0.5rem; /* 8px */
+  --radius-md: 6px;
+  --radius-sm: 4px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  
+  /* Shadows - Professional */
+  --shadow-leafy: 0 3px 8px rgba(0, 0, 0, 0.12);
+  --shadow-leafy-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
+  --shadow-professional: 0 4px 12px rgba(0, 0, 0, 0.1);
+  
+  /* Transitions */
+  --transition-standard: all 0.2s ease-in-out;
+  --transition-transform: transform 0.3s ease;
+  --transition-opacity: opacity 0.3s ease;
+}
+
+/* Professional Animation Keyframes */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  0% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Utility Classes */
+.hover-lift {
+  transition: var(--transition-standard);
+}
+
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-leafy-lg);
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Custom Scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
 /* PDF Viewer styles */
 .react-pdf__Document {
   display: flex;
@@ -20,12 +179,6 @@
   height: auto !important;
 }
 
-/* Animation for loading spinner */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
 /* Modal positioning */
 .leafygreen-ui-nlp0f4 {
   max-width: 90vw !important;
@@ -40,25 +193,4 @@
 /* Ensure high z-index for modals */
 [data-leafygreen-ui="modal-container"] {
   z-index: 10000;
-}
-
-/* Radix UI Dialog animations */
-@keyframes fadeIn {
-  from { 
-    opacity: 0; 
-  }
-  to { 
-    opacity: 1; 
-  }
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -48%);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%);
-  }
 }

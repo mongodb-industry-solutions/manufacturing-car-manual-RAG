@@ -11,6 +11,16 @@ class ProceduralStep(BaseModel):
     marker: str
     instruction: str
 
+class ImageMetadata(BaseModel):
+    """Metadata for an image stored in GridFS"""
+    gridfs_file_id: str = Field(..., description="GridFS file reference")
+    filename: str = Field(..., description="Original filename")
+    content_type: str = Field(..., description="MIME type (e.g., image/jpeg)")
+    associated_chunk_ids: List[str] = Field(default_factory=list, description="Links to related text chunks")
+    page_number: Optional[int] = Field(None, description="Page number where image appears")
+    caption: Optional[str] = Field(None, description="Image caption or description")
+    diagram_type: Optional[str] = Field(None, description="Type of diagram (e.g., electrical, mechanical)")
+
 class ChunkMetadata(BaseModel):
     """Metadata for a document chunk"""
     source_pages: Optional[str] = Field(None, description="Source page range in string format (e.g., '1-2')")
@@ -21,7 +31,7 @@ class ChunkMetadata(BaseModel):
     parts: Optional[List[str]] = Field(None, description="Part numbers referenced in the chunk")
 
 class Chunk(BaseModel):
-    """Document chunk with rich context"""
+    """Document chunk with rich context - supports both text chunks and image documents"""
     id: Optional[str] = Field(None, description="Unique identifier for the chunk (e.g., chunk_00001)")
     text: str = Field(..., description="Text content of the chunk")
     context: Optional[str] = Field(None, description="Context string for the chunk")
@@ -36,11 +46,23 @@ class Chunk(BaseModel):
     procedural_steps: Optional[List[ProceduralStep]] = Field(None, description="Step-by-step procedures")
     part_numbers: Optional[List[str]] = Field(None, description="Part numbers mentioned in the chunk")
     vehicle_systems: Optional[List[str]] = Field(None, description="Vehicle systems referenced")
-    metadata: ChunkMetadata = Field(..., description="Additional metadata about the chunk")
+    metadata: Optional[ChunkMetadata] = Field(None, description="Additional metadata about the chunk")
     next_chunk_id: Optional[str] = Field(None, description="ID of the next chunk in sequence")
     related_chunks: Optional[List[str]] = Field(None, description="IDs of related chunks")
     embedding: Optional[Dict[str, Any]] = Field(None, description="Truncated embedding representation for display")
     embedding_timestamp: Optional[str] = Field(None, description="Timestamp when embedding was generated")
+
+    # NEW: Multimodal embedding field (for image documents)
+    multimodal_embedding: Optional[List[float]] = Field(None, description="Multimodal embedding (1024d) for images")
+
+    # NEW: Image-specific fields (optional, only for image documents)
+    gridfs_file_id: Optional[str] = Field(None, description="GridFS file ID for image storage")
+    title: Optional[str] = Field(None, description="Image title or name")
+    description: Optional[str] = Field(None, description="Detailed image description")
+    keywords: Optional[List[str]] = Field(None, description="Searchable keywords/tags")
+    languages: Optional[List[str]] = Field(None, description="Languages present in image")
+    category: Optional[str] = Field(None, description="High-level category for grouping")
+    associated_chunk_ids: Optional[List[str]] = Field(None, description="Related text chunk IDs")
     
     model_config = {
         "json_schema_extra": {

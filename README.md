@@ -1,4 +1,6 @@
-# Car Manual Explorer - MongoDB-Powered Technical Explorer Documentation System
+# Car Manual Explorer
+
+## Document Intelligence Platform
 
 ![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
@@ -7,7 +9,9 @@
 ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
 ![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
 
-In today's complex automotive landscape, technicians and vehicle owners need instant access to accurate technical information. Traditional PDF manuals are cumbersome to navigate, making it difficult to find specific procedures, safety warnings, or troubleshooting steps quickly. Solutions such as semantic search, AI-powered Q&A, and intelligent document chunking can transform how your organization accesses and utilizes technical documentation. Additionally, with features like vector-based similarity search, hybrid search combining multiple approaches, and context-aware retrieval, our system ensures you find the exact information you need, when you need it.
+**Intelligent search and retrieval for automotive technical documentation powered by MongoDB Atlas.**
+
+This platform demonstrates MongoDB's Unified Data Platform capabilities, showcasing how flexible JSON document storage enables multiple retrieval pipelines working together: smart chunking, full-text search, vector embeddings, knowledge graphs, multimodal search, and Voyage AI reranking.
 
 By the end of this guide, you'll have a comprehensive car manual exploration system up and running capable of all the solutions mentioned above.
 
@@ -16,6 +20,14 @@ We will walk you through the process of configuring and using [MongoDB Atlas](ht
 The architecture we're about to set up is depicted in the diagram below:
 
 ![Car Manual Explorer Architecture](frontend/public/architecture.png)
+
+**Key Platform Capabilities:**
+
+- **Unified Data Platform**: MongoDB's flexible JSON document model serves as the foundation for both storage and retrieval
+- **GraphRAG**: Knowledge graph traversal using MongoDB's native `$graphLookup` aggregation stage for relationship-aware search
+- **Multimodal Search**: Text and image search powered by Voyage AI multimodal embeddings
+- **Hybrid Fusion**: Intelligent combining of multiple retrieval methods using MongoDB's `$rankFusion` with Voyage AI reranking
+- **Context-Aware Chunking**: Smart document processing that preserves hierarchical structure and relationships
 
 Let's get started!
 
@@ -310,7 +322,7 @@ Your frontend application should now be running at [http://localhost:3000](http:
 
 ### Search Interface
 
-The search interface provides four powerful methods to find information in car manuals:
+The search interface provides five powerful methods to find information in car manuals, demonstrating MongoDB's Unified Data Platform with diverse retrieval pipelines:
 
 1. Navigate to [http://localhost:3000/search](http://localhost:3000/search).
 
@@ -319,22 +331,28 @@ The search interface provides four powerful methods to find information in car m
    - **Vector Search**: Finds semantically similar content using AI embeddings
    - **Text Search**: Traditional keyword-based search with fuzzy matching
    - **Hybrid Search**: Combines both methods using MongoDB's native $rankFusion
-   - **GraphRAG Search**: Relationship-aware search using document connections and knowledge graphs
+   - **GraphRAG Search**: Relationship-aware search using MongoDB's $graphLookup for knowledge graph traversal
+   - **Multimodal Search**: Search images using text or image queries with Voyage AI multimodal embeddings
 
 3. Enter your query:
 
    - Vector Search examples: "How do I fix a flat tire?", "What causes engine overheating?"
-   - Text Search examples: "battery replacement", "oil change interval"  
+   - Text Search examples: "battery replacement", "oil change interval"
    - Hybrid Search: Works well with any query type
    - GraphRAG Search examples: "tire replacement steps", "engine oil maintenance", "brake system components"
+   - Multimodal Search: Text queries like "engine diagram" or upload an image for similar image search
 
 4. Review the results:
 
    - **Hybrid Search**: Shows combined RRF score and visual percentage breakdown of vector vs text contributions
+   - **GraphRAG Search**: Displays relationship-based results expanded through document connections
+   - **Multimodal Search**: Returns images with similarity scores
    - **Vector/Text Search**: Shows individual search method scores
    - **Score Display**: RRF scores typically range from 0.001 to 0.05 (this is normal and expected)
    - Click "View Details" to see the full content with context navigation
    - Visual indicators show safety notices, procedural steps, and content types
+
+Each search method adapts to different query types and use cases, demonstrating how MongoDB's flexible document model powers multiple retrieval pipelines for optimal accuracy.
 
 > [!Note]
 > The search interface maintains your search state in the URL, making it easy to share specific searches.
@@ -402,6 +420,7 @@ For containerized deployment in production environments:
    - Best for finding specific terms, part numbers, or exact phrases
 
 3. **Hybrid Search**:
+
    - Combines vector and text search results using MongoDB's native $rankFusion aggregation stage
    - Automatically performs Reciprocal Rank Fusion (RRF) with k=60 constant
    - Displays combined RRF scores and individual contribution percentages

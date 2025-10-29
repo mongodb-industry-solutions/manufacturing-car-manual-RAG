@@ -14,6 +14,8 @@ uvicorn = "^0.32.0"
 google-cloud-aiplatform = "^1.40.0"
 vertexai = "^0.0.1"
 pydantic-settings = "^2.8.1"
+pillow = "^12.0.0"
+voyageai = "^0.3.5"
 
 
 [tool.poetry.group.dev.dependencies]

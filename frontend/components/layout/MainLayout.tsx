@@ -7,7 +7,8 @@ import React, { ReactNode, useEffect, useState } from 'react';
 import { palette } from '@leafygreen-ui/palette';
 import { spacing } from '@leafygreen-ui/tokens';
 import Icon from '@leafygreen-ui/icon';
-import { MyBody as Body, MyBanner as Banner } from '@/components/ui/TypographyWrapper';
+import { Body } from '@leafygreen-ui/typography';
+import Banner from '@leafygreen-ui/banner';
 import dynamic from 'next/dynamic';
 
 // Components

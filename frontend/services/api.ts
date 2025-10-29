@@ -92,3 +92,23 @@ export const apiDelete = async <T>(url: string): Promise<T> => {
   const response = await api.delete<T>(normalizeUrl(url));
   return response.data;
 };
+
+/**
+ * Image API Functions
+ */
+import type { ImageDocument } from '@/types/Search';
+
+export const getAllImages = async (limit?: number): Promise<{ total: number; images: ImageDocument[] }> => {
+  return apiGet<{ total: number; images: ImageDocument[] }>(
+    '/images/all',
+    limit ? { limit } : undefined
+  );
+};
+
+export const getImageMetadata = async (imageId: string): Promise<ImageDocument> => {
+  return apiGet<ImageDocument>(`/images/${imageId}`);
+};
+
+export const getImageFileUrl = (imageId: string): string => {
+  return `${API_BASE}/images/${imageId}/file`;
+};

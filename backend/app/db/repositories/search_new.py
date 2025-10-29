@@ -595,7 +595,7 @@ class SearchRepository:
                 debug_info["error"] = str(e)
             return []
 
-    async def graph_to_vector_search(
+    async def vector_to_graph_search(
         self,
         query_text: str,
         query_embedding: List[float], 
@@ -603,217 +603,13 @@ class SearchRepository:
         limit: int = 30,
         relationship_types: Optional[List[str]] = None
     ) -> List[SearchResult]:
-        """Graph-first expansion search using $graphLookup"""
+        """
+        Hybrid Graph Search using $vectorSearch + $graphLookup
         
-        debug_info = {} if self.debug_mode else None
-        
-        if not query_embedding:
-            logger.error("Error: Cannot run graph-to-vector search without a query embedding.")
-            return []
-            
-        # Check if collection is initialized
-        if not hasattr(self, 'collection') or self.collection is None:
-            logger.error("MongoDB collection is not available")
-            return []
-            
-        try:
-            # Phase 1: Graph Discovery using $graphLookup
-            graph_seed_pipeline = [
-                # Initial text search on metadata to find conceptual starting points
-                {
-                    "$search": {
-                        "index": self.text_index_name,
-                        "compound": {
-                            "should": [
-                                {"text": {"query": query_text, "path": "metadata.systems", "score": {"boost": {"value": 3}}}},
-                                {"text": {"query": query_text, "path": "content_type", "score": {"boost": {"value": 2}}}},
-                                {"text": {"query": query_text, "path": "context", "score": {"boost": {"value": 1}}}}
-                            ]
-                        }
-                    }
-                },
-                {"$limit": 5},  # Start with top conceptual matches
-                # Use $graphLookup to traverse relationship network
-                {
-                    "$graphLookup": {
-                        "from": self.collection_name,
-                        "startWith": "$relationships.target_id",
-                        "connectFromField": "relationships.target_id", 
-                        "connectToField": "id",
-                        "as": "graph_expansion",
-                        "maxDepth": max_depth,
-                        "restrictSearchWithMatch": self._build_relationship_filter(relationship_types),
-                        "depthField": "traversal_depth"
-                    }
-                },
-                # Combine original and expanded results with source tracking
-                {
-                    "$addFields": {
-                        "all_related": {
-                            "$concatArrays": [
-                                [{"doc": "$$ROOT", "source": "seed", "depth": 0}],
-                                {
-                                    "$map": {
-                                        "input": "$graph_expansion",
-                                        "as": "expanded",
-                                        "in": {"doc": "$$expanded", "source": "graph_expansion", "depth": {"$ifNull": ["$$expanded.traversal_depth", 1]}}
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                },
-                {"$unwind": "$all_related"},
-                {"$replaceRoot": {"newRoot": "$all_related"}},
-                # Deduplicate with seed prioritization
-                {
-                    "$group": {
-                        "_id": "$doc.id",
-                        "doc": {"$first": "$doc"},
-                        "source": {
-                            "$first": {
-                                "$cond": [
-                                    {"$eq": ["$source", "seed"]},
-                                    "seed",
-                                    "$source"
-                                ]
-                            }
-                        },
-                        "min_depth": {"$min": "$depth"},
-                        "is_seed": {
-                            "$max": {
-                                "$cond": [
-                                    {"$eq": ["$source", "seed"]},
-                                    1,
-                                    0
-                                ]
-                            }
-                        }
-                    }
-                },
-                # Add source and depth to document
-                {
-                    "$addFields": {
-                        "doc.source": "$source",
-                        "doc.depth": "$min_depth"
-                    }
-                },
-                {"$replaceRoot": {"newRoot": "$doc"}},
-                {"$limit": limit * 3}  # Get more candidates for vector filtering
-            ]
-            
-            if self.debug_mode:
-                debug_info["graph_pipeline"] = graph_seed_pipeline
-                debug_info["pipeline_steps"] = {}
-                start_time = get_current_time()
-                
-            graph_candidates = list(self.collection.aggregate(graph_seed_pipeline))
-            
-            if self.debug_mode:
-                debug_info["graph_candidates_count"] = len(graph_candidates)
-                debug_info["graph_execution_time_ms"] = (get_current_time() - start_time) * 1000
-                
-                # Step-by-step breakdown for visualization
-                debug_info["pipeline_steps"] = {
-                    "step1_text_search": {
-                        "description": "Text search on metadata (systems=3x, content_type=2x, context=1x)",
-                        "query": query_text,
-                        "expected_results": 5,
-                        "pipeline": [graph_seed_pipeline[0], graph_seed_pipeline[1]]
-                    },
-                    "step2_graph_expansion": {
-                        "description": f"$graphLookup expansion (maxDepth={max_depth})",
-                        "relationship_types": relationship_types or ["all"],
-                        "pipeline": [graph_seed_pipeline[2]]
-                    },
-                    "step3_combine_dedupe": {
-                        "description": f"Combine seeds + expanded, deduplicate, get {limit * 3} candidates",
-                        "candidates_multiplier": 3,
-                        "actual_candidates": len(graph_candidates),
-                        "pipeline": graph_seed_pipeline[3:6]
-                    }
-                }
-                
-            # Count seeds vs expanded in graph candidates
-            seed_candidate_count = sum(1 for c in graph_candidates if c.get('source') == 'seed' and c.get('depth') == 0)
-            expanded_candidate_count = len(graph_candidates) - seed_candidate_count
-            
-            logger.info(f"Graph-to-Vector: Found {len(graph_candidates)} graph candidates ({seed_candidate_count} seeds, {expanded_candidate_count} expanded)")
-            
-            # Phase 2: Vector filtering on graph candidates
-            if query_embedding and graph_candidates:
-                candidate_ids = [doc["id"] for doc in graph_candidates]
-                
-                vector_filter_pipeline = [
-                    {
-                        "$vectorSearch": {
-                            "index": self.vector_index_name,
-                            "path": self.vector_field_name,
-                            "queryVector": query_embedding,
-                            "numCandidates": len(candidate_ids) * 2,
-                            "limit": limit,
-                            "filter": {"id": {"$in": candidate_ids}}
-                        }
-                    },
-                    self._get_common_projection("vectorSearchScore")
-                ]
-                
-                if self.debug_mode:
-                    debug_info["vector_filter_pipeline"] = vector_filter_pipeline
-                    start_time = get_current_time()
-                    
-                    # Add step 4 debug info
-                    debug_info["pipeline_steps"]["step4_vector_filter"] = {
-                        "description": f"Vector search filter on {len(candidate_ids)} candidates → {limit} final results",
-                        "input_candidates": len(candidate_ids),
-                        "final_limit": limit,
-                        "pipeline": vector_filter_pipeline
-                    }
-                    
-                vector_results = list(self.collection.aggregate(vector_filter_pipeline))
-                
-                # Count seeds vs expanded in final results
-                seed_count = sum(1 for r in vector_results if r.get('source') == 'seed' and r.get('depth') == 0)
-                expanded_count = len(vector_results) - seed_count
-                
-                if self.debug_mode:
-                    debug_info["vector_results_count"] = len(vector_results)
-                    debug_info["seed_count"] = seed_count
-                    debug_info["expanded_count"] = expanded_count
-                    debug_info["vector_execution_time_ms"] = (get_current_time() - start_time) * 1000
-                    debug_info["pipeline_steps"]["step4_vector_filter"]["actual_results"] = {
-                        "total": len(vector_results),
-                        "seeds": seed_count,
-                        "expanded": expanded_count
-                    }
-                    
-                logger.info(f"Graph-to-Vector: Filtered to {len(vector_results)} final results ({seed_count} seeds, {expanded_count} expanded)")
-                logger.info(f"  → Pipeline stages: 1) Text search (5 seeds) → 2) $graphLookup (maxDepth={max_depth}) → 3) Dedupe+Track source → 4) Vector filter")
-                
-                # Store debug info for retrieval
-                if self.debug_mode:
-                    self.last_debug_info = debug_info
-                    
-                return self._format_search_results(vector_results)
-            
-            return []
-            
-        except Exception as e:
-            logger.error(f"Error in graph-to-vector search: {str(e)}")
-            traceback.print_exc()
-            if self.debug_mode:
-                debug_info["error"] = str(e)
-            return []
-    
-    async def vector_to_graph_search(
-        self,
-        query_text: str,
-        query_embedding: List[float],
-        max_depth: int = 2, 
-        limit: int = 30,
-        relationship_types: Optional[List[str]] = None
-    ) -> List[SearchResult]:
-        """Vector-first expansion search using $graphLookup"""
+        Performs semantic vector search to find initial seed documents,
+        then expands through document relationships using $graphLookup.
+        Combines the power of vector similarity with graph traversal.
+        """
         
         debug_info = {} if self.debug_mode else None
         
@@ -829,131 +625,191 @@ class SearchRepository:
         try:
             debug_info = {} if self.debug_mode else None
             
-            # Phase 1: Vector Discovery with Graph Expansion
+            # IMPROVED PIPELINE: Guarantees exactly 5 seed results
+            # Uses $facet immediately after vector search to preserve seeds separately
             vector_seed_pipeline = [
+                # Step 1: Vector search for top 5 semantic matches
                 {
                     "$vectorSearch": {
                         "index": self.vector_index_name,
                         "path": self.vector_field_name,
                         "queryVector": query_embedding,
                         "numCandidates": 50,
-                        "limit": 5  # Start with top vector matches
+                        "limit": 5  # Get exactly 5 seed documents
                     }
                 },
-                # Use $graphLookup to expand from vector seeds
+                # Step 2: Use $facet to split into two parallel processing paths
+                {
+                    "$facet": {
+                        # Path A: Preserve original 5 seeds exactly as-is
+                        "seeds": [
+                            {
+                                "$addFields": {
+                                    "source": "vector_seed",
+                                    "depth": 0,
+                                    "score": {"$meta": "vectorSearchScore"},
+                                    "seed_id": "$id"  # Track seed IDs for exclusion
+                                }
+                            },
+                            {
+                                "$project": {
+                                    "_id": 0,
+                                    "score": 1,
+                                    "chunk_id": "$id",
+                                    "text": 1,
+                                    "context": 1,
+                                    "breadcrumb_trail": 1,
+                                    "page_numbers": 1,
+                                    "content_type": 1,
+                                    "metadata": 1,
+                                    "vehicle_systems": 1,
+                                    "heading_level_1": 1,
+                                    "heading_level_2": 1,
+                                    "heading_level_3": 1,
+                                    "source": 1,
+                                    "depth": 1,
+                                    "seed_id": 1
+                                }
+                            }
+                        ],
+                        # Path B: Graph expansion from seeds
+                        "expansion": [
+                            # Store original seed IDs for later exclusion
+                            {
+                                "$group": {
+                                    "_id": None,
+                                    "seed_ids": {"$push": "$id"},
+                                    "seed_docs": {"$push": "$$ROOT"}
+                                }
+                            },
+                            {"$unwind": "$seed_docs"},
+                            {"$replaceRoot": {"newRoot": "$seed_docs"}},
+                            # Perform $graphLookup from each seed
                 {
                     "$graphLookup": {
                         "from": self.collection_name,
                         "startWith": "$relationships.target_id",
-                        "connectFromField": "relationships.target_id",
-                        "connectToField": "id", 
-                        "as": "graph_neighbors",
+                        "connectFromField": "relationships.target_id", 
+                        "connectToField": "id",
+                                    "as": "graph_neighbors",
                         "maxDepth": max_depth,
                         "restrictSearchWithMatch": self._build_relationship_filter(relationship_types),
                         "depthField": "traversal_depth"
                     }
                 },
-                # Combine seeds and neighbors with metadata
-                {
-                    "$addFields": {
-                        "all_docs": {
-                            "$concatArrays": [
-                                [{
-                                    "doc": "$$ROOT", 
-                                    "source": "vector_seed",
-                                    "score": {"$meta": "vectorSearchScore"},
-                                    "depth": 0
-                                }],
-                                {
-                                    "$map": {
-                                        "input": "$graph_neighbors",
-                                        "as": "neighbor", 
-                                        "in": {
-                                            "doc": "$$neighbor",
-                                            "source": "graph_expansion",
-                                            "score": {"$subtract": [0.5, {"$multiply": [0.1, {"$ifNull": ["$$neighbor.traversal_depth", 1]}]}]},  # Decay score by depth
-                                            "depth": {"$ifNull": ["$$neighbor.traversal_depth", 1]}
-                                        }
+                            # Extract just the neighbors
+                            {
+                                "$project": {
+                                    "seed_ids": {"$literal": []},  # Will be populated later
+                                    "neighbors": "$graph_neighbors"
+                                }
+                            },
+                            {"$unwind": "$neighbors"},
+                            {"$replaceRoot": {"newRoot": "$neighbors"}},
+                            # Add metadata to each neighbor (AFTER replaceRoot so we're working with flattened doc)
+                            {
+                                "$addFields": {
+                                    "source": "graph_expansion",
+                                    # Add 1 to traversal_depth because $graphLookup uses 0-based indexing:
+                                    # - traversal_depth=0 → depth=1 (1-hop neighbors)
+                                    # - traversal_depth=1 → depth=2 (2-hop neighbors)
+                                    # This ensures expanded results have depth > 0 (vs seeds with depth=0)
+                                    "depth": {
+                                        "$add": [{"$ifNull": ["$traversal_depth", 0]}, 1]
+                                    },
+                                    "score": {
+                                        "$subtract": [
+                                            0.5,
+                                            {"$multiply": [0.1, {"$add": [{"$ifNull": ["$traversal_depth", 0]}, 1]}]}
+                                        ]
                                     }
                                 }
-                            ]
-                        }
-                    }
-                },
-                {"$unwind": "$all_docs"},
-                {"$replaceRoot": {"newRoot": "$all_docs"}},
-                # Deduplicate with seed prioritization
-                {
-                    "$group": {
-                        "_id": "$doc.id",
-                        "doc": {"$first": "$doc"},
-                        "max_score": {"$max": "$score"},
-                        # Prioritize vector_seed source over graph_expansion
-                        "source": {
-                            "$first": {
-                                "$cond": [
-                                    {"$eq": ["$source", "vector_seed"]},
-                                    "vector_seed",
-                                    "$source"
-                                ]
-                            }
-                        },
-                        "min_depth": {"$min": "$depth"},
-                        # Track if this document was a seed (1) or expansion (0)
-                        "is_seed": {
-                            "$max": {
-                                "$cond": [
-                                    {"$eq": ["$source", "vector_seed"]},
-                                    1,
-                                    0
-                                ]
-                            }
-                        }
-                    }
-                },
-                # Use $facet to separate seeds and expanded, guaranteeing 5 seeds
-                {
-                    "$facet": {
-                        "seeds": [
-                            {"$match": {"is_seed": 1}},
-                            {"$sort": {"max_score": -1}},
-                            {"$limit": 5}  # Guarantee exactly 5 seeds
-                        ],
-                        "expanded": [
-                            {"$match": {"is_seed": 0}},
-                            {"$sort": {"max_score": -1, "min_depth": 1}},
-                            {"$limit": limit}  # Get expanded results
+                            },
+                            # Deduplicate expanded results by ID
+                            {
+                                "$group": {
+                                    "_id": "$id",
+                                    "doc": {"$first": "$$ROOT"},
+                                    "max_score": {"$max": "$score"},
+                                    "min_depth": {"$min": "$depth"}
+                                }
+                            },
+                            # Project to match seed structure
+                            {
+                                "$project": {
+                                    "_id": 0,
+                                    "score": "$max_score",
+                                    "chunk_id": "$_id",
+                                    "text": "$doc.text",
+                                    "context": "$doc.context",
+                                    "breadcrumb_trail": "$doc.breadcrumb_trail",
+                                    "page_numbers": "$doc.page_numbers",
+                                    "content_type": "$doc.content_type",
+                                    "metadata": "$doc.metadata",
+                                    "vehicle_systems": "$doc.vehicle_systems",
+                                    "heading_level_1": "$doc.heading_level_1",
+                                    "heading_level_2": "$doc.heading_level_2",
+                                    "heading_level_3": "$doc.heading_level_3",
+                                    "source": "$doc.source",  # Use source from document (set by $addFields)
+                                    "depth": "$min_depth"
+                                }
+                            },
+                            # Sort by score and depth
+                            {"$sort": {"score": -1, "depth": 1}},
+                            {"$limit": limit * 2}  # Get more candidates than needed
                         ]
                     }
                 },
-                # Combine seeds and expanded
+                # Step 3: Process facet results
                 {
                     "$project": {
-                        "all_results": {
-                            "$concatArrays": ["$seeds", "$expanded"]
+                        "seeds": 1,
+                        "expansion": 1,
+                        "seed_ids": {
+                                    "$map": {
+                                "input": "$seeds",
+                                "as": "seed",
+                                "in": "$$seed.chunk_id"
+                            }
                         }
                     }
                 },
-                {"$unwind": "$all_results"},
-                {"$replaceRoot": {"newRoot": "$all_results"}},
-                {"$limit": limit},
+                # Step 4: Filter expansion to exclude any seed IDs (prevent duplicates)
                 {
                     "$project": {
-                        "_id": 0,
-                        "score": "$max_score",
-                        "chunk_id": "$doc.id",
-                        "text": "$doc.text",
-                        "context": "$doc.context",
-                        "breadcrumb_trail": "$doc.breadcrumb_trail",
-                        "page_numbers": "$doc.page_numbers",
-                        "content_type": "$doc.content_type",
-                        "metadata": "$doc.metadata",
-                        "vehicle_systems": "$doc.vehicle_systems",
-                        "heading_level_1": "$doc.heading_level_1",
-                        "heading_level_2": "$doc.heading_level_2",
-                        "heading_level_3": "$doc.heading_level_3",
-                        "source": "$source",
-                        "depth": "$min_depth"
+                        "seeds": 1,
+                        "filtered_expansion": {
+                            "$filter": {
+                                "input": "$expansion",
+                                "as": "exp",
+                                "cond": {
+                                    "$not": {"$in": ["$$exp.chunk_id", "$seed_ids"]}
+                                }
+                            }
+                        }
+                    }
+                },
+                # Step 5: Limit expanded results
+                {
+                    "$project": {
+                        "seeds": 1,
+                        "filtered_expansion": {"$slice": ["$filtered_expansion", limit - 5]}
+                    }
+                },
+                # Step 6: Combine seeds (always 5) + filtered expansion
+                {
+                    "$project": {
+                        "combined": {
+                            "$concatArrays": ["$seeds", "$filtered_expansion"]
+                        }
+                    }
+                },
+                {"$unwind": "$combined"},
+                {"$replaceRoot": {"newRoot": "$combined"}},
+                # Remove seed_id field from final output
+                {
+                    "$project": {
+                        "seed_id": 0
                     }
                 }
             ]
@@ -962,22 +818,24 @@ class SearchRepository:
                 debug_info["vector_graph_pipeline"] = vector_seed_pipeline
                 debug_info["pipeline_steps"] = {
                     "step1_vector_search": {
-                        "description": "Vector search for 5 seed documents",
+                        "description": "Vector search for exactly 5 seed documents",
                         "query": query_text,
                         "expected_results": 5,
                         "numCandidates": 50,
                         "pipeline": [vector_seed_pipeline[0]]
                     },
-                    "step2_graph_expansion": {
-                        "description": f"$graphLookup expansion from seeds (maxDepth={max_depth})",
-                        "relationship_types": relationship_types or ["all"],
-                        "pipeline": [vector_seed_pipeline[1]]
+                    "step2_facet_split": {
+                        "description": "$facet splits into two parallel paths: preserve seeds + expand graph",
+                        "path_a": "Preserve original 5 seeds with source='vector_seed', depth=0",
+                        "path_b": f"$graphLookup expansion (maxDepth={max_depth}) from seeds, then filter out seed IDs",
+                        "relationship_types": relationship_types or ["all"]
                     },
                     "step3_combine_dedupe_facet": {
-                        "description": f"Deduplicate, separate seeds (5) and expanded (up to {limit}), then combine",
+                        "description": f"Filter expanded results to exclude seed IDs, then combine seeds (5) + expanded (up to {limit-5})",
                         "score_decay": "0.5 - (0.1 × depth)",
-                        "facet_logic": "Seeds: is_seed=1, limit 5 | Expanded: is_seed=0, limit variable",
-                        "final_limit": limit
+                        "deduplication": "Expanded results exclude any seed IDs to prevent duplicates",
+                        "final_limit": limit,
+                        "guaranteed_seeds": 5
                     }
                 }
                 start_time = get_current_time()
@@ -986,21 +844,53 @@ class SearchRepository:
             
             # Count seeds vs expanded in results
             seed_count = sum(1 for r in results if r.get('source') == 'vector_seed' and r.get('depth') == 0)
-            expanded_count = len(results) - seed_count
+            expanded_count = sum(1 for r in results if r.get('source') == 'graph_expansion' and r.get('depth', 0) > 0)
+            unclassified_count = len(results) - seed_count - expanded_count
+
+            # Collect seed IDs for debugging
+            seed_ids = [r.get('chunk_id') for r in results if r.get('source') == 'vector_seed' and r.get('depth') == 0]
+            expanded_ids = [r.get('chunk_id') for r in results if r.get('source') == 'graph_expansion' and r.get('depth', 0) > 0]
+            unclassified = [
+                {"chunk_id": r.get('chunk_id'), "source": r.get('source'), "depth": r.get('depth')}
+                for r in results
+                if not (r.get('source') == 'vector_seed' and r.get('depth') == 0)
+                and not (r.get('source') == 'graph_expansion' and r.get('depth', 0) > 0)
+            ]
             
             if self.debug_mode:
                 debug_info["result_count"] = len(results)
                 debug_info["seed_count"] = seed_count
                 debug_info["expanded_count"] = expanded_count
+                debug_info["unclassified_count"] = unclassified_count
+                debug_info["seed_ids"] = seed_ids
+                debug_info["expanded_ids"] = expanded_ids[:10]  # First 10 for brevity
+                debug_info["unclassified_results"] = unclassified[:10]  # Show first 10 unclassified
                 debug_info["execution_time_ms"] = (get_current_time() - start_time) * 1000
                 debug_info["pipeline_steps"]["step3_combine_dedupe_facet"]["actual_results"] = {
                     "total": len(results),
                     "seeds": seed_count,
-                    "expanded": expanded_count
+                    "expanded": expanded_count,
+                    "unclassified": unclassified_count,
+                    "seed_ids_sample": seed_ids[:3],
+                    "expanded_ids_sample": expanded_ids[:3],
+                    "unclassified_sample": unclassified[:3]
                 }
-                
-            logger.info(f"Vector-to-Graph: Found {len(results)} total results ({seed_count} seeds, {expanded_count} expanded)")
-            logger.info(f"  → Pipeline stages: 1) Vector search (5 seeds) → 2) $graphLookup (maxDepth={max_depth}) → 3) Dedupe+Facet (separate seeds/expanded) → 4) Combine")
+
+                # Validation: Check for overlap (there should be none)
+                overlap = set(seed_ids) & set(expanded_ids)
+                if overlap:
+                    debug_info["warning"] = f"Found {len(overlap)} overlapping IDs between seeds and expanded: {list(overlap)[:5]}"
+                else:
+                    debug_info["validation"] = "✓ No overlap between seeds and expanded results"
+
+            logger.info(f"Hybrid Graph Search: Found {len(results)} total results ({seed_count} seeds, {expanded_count} expanded, {unclassified_count} unclassified)")
+            logger.info(f"  → Pipeline: 1) Vector search (5 seeds) → 2) $facet (preserve seeds + expand graph) → 3) Filter & combine (no duplicates)")
+            if seed_count != 5:
+                logger.warning(f"  ⚠️ Expected 5 seeds but got {seed_count}. Seed IDs: {seed_ids}")
+            if unclassified_count > 0:
+                logger.warning(f"  ⚠️ Found {unclassified_count} unclassified results (missing source/depth metadata):")
+                for uc in unclassified[:5]:
+                    logger.warning(f"      - chunk_id={uc['chunk_id']}, source={uc['source']}, depth={uc['depth']}")
             
             # Store debug info for retrieval
             if self.debug_mode:
@@ -1055,9 +945,25 @@ class SearchRepository:
         query: Optional[str] = None,
         chunk_ids: Optional[List[str]] = None,
         max_nodes: int = 50,
-        max_depth: int = 2
+        max_depth: int = 2,
+        include_all: bool = False,
+        filter_systems: Optional[List[str]] = None,
+        filter_content_types: Optional[List[str]] = None,
+        min_connections: int = 0
     ) -> KnowledgeGraphResponse:
-        """Generate knowledge graph data in Cytoscape.js format using $graphLookup"""
+        """
+        Generate knowledge graph data in Cytoscape.js format
+        
+        Args:
+            query: Text query to find starting nodes
+            chunk_ids: Specific chunk IDs to start from
+            max_nodes: Maximum number of nodes to return
+            max_depth: Maximum $graphLookup traversal depth (for query mode)
+            include_all: If True, fetch all chunks (full graph mode)
+            filter_systems: Filter by vehicle systems (full graph mode)
+            filter_content_types: Filter by content types (full graph mode)
+            min_connections: Minimum number of relationships a node must have
+        """
         
         debug_info = {} if self.debug_mode else None
         
@@ -1067,76 +973,136 @@ class SearchRepository:
             return KnowledgeGraphResponse(elements=[], style=[])
             
         try:
-            # Determine starting points for graph traversal
-            if chunk_ids:
-                # Start from specific chunk IDs
-                match_stage = {"$match": {"id": {"$in": chunk_ids}}}
-                limit_seed = len(chunk_ids)
-            elif query:
-                # Start from text search results
-                match_stage = {
-                    "$search": {
-                        "index": self.text_index_name,
-                        "text": {"query": query, "path": ["text", "context", "breadcrumb_trail"]}
-                    }
-                }
-                limit_seed = 5
-            else:
-                # Get a random sample of chunks for general graph
-                match_stage = {"$sample": {"size": 5}}
-                limit_seed = 5
+            # Full Graph Mode - fetch all chunks with optional filters
+            if include_all:
+                logger.info(f"Knowledge Graph: Full graph mode - fetching all chunks")
                 
-            # Build graph using $graphLookup
-            graph_pipeline = [
-                match_stage,
-                {"$limit": limit_seed},
-                {
-                    "$graphLookup": {
-                        "from": self.collection_name,
-                        "startWith": "$relationships.target_id",
-                        "connectFromField": "relationships.target_id",
-                        "connectToField": "id",
-                        "as": "connected_chunks",
-                        "maxDepth": max_depth,
-                        "depthField": "graph_depth"
+                # Build match stage with filters
+                match_filter = {}
+                
+                if filter_systems:
+                    match_filter["metadata.systems"] = {"$in": filter_systems}
+                    logger.info(f"Filtering by systems: {filter_systems}")
+                
+                if filter_content_types:
+                    match_filter["content_type"] = {"$in": filter_content_types}
+                    logger.info(f"Filtering by content types: {filter_content_types}")
+                
+                # Build simplified pipeline for full graph (no $graphLookup needed)
+                graph_pipeline = []
+                
+                if match_filter:
+                    graph_pipeline.append({"$match": match_filter})
+                
+                # Exclude embeddings for performance
+                graph_pipeline.append({
+                    "$project": {
+                        "embedding": 0
                     }
-                },
-                # Create nodes and edges data structure
-                {
+                })
+                
+                # Filter by minimum connections if specified
+                if min_connections > 0:
+                    graph_pipeline.append({
+                        "$addFields": {
+                            "connection_count": {
+                                "$size": {"$ifNull": ["$relationships", []]}
+                            }
+                        }
+                    })
+                    graph_pipeline.append({
+                        "$match": {
+                            "connection_count": {"$gte": min_connections}
+                        }
+                    })
+                    graph_pipeline.append({
+                        "$sort": {"connection_count": -1}
+                    })
+                
+                # Limit to max_nodes
+                graph_pipeline.append({"$limit": max_nodes})
+                
+                # Add metadata fields
+                graph_pipeline.append({
                     "$addFields": {
-                        "all_nodes": {
-                            "$concatArrays": [
-                                [{"chunk": "$$ROOT", "is_seed": True, "depth": 0}],
-                                {
-                                    "$map": {
-                                        "input": "$connected_chunks",
-                                        "as": "connected",
-                                        "in": {
-                                            "chunk": "$$connected", 
-                                            "is_seed": False, 
-                                            "depth": {"$ifNull": ["$$connected.graph_depth", 1]}
-                                        }
-                                    }
-                                }
-                            ]
+                        "is_seed": False,
+                        "depth": 0
+                    }
+                })
+                
+            # Query Mode - use $graphLookup for relationship traversal
+            else:
+                # Determine starting points for graph traversal
+                if chunk_ids:
+                    # Start from specific chunk IDs
+                    match_stage = {"$match": {"id": {"$in": chunk_ids}}}
+                    limit_seed = len(chunk_ids)
+                elif query:
+                    # Start from text search results
+                    match_stage = {
+                        "$search": {
+                            "index": self.text_index_name,
+                            "text": {"query": query, "path": ["text", "context", "breadcrumb_trail"]}
                         }
                     }
-                },
-                {"$unwind": "$all_nodes"},
-                {"$replaceRoot": {"newRoot": "$all_nodes"}},
-                {
-                    "$group": {
-                        "_id": "$chunk.id",
-                        "chunk_data": {"$first": "$chunk"},
-                        "is_seed": {"$max": "$is_seed"},
-                        "min_depth": {"$min": "$depth"}
-                    }
-                },
-                {"$limit": max_nodes}
-            ]
+                    limit_seed = 5
+                else:
+                    # Get a random sample of chunks for general graph
+                    match_stage = {"$sample": {"size": 5}}
+                    limit_seed = 5
+
+                # Build graph using $graphLookup
+                graph_pipeline = [
+                    match_stage,
+                    {"$limit": limit_seed},
+                    {
+                        "$graphLookup": {
+                            "from": self.collection_name,
+                            "startWith": "$relationships.target_id",
+                            "connectFromField": "relationships.target_id",
+                            "connectToField": "id",
+                            "as": "connected_chunks",
+                            "maxDepth": max_depth,
+                            "depthField": "graph_depth"
+                        }
+                    },
+                    # Create nodes and edges data structure
+                    {
+                        "$addFields": {
+                            "all_nodes": {
+                                "$concatArrays": [
+                                    [{"chunk": "$$ROOT", "is_seed": True, "depth": 0}],
+                                    {
+                                        "$map": {
+                                            "input": "$connected_chunks",
+                                            "as": "connected",
+                                            "in": {
+                                                "chunk": "$$connected",
+                                                "is_seed": False,
+                                                "depth": {"$ifNull": ["$$connected.graph_depth", 1]}
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    {"$unwind": "$all_nodes"},
+                    {"$replaceRoot": {"newRoot": "$all_nodes"}},
+                    {
+                        "$group": {
+                            "_id": "$chunk.id",
+                            "chunk_data": {"$first": "$chunk"},
+                            "is_seed": {"$max": "$is_seed"},
+                            "min_depth": {"$min": "$depth"}
+                        }
+                    },
+                    {"$limit": max_nodes}
+                ]
             
             if self.debug_mode:
                 debug_info["graph_pipeline"] = graph_pipeline
+                debug_info["include_all"] = include_all
                 start_time = get_current_time()
                 
             graph_data = list(self.collection.aggregate(graph_pipeline))
@@ -1145,7 +1111,7 @@ class SearchRepository:
                 debug_info["graph_data_count"] = len(graph_data)
                 debug_info["execution_time_ms"] = (get_current_time() - start_time) * 1000
                 
-            logger.info(f"Knowledge Graph: Found {len(graph_data)} nodes via $graphLookup")
+            logger.info(f"Knowledge Graph: Found {len(graph_data)} nodes")
             
             # Convert to Cytoscape format
             nodes = []
@@ -1155,14 +1121,24 @@ class SearchRepository:
             # Create a set to track processed edges (avoid duplicates)
             processed_edges = set()
             
-            # Create nodes
+            # Create nodes - handle different data structures for full vs query mode
             for item in graph_data:
-                chunk = item["chunk_data"]
+                # Full graph mode: item is the chunk itself
+                # Query mode: item has chunk_data, is_seed, min_depth fields
+                if include_all:
+                    chunk = item
+                    is_seed = item.get("is_seed", False)
+                    depth = item.get("depth", 0)
+                else:
+                    chunk = item["chunk_data"]
+                    is_seed = item["is_seed"]
+                    depth = item["min_depth"]
+                
                 node_id = chunk["id"]
                 
                 # Determine node type and styling
                 node_class = "chunk-node"
-                if item["is_seed"]:
+                if is_seed:
                     node_class += " seed-node"
                     highlighted_node_ids.append(node_id)
                 
@@ -1196,8 +1172,8 @@ class SearchRepository:
                         "content_type": chunk.get("content_type", []),
                         "context": chunk.get("context", ""),
                         "breadcrumb_trail": chunk.get("breadcrumb_trail", ""),
-                        "is_seed": item["is_seed"],
-                        "depth": item["min_depth"]
+                        "is_seed": is_seed,
+                        "depth": depth
                     },
                     classes=node_class
                 ))
@@ -1206,7 +1182,10 @@ class SearchRepository:
                 for rel in chunk.get("relationships", []):
                     if rel["target_type"] == "Chunk":
                         # Only create edges to chunks that exist in our graph
-                        target_chunk_ids = {item["chunk_data"]["id"] for item in graph_data}
+                        if include_all:
+                            target_chunk_ids = {item["id"] for item in graph_data}
+                        else:
+                            target_chunk_ids = {item["chunk_data"]["id"] for item in graph_data}
                         if rel["target_id"] in target_chunk_ids:
                             edge_id = f"{node_id}-{rel['target_id']}-{rel['type']}"
                             if edge_id not in processed_edges:
@@ -1347,11 +1326,24 @@ class SearchRepository:
             
             logger.info(f"Knowledge Graph: Generated {len(nodes)} nodes and {len(edges)} edges")
             
+            # Build applied filters dictionary
+            applied_filters_dict = {}
+            if include_all:
+                if filter_systems:
+                    applied_filters_dict["systems"] = filter_systems
+                if filter_content_types:
+                    applied_filters_dict["content_types"] = filter_content_types
+                if min_connections > 0:
+                    applied_filters_dict["min_connections"] = min_connections
+            
             return KnowledgeGraphResponse(
                 elements=elements,
                 query_context=query,
                 highlighted_node_ids=highlighted_node_ids,
-                style=cytoscape_style
+                style=cytoscape_style,
+                total_nodes=len(nodes),
+                is_full_graph=include_all,
+                applied_filters=applied_filters_dict if applied_filters_dict else None
             )
             
         except Exception as e:

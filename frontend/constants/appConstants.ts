@@ -2,13 +2,15 @@
 
 // Application metadata
 export const APP_NAME = "Car Manual Explorer";
-export const APP_DESCRIPTION = "MongoDB-powered car manual search and exploration system";
+export const APP_DESCRIPTION = "";
+export const APP_DESCRIPTION_DETAILED = "MongoDB's Unified Data Platform enables flexible document storage with multiple retrieval pipelines working together: smart chunking, full-text search, vector embeddings, knowledge graphs, multimodal search, and Voyage AI reranking.";
 export const APP_INDUSTRY = "automotive";
 
 // Branding
 export const BRANDING = {
-  title: "Technical Car Manual Explorer",
-  subtitle: "Powered by MongoDB Atlas",
+  title: "Context-Aware Hybrid RAG for Car Manual",
+  subtitle: "",
+  tagline: "",
   primaryColor: "#3D89F5",
   secondaryColor: "#001E2B",
   accentColor: "#00ED64",

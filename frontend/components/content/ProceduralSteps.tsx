@@ -2,12 +2,13 @@
  * Procedural steps component for displaying step-by-step instructions
  */
 import React from 'react';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
-import { MyH3 as H3, MyBody as Body } from '@/components/ui/TypographyWrapper';
+import Card from '@leafygreen-ui/card';
+import { H3, Body } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import { ProceduralStep } from '../../types/Chunk';
 import Icon from '@leafygreen-ui/icon';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 interface ProceduralStepsProps {
   steps: ProceduralStep[];
