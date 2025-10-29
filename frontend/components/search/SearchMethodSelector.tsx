@@ -50,12 +50,13 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
           value={selectedMethod}
         >
           <Radio value="text" id="text-search">
-            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-              <Icon 
-                glyph="MagnifyingGlass" 
-                size="small" 
-                fill={palette.blue.base} 
-              />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <div style={{ paddingTop: '2px' }}>
+                <Icon 
+                  glyph="MagnifyingGlass" 
+                  fill={palette.green.dark2} 
+                />
+              </div>
               <div>
                 <Body>Full-text Search</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
@@ -66,12 +67,13 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
           </Radio>
           
           <Radio value="vector" id="vector-search">
-            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-              <Icon 
-                glyph="Diagram" 
-                size="small" 
-                fill={palette.green.base} 
-              />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <div style={{ paddingTop: '2px' }}>
+                <Icon 
+                  glyph="Diagram" 
+                  fill={palette.blue.dark2} 
+                />
+              </div>
               <div>
                 <Body>Vector Search</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
@@ -82,12 +84,13 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
           </Radio>
           
           <Radio value="hybrid" id="hybrid-search">
-            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-              <Icon 
-                glyph="Diagram" 
-                size="small" 
-                fill={palette.purple.base} 
-              />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <div style={{ paddingTop: '2px' }}>
+                <Icon 
+                  glyph="Diagram" 
+                  fill={palette.purple.base} 
+                />
+              </div>
               <div>
                 <Body>Hybrid Search ($rankFusion)</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
@@ -98,12 +101,13 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
           </Radio>
           
           <Radio value="graph" id="graph-search">
-            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-              <Icon 
-                glyph="Relationship" 
-                size="small" 
-                fill={palette.red.base} 
-              />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <div style={{ paddingTop: '2px' }}>
+                <Icon 
+                  glyph="Relationship" 
+                  fill={palette.red.base} 
+                />
+              </div>
               <div>
                 <Body>Hybrid Graph Search ($vectorSearch + $graphLookup)</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>
@@ -114,12 +118,13 @@ const SearchMethodSelector: React.FC<SearchMethodSelectorProps> = ({
           </Radio>
           
           <Radio value="multimodal" id="multimodal-search">
-            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
-              <Icon 
-                glyph="Camera" 
-                size="small" 
-                fill={palette.yellow.dark2} 
-              />
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: spacing[2] }}>
+              <div style={{ paddingTop: '2px' }}>
+                <Icon 
+                  glyph="Camera" 
+                  fill={palette.yellow.dark2} 
+                />
+              </div>
               <div>
                 <Body>Multimodal Search</Body>
                 <Body size="small" style={{ fontWeight: 'normal', color: palette.gray.dark1 }}>

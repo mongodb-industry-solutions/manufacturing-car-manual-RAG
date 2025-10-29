@@ -223,7 +223,16 @@ function SearchPageContent() {
   return (
     <MainLayout>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: spacing[3] }}>
-        <H1 style={{ marginBottom: spacing[3] }}>Car Manual Search</H1>
+        <H1 style={{
+          marginBottom: spacing[4],
+          color: palette.gray.dark3,
+          fontFamily: "'Euclid Circular A', sans-serif",
+          fontSize: '36px',
+          fontWeight: 400,
+          letterSpacing: '-0.5px',
+        }}>
+          Car Manual Search
+        </H1>
         
         {/* Search input - conditional based on method */}
         {searchMethod !== 'multimodal' ? (
@@ -322,18 +331,26 @@ function SearchPageContent() {
               }}>
                 <Button
                   size="small"
-                  variant="primaryOutline"
+                  variant="default"
                   onClick={() => handleSearch("Oil change procedure")}
                   leftGlyph={<Icon glyph="Wrench" size="small" />}
+                  style={{
+                    borderColor: palette.green.dark2,
+                    color: palette.green.dark2
+                  }}
                 >
                   Oil change procedure
                 </Button>
 
                 <Button
                   size="small"
-                  variant="primaryOutline"
+                  variant="default"
                   onClick={() => handleSearch("Check engine light")}
                   leftGlyph={<Icon glyph="Warning" size="small" />}
+                  style={{
+                    borderColor: palette.green.dark2,
+                    color: palette.green.dark2
+                  }}
                 >
                   Check engine light
                 </Button>
@@ -341,9 +358,13 @@ function SearchPageContent() {
 
                 <Button
                   size="small"
-                  variant="primaryOutline"
+                  variant="default"
                   onClick={() => handleSearch("Battery replacement")}
                   leftGlyph={<Icon glyph="LightningBolt" size="small" />}
+                  style={{
+                    borderColor: palette.green.dark2,
+                    color: palette.green.dark2
+                  }}
                 >
                   Battery replacement
                 </Button>
@@ -353,9 +374,7 @@ function SearchPageContent() {
 
             {/* Natural Language Search Suggestions */}
             <div style={{
-              marginBottom: spacing[3],
-              borderBottom: '1px solid #E1E1E1',
-              paddingBottom: spacing[2]
+              marginBottom: spacing[2]
             }}>
               <div style={{
                 marginBottom: spacing[1],
@@ -381,6 +400,10 @@ function SearchPageContent() {
                   variant="default"
                   onClick={() => handleSearch("What should I do if my car won't start on a cold morning?")}
                   leftGlyph={<Icon glyph="Bulb" size="small" />}
+                  style={{
+                    borderColor: palette.blue.dark2,
+                    color: palette.blue.dark2
+                  }}
                 >
                   Car won't start on cold morning
                 </Button>
@@ -390,6 +413,10 @@ function SearchPageContent() {
                   variant="default"
                   onClick={() => handleSearch("How can I improve my car's fuel efficiency?")}
                   leftGlyph={<Icon glyph="Bulb" size="small" />}
+                  style={{
+                    borderColor: palette.blue.dark2,
+                    color: palette.blue.dark2
+                  }}
                 >
                   Improve fuel efficiency
                 </Button>
@@ -399,6 +426,10 @@ function SearchPageContent() {
                   variant="default"
                   onClick={() => handleSearch("What's the best way to clean the interior of my car?")}
                   leftGlyph={<Icon glyph="Bulb" size="small" />}
+                  style={{
+                    borderColor: palette.blue.dark2,
+                    color: palette.blue.dark2
+                  }}
                 >
                   Best way to clean interior
                 </Button>
@@ -408,9 +439,7 @@ function SearchPageContent() {
 
             {/* Hybrid Graph Search Suggestions */}
             <div style={{
-              marginBottom: spacing[3],
-              borderBottom: '1px solid #E1E1E1',
-              paddingBottom: spacing[2]
+              marginBottom: spacing[3]
             }}>
               <div style={{
                 marginBottom: spacing[1],
@@ -433,27 +462,39 @@ function SearchPageContent() {
               }}>
                 <Button
                   size="small"
-                  variant="dangerOutline"
+                  variant="default"
                   onClick={() => handleSearch("Tire replacement steps")}
                   leftGlyph={<Icon glyph="Relationship" size="small" />}
+                  style={{
+                    borderColor: palette.red.dark2,
+                    color: palette.red.dark2
+                  }}
                 >
                   Tire replacement steps
                 </Button>
 
                 <Button
                   size="small"
-                  variant="dangerOutline"
+                  variant="default"
                   onClick={() => handleSearch("Electrical system troubleshooting")}
                   leftGlyph={<Icon glyph="Relationship" size="small" />}
+                  style={{
+                    borderColor: palette.red.dark2,
+                    color: palette.red.dark2
+                  }}
                 >
                   Electrical system troubleshooting
                 </Button>
 
                 <Button
                   size="small"
-                  variant="dangerOutline"
+                  variant="default"
                   onClick={() => handleSearch("Transmission fluid check")}
                   leftGlyph={<Icon glyph="Relationship" size="small" />}
+                  style={{
+                    borderColor: palette.red.dark2,
+                    color: palette.red.dark2
+                  }}
                 >
                   Transmission fluid check
                 </Button>
@@ -483,13 +524,17 @@ function SearchPageContent() {
                 gap: spacing[2],
                 paddingBottom: spacing[2]
               }}>
-                {['dashboard symbols', 'infotainment system', 'instrument cluster', 'climate control', 'engine components', 'brake assembly', 'electrical system', 'transmission'].map((query) => (
+                {['Infotainment System', 'Climate Control', 'Electrical System', 'Transmission'].map((query) => (
                   <Button
                     key={query}
                     size="small"
-                    variant="primaryOutline"
+                    variant="default"
                     onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: query })}
                     leftGlyph={<Icon glyph="Camera" size="small" />}
+                    style={{
+                      borderColor: palette.yellow.dark2,
+                      color: palette.yellow.dark2
+                    }}
                   >
                     {query}
                   </Button>
@@ -528,34 +573,26 @@ function SearchPageContent() {
                   variant="default"
                   onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'símbolos del tablero' })}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
+                  style={{
+                    borderColor: palette.yellow.dark2,
+                    color: palette.yellow.dark2
+                  }}
                 >
-                  🇪🇸 símbolos del tablero
-                </Button>
-                <Button
-                  size="small"
-                  variant="default"
-                  onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'sistema de infoentretenimiento' })}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                >
-                  🇪🇸 sistema de infoentretenimiento
+                  🇪🇸 Símbolos del tablero
                 </Button>
 
                 {/* French */}
                 <Button
                   size="small"
                   variant="default"
-                  onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'symboles du tableau de bord' })}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                >
-                  🇫🇷 symboles du tableau de bord
-                </Button>
-                <Button
-                  size="small"
-                  variant="default"
                   onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'système d\'infodivertissement' })}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
+                  style={{
+                    borderColor: palette.yellow.dark2,
+                    color: palette.yellow.dark2
+                  }}
                 >
-                  🇫🇷 système d&apos;infodivertissement
+                  🇫🇷 Système d&apos;infodivertissement
                 </Button>
 
                 {/* German */}
@@ -564,16 +601,12 @@ function SearchPageContent() {
                   variant="default"
                   onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'Armaturenbrett-Symbole' })}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
+                  style={{
+                    borderColor: palette.yellow.dark2,
+                    color: palette.yellow.dark2
+                  }}
                 >
                   🇩🇪 Armaturenbrett-Symbole
-                </Button>
-                <Button
-                  size="small"
-                  variant="default"
-                  onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'Infotainment-System' })}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                >
-                  🇩🇪 Infotainment-System
                 </Button>
 
                 {/* Japanese */}
@@ -582,16 +615,12 @@ function SearchPageContent() {
                   variant="default"
                   onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'ダッシュボード記号' })}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
+                  style={{
+                    borderColor: palette.yellow.dark2,
+                    color: palette.yellow.dark2
+                  }}
                 >
                   🇯🇵 ダッシュボード記号
-                </Button>
-                <Button
-                  size="small"
-                  variant="default"
-                  onClick={() => handleMultimodalSearch({ query_type: 'text', query_text: 'インフォテインメントシステム' })}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                >
-                  🇯🇵 インフォテインメントシステム
                 </Button>
               </div>
             </div>
@@ -676,28 +705,34 @@ function SearchPageContent() {
                         boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                       }}>
                         <Body weight="medium" style={{ fontSize: '16px', marginBottom: spacing[1] }}>
-                          Found {results.total} result{results.total !== 1 ? 's' : ''} for &quot;{results.query}&quot; using MongoDB Atlas {results.method} search
+                          Found {results.total} result{results.total !== 1 ? 's' : ''} for &quot;{results.query}&quot; using MongoDB Atlas {
+                            results.method === 'text' ? 'Full-text Search' :
+                            results.method === 'vector' ? 'Vector Search' :
+                            (results.method === 'hybrid' || results.method === 'hybrid_rrf') ? 'Hybrid RRF Search' :
+                            results.method.includes('graph') ? 'Vector → Graph' :
+                            results.method
+                          }
                         </Body>
                         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginTop: spacing[2], flexWrap: 'wrap' }}>
                           {/* Search Method Badge */}
                           <Badge variant={
-                            results.method === 'text' ? 'blue' :
-                            results.method === 'vector' ? 'green' :
-                            results.method === 'hybrid' ? 'purple' :
+                            results.method === 'text' ? 'green' :
+                            results.method === 'vector' ? 'blue' :
+                            (results.method === 'hybrid' || results.method === 'hybrid_rrf') ? 'purple' :
                             results.method.includes('graph') ? 'red' :
                             'darkgray'
                           }>
                             {results.method === 'text' && 'Full-text Search'}
                             {results.method === 'vector' && 'Vector Search'}
-                            {results.method === 'hybrid' && 'Hybrid Search ($rankFusion)'}
-                            {results.method.includes('graph') && 'Hybrid Graph Search'}
+                            {(results.method === 'hybrid' || results.method === 'hybrid_rrf') && 'Hybrid RRF Search'}
+                            {results.method.includes('graph') && 'Vector → Graph'}
                           </Badge>
 
                           {/* Technology badges */}
                           {results.method === 'text' && (
                             <Badge variant="lightgray">Atlas Search</Badge>
                           )}
-                          {(results.method === 'vector' || results.method === 'hybrid' || results.method.includes('graph')) && (
+                          {(results.method === 'vector' || results.method === 'hybrid' || results.method === 'hybrid_rrf' || results.method.includes('graph')) && (
                             <Badge variant="lightgray">Google Vertex AI Embeddings</Badge>
                           )}
                           {results.method.includes('graph') && (

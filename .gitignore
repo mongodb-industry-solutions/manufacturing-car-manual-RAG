@@ -183,3 +183,4 @@ makefile
 #.idea/
 .DS_Store
 /reference
+/images

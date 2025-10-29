@@ -169,14 +169,14 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                     <div style={{
                       width: `${textPercentage}%`,
                       height: '100%',
-                      backgroundColor: palette.green.base,
+                      backgroundColor: palette.green.dark2,
                       transition: 'width 0.3s ease'
                     }} />
                     {/* Vector portion (blue) - right side */}
                     <div style={{
                       width: `${vectorPercentage}%`,
                       height: '100%',
-                      backgroundColor: palette.blue.base,
+                      backgroundColor: palette.blue.dark2,
                       transition: 'width 0.3s ease'
                     }} />
                   </div>
@@ -194,7 +194,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: spacing[1],
-                          color: palette.green.base
+                          color: palette.green.dark2
                         }}>
                           <Icon glyph="String" size="small" />
                           {textPercentage.toFixed(1)}%
@@ -211,7 +211,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: spacing[1],
-                          color: palette.blue.base
+                          color: palette.blue.dark2
                         }}>
                           <Icon glyph="Diagram" size="small" />
                           {vectorPercentage.toFixed(1)}%

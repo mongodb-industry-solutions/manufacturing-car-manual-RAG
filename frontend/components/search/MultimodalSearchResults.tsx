@@ -8,6 +8,9 @@ import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
 import Badge from '@leafygreen-ui/badge';
 import Icon from '@leafygreen-ui/icon';
+import ExpandableCard from '@leafygreen-ui/expandable-card';
+import Code from '@leafygreen-ui/code';
+import Tooltip from '@leafygreen-ui/tooltip';
 import { MultimodalSearchResponse } from '@/types/Search';
 import ImageResultCard from './ImageResultCard';
 
@@ -31,9 +34,9 @@ function MultimodalSearchResults({ response }: MultimodalSearchResultsProps) {
       }}>
         <Body weight="medium" style={{ fontSize: '16px', marginBottom: spacing[1] }}>
           {response.query_text ? (
-            <>Found {response.total_images} image{response.total_images !== 1 ? 's' : ''} for &quot;{response.query_text}&quot; using MongoDB Atlas multimodal search</>
+            <>Found {response.total_images} image{response.total_images !== 1 ? 's' : ''} for &quot;{response.query_text}&quot; using MongoDB Atlas Multimodal Search</>
           ) : (
-            <>Found {response.total_images} image{response.total_images !== 1 ? 's' : ''} using MongoDB Atlas multimodal search</>
+            <>Found {response.total_images} image{response.total_images !== 1 ? 's' : ''} using MongoDB Atlas Multimodal Search</>
           )}
         </Body>
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] }}>
@@ -44,24 +47,94 @@ function MultimodalSearchResults({ response }: MultimodalSearchResultsProps) {
             Voyage AI Multimodal Embeddings
           </Badge>
         </div>
+      </div>
 
-        {/* Show the actual query text prominently if available */}
-        {response.query_text && (
-          <div style={{
-            marginTop: spacing[2],
-            padding: spacing[2],
-            backgroundColor: palette.blue.light3,
-            borderRadius: '4px',
-            borderLeft: `3px solid ${palette.blue.base}`
-          }}>
-            <Body size="small" style={{ color: palette.gray.dark1, marginBottom: spacing[1] }}>
-              Query:
-            </Body>
-            <Body weight="medium" style={{ color: palette.blue.dark2 }}>
-              {response.query_text}
-            </Body>
+      {/* MongoDB Aggregation Pipeline - Expandable Card */}
+      <div style={{ marginBottom: spacing[3] }}>
+        <ExpandableCard
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+              <Icon glyph="Camera" size="small" fill={palette.green.base} />
+              <span>MongoDB Multimodal Vector Search Query</span>
+            </div>
+          }
+          description="Uses MongoDB Atlas Vector Search with Voyage AI multimodal embeddings to find semantically similar images"
+          defaultOpen={false}
+          style={{
+            border: `1px solid ${palette.green.base}`,
+            boxShadow: '0 2px 5px rgba(0, 0, 0, 0.05)'
+          }}
+        >
+          <div style={{ marginBottom: spacing[3] }}>
+            <div style={{ display: 'flex', gap: spacing[2], marginBottom: spacing[3], flexWrap: 'wrap' }}>
+              <Tooltip
+                trigger={
+                  <Badge variant="green">Atlas Vector Search</Badge>
+                }
+                triggerEvent="hover"
+              >
+                MongoDB Atlas Vector Search for multimodal image retrieval
+              </Tooltip>
+              
+              <Tooltip
+                trigger={
+                  <Badge variant="lightgray">Voyage AI Multimodal</Badge>
+                }
+                triggerEvent="hover"
+              >
+                Voyage AI multimodal embeddings for unified text-image search
+              </Tooltip>
+            </div>
+            
+            <div style={{ backgroundColor: palette.gray.light3, padding: spacing[2], borderRadius: '4px' }}>
+              <Code language="javascript">
+                {`db.images.aggregate([
+  {
+    $vectorSearch: {
+      index: "multimodal_vector_index",
+      path: "multimodal_embedding",
+      queryVector: [0.123, 0.456, 0.789, ...], // ${response.query_type === 'text' ? `Voyage AI Multimodal Embedding for "${response.query_text}"` : 'Voyage AI Multimodal Image Embedding'}
+      numCandidates: ${response.total_images * 10}, // limit * num_candidates_multiplier
+      limit: ${response.total_images}
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      score: { $meta: "vectorSearchScore" },
+      image_id: "$id",
+      gridfs_file_id: "$gridfs_file_id",
+      
+      // Rich metadata fields
+      title: 1,
+      description: 1,
+      keywords: 1,
+      languages: 1,
+      category: 1,
+      
+      // Additional fields
+      page_number: { $arrayElemAt: ["$page_numbers", 0] },
+      breadcrumb_trail: 1,
+      associated_chunk_ids: 1
+    }
+  }
+])`}
+              </Code>
+            </div>
+            
+            <div style={{ 
+              marginTop: spacing[3],
+              padding: spacing[2],
+              backgroundColor: 'white',
+              borderLeft: `4px solid ${palette.green.base}`,
+              borderRadius: '4px'
+            }}>
+              <Body size="small">
+                <strong>How it works:</strong> Multimodal vector search uses Voyage AI&apos;s multimodal embeddings to convert both text and images into a unified vector space. This enables semantic search across images using either text descriptions or image similarity, finding visually and conceptually related diagrams in the car manual.
+              </Body>
+            </div>
           </div>
-        )}
+        </ExpandableCard>
       </div>
 
       {/* Header with counts */}

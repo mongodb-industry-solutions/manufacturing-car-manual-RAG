@@ -8,9 +8,9 @@ export const APP_INDUSTRY = "automotive";
 
 // Branding
 export const BRANDING = {
-  title: "Context-Aware Hybrid RAG for Car Manual",
-  subtitle: "",
-  tagline: "",
+  title: "Car Manual Explorer",
+  subtitle: "Context-Aware Hybrid RAG for Technical Docs",
+  tagline: "Powered by MongoDB",
   primaryColor: "#3D89F5",
   secondaryColor: "#001E2B",
   accentColor: "#00ED64",

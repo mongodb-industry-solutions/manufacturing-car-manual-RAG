@@ -19,8 +19,8 @@ const Header: React.FC = () => {
     <header
       style={{
         backgroundColor: palette.green.dark2,
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-        padding: `${spacing[3]}px ${spacing[3]}px`,
+        boxShadow: '0 8px 16px rgba(0, 0, 0, 0.15)',
+        padding: `${spacing[4]}px ${spacing[3]}px`,
         position: 'sticky',
         top: 0,
         zIndex: 100,
@@ -36,16 +36,27 @@ const Header: React.FC = () => {
           margin: '0 auto',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ 
-            margin: 0, 
-            color: palette.gray.light3, 
+        <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+          <div style={{
+            margin: 0,
+            color: palette.gray.light3,
             fontFamily: "'Euclid Circular A', sans-serif",
             fontWeight: 700,
-            fontSize: '20px',
-            lineHeight: '24px'
+            fontSize: '28px',
+            lineHeight: '32px'
           }}>
             {BRANDING.title}
+          </div>
+          <div style={{
+            margin: 0,
+            color: palette.gray.light2,
+            fontFamily: "'Euclid Circular A', sans-serif",
+            fontWeight: 400,
+            fontSize: '15px',
+            lineHeight: '20px',
+            opacity: 0.95
+          }}>
+            {BRANDING.subtitle}
           </div>
         </div>
         
@@ -67,11 +78,13 @@ const Header: React.FC = () => {
                   textDecoration: 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: spacing[1],
-                  padding: `${spacing[2]}px ${spacing[3]}px`,
-                  borderRadius: '4px',
+                  gap: spacing[2],
+                  padding: `${spacing[2]}px ${spacing[4]}px`,
+                  borderRadius: '6px',
                   transition: 'background-color 0.2s ease',
                   backgroundColor: pathname === '/' ? palette.green.dark1 : 'transparent',
+                  fontSize: '16px',
+                  fontWeight: 500,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = palette.green.dark1;
@@ -80,13 +93,13 @@ const Header: React.FC = () => {
                   e.currentTarget.style.backgroundColor = pathname === '/' ? palette.green.dark1 : 'transparent';
                 }}
               >
-                <Icon glyph="Home" fill={palette.gray.light3} />
-                <Body style={{ fontFamily: "'Euclid Circular A', sans-serif", fontWeight: 500, color: palette.gray.light3 }}>
+                <Icon glyph="Home" size={20} fill={palette.gray.light3} />
+                <span style={{ fontFamily: "'Euclid Circular A', sans-serif" }}>
                   Home
-                </Body>
+                </span>
               </Link>
             </li>
-            
+
             <li>
               <Link
                 href="/browse"
@@ -95,11 +108,13 @@ const Header: React.FC = () => {
                   textDecoration: 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: spacing[1],
-                  padding: `${spacing[2]}px ${spacing[3]}px`,
-                  borderRadius: '4px',
+                  gap: spacing[2],
+                  padding: `${spacing[2]}px ${spacing[4]}px`,
+                  borderRadius: '6px',
                   transition: 'background-color 0.2s ease',
                   backgroundColor: pathname?.startsWith('/browse') ? palette.green.dark1 : 'transparent',
+                  fontSize: '16px',
+                  fontWeight: 500,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = palette.green.dark1;
@@ -108,13 +123,13 @@ const Header: React.FC = () => {
                   e.currentTarget.style.backgroundColor = pathname?.startsWith('/browse') ? palette.green.dark1 : 'transparent';
                 }}
               >
-                <Icon glyph="Table" fill={palette.gray.light3} />
-                <Body style={{ fontFamily: "'Euclid Circular A', sans-serif", fontWeight: 500, color: palette.gray.light3 }}>
+                <Icon glyph="Table" size={20} fill={palette.gray.light3} />
+                <span style={{ fontFamily: "'Euclid Circular A', sans-serif" }}>
                   {TERMINOLOGY.browse}
-                </Body>
+                </span>
               </Link>
             </li>
-            
+
             <li>
               <Link
                 href="/search"
@@ -123,11 +138,13 @@ const Header: React.FC = () => {
                   textDecoration: 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: spacing[1],
-                  padding: `${spacing[2]}px ${spacing[3]}px`,
-                  borderRadius: '4px',
+                  gap: spacing[2],
+                  padding: `${spacing[2]}px ${spacing[4]}px`,
+                  borderRadius: '6px',
                   transition: 'background-color 0.2s ease',
                   backgroundColor: pathname?.startsWith('/search') ? palette.green.dark1 : 'transparent',
+                  fontSize: '16px',
+                  fontWeight: 500,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = palette.green.dark1;
@@ -136,10 +153,10 @@ const Header: React.FC = () => {
                   e.currentTarget.style.backgroundColor = pathname?.startsWith('/search') ? palette.green.dark1 : 'transparent';
                 }}
               >
-                <Icon glyph="MagnifyingGlass" fill={palette.gray.light3} />
-                <Body style={{ fontFamily: "'Euclid Circular A', sans-serif", fontWeight: 500, color: palette.gray.light3 }}>
+                <Icon glyph="MagnifyingGlass" size={20} fill={palette.gray.light3} />
+                <span style={{ fontFamily: "'Euclid Circular A', sans-serif" }}>
                   {TERMINOLOGY.search}
-                </Body>
+                </span>
               </Link>
             </li>
           </ul>

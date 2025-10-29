@@ -67,7 +67,7 @@ Selection Criteria:
   // Generate query example based on search method
   const getQueryExample = (method: string, searchQuery: string): string => {
     // Normalize the method name - API might return "hybrid_rrf" but we want to match it to "hybrid"
-    const normalizedMethod = method.includes('hybrid') ? 'hybrid' : method.includes('graph') ? 'graph' : method;
+    const normalizedMethod = method.includes('graph') ? 'graph' : method.includes('hybrid') ? 'hybrid' : method;
     
     switch (normalizedMethod) {
       case 'vector':
@@ -276,13 +276,13 @@ db.chunks.aggregate([
 
   const getMethodIcon = (method: string) => {
     // Normalize the method name
-    const normalizedMethod = method.includes('hybrid') ? 'hybrid' : method.includes('graph') ? 'graph' : method;
+    const normalizedMethod = method.includes('graph') ? 'graph' : method.includes('hybrid') ? 'hybrid' : method;
     
     switch (normalizedMethod) {
       case 'vector':
-        return <Icon glyph="Diagram" size="small" fill={palette.green.base} />;
+        return <Icon glyph="Diagram" size="small" fill={palette.blue.base} />;
       case 'text':
-        return <Icon glyph="String" size="small" fill={palette.blue.base} />;
+        return <Icon glyph="String" size="small" fill={palette.green.base} />;
       case 'hybrid':
         return <Icon glyph="Settings" size="small" fill={palette.purple.base} />;
       case 'graph':
@@ -294,13 +294,13 @@ db.chunks.aggregate([
 
   const getMethodColor = (method: string) => {
     // Normalize the method name
-    const normalizedMethod = method.includes('hybrid') ? 'hybrid' : method.includes('graph') ? 'graph' : method;
+    const normalizedMethod = method.includes('graph') ? 'graph' : method.includes('hybrid') ? 'hybrid' : method;
     
     switch (normalizedMethod) {
       case 'vector':
-        return palette.green.base;
-      case 'text':
         return palette.blue.base;
+      case 'text':
+        return palette.green.base;
       case 'hybrid':
         return palette.purple.base;
       case 'graph':
@@ -312,7 +312,7 @@ db.chunks.aggregate([
 
   const getMethodName = (method: string) => {
     // Normalize the method name
-    const normalizedMethod = method.includes('hybrid') ? 'hybrid' : method.includes('graph') ? 'graph' : method;
+    const normalizedMethod = method.includes('graph') ? 'graph' : method.includes('hybrid') ? 'hybrid' : method;
     
     switch (normalizedMethod) {
       case 'vector':
@@ -330,7 +330,7 @@ db.chunks.aggregate([
 
   const getMethodDescription = (method: string) => {
     // Normalize the method name
-    const normalizedMethod = method.includes('hybrid') ? 'hybrid' : method.includes('graph') ? 'graph' : method;
+    const normalizedMethod = method.includes('graph') ? 'graph' : method.includes('hybrid') ? 'hybrid' : method;
     
     switch (normalizedMethod) {
       case 'vector':
@@ -351,7 +351,7 @@ db.chunks.aggregate([
     const badges = [];
     
     // Normalize the method name
-    const normalizedMethod = method.includes('hybrid') ? 'hybrid' : method.includes('graph') ? 'graph' : method;
+    const normalizedMethod = method.includes('graph') ? 'graph' : method.includes('hybrid') ? 'hybrid' : method;
     
     if (normalizedMethod === 'vector' || normalizedMethod === 'hybrid') {
       badges.push(

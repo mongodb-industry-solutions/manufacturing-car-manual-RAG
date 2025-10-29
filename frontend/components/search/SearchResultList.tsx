@@ -215,11 +215,8 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
           {/* All Results - Always Visible (Not Expandable) */}
           <div style={{ marginTop: spacing[3] }}>
             <H2 style={{ marginBottom: spacing[3] }}>
-              All Results ({results.length})
+              All Results 
             </H2>
-            <Body size="small" style={{ color: palette.gray.dark1, marginBottom: spacing[3] }}>
-              Combined view of all {seedCount} seed{seedCount !== 1 ? 's' : ''} and {expandedCount} expanded result{expandedCount !== 1 ? 's' : ''}
-            </Body>
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
               {finalResults.map((result) => (
                 <SearchResultCard 
