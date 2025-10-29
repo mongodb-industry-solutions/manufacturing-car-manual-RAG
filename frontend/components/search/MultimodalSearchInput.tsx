@@ -19,13 +19,13 @@ interface MultimodalSearchInputProps {
   initialTextQuery?: string; // External value to sync with (like SearchInput)
 }
 
-// Sample images - update these IDs after ingesting actual images
+// Sample images - stored in public folder
+// Add your images to frontend/public/ and they'll automatically show up here
 const SAMPLE_IMAGES = [
-  { id: "image_engine_diagram_page_42", label: "Engine Diagram" },
-  { id: "image_electrical_system_page_85", label: "Electrical System" },
-  { id: "image_brake_assembly_page_112", label: "Brake Assembly" },
-  { id: "image_suspension_page_134", label: "Suspension" },
-  { id: "image_transmission_page_98", label: "Transmission" }
+  { id: "sample-battery-image.png", label: "Battery" },
+  { id: "sample-climatecontrol-image.png", label: "Climate Control" },
+  { id: "sample-fusebox-image.png", label: "Fuse Box" },
+  { id: "sample-instrumentcluster-image.png", label: "Instrument Cluster" }
 ];
 
 function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: MultimodalSearchInputProps) {
@@ -112,8 +112,8 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
     setSelectedSampleId(imageId);
     setSelectedFile(null);
     
-    // Fetch image from backend to set preview
-    const imageUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/images/${imageId}/file`;
+    // Use image from public folder
+    const imageUrl = `/${imageId}`;
     setPreviewUrl(imageUrl);
   };
 
@@ -142,11 +142,13 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
           alert('Failed to process image');
         }
       } else if (selectedSampleId) {
-        // Use sample image - fetch and convert to base64
+        // Use sample image from public folder - fetch and convert to base64
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/images/${selectedSampleId}/file`);
+          const response = await fetch(`/${selectedSampleId}`);
           const blob = await response.blob();
-          const file = new File([blob], 'sample.jpg', { type: 'image/jpeg' });
+          // Determine file type from extension
+          const fileType = selectedSampleId.endsWith('.png') ? 'image/png' : 'image/jpeg';
+          const file = new File([blob], selectedSampleId, { type: fileType });
           const base64 = await fileToBase64(file);
           onSearch({
             query_type: 'image',
@@ -154,7 +156,7 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
           });
         } catch (error) {
           console.error('Error fetching sample image:', error);
-          alert('Failed to load sample image');
+          alert('Failed to load sample image from public folder');
         }
       } else {
         alert('Please select or upload an image');
@@ -214,7 +216,7 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
           <Body size="small" style={{ marginBottom: spacing[2], color: palette.gray.dark1 }}>
             Enter text to find related images
           </Body>
-          <div style={{ marginBottom: spacing[3] }}>
+          <div style={{ marginBottom: spacing[3], width: '98%', maxWidth: '100%', boxSizing: 'border-box' }}>
             <TextInput
               label="Search Query"
               placeholder="e.g., dashboard symbols, climate control..."
@@ -222,6 +224,7 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
               onChange={(e) => setTextQuery(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               disabled={isLoading}
+              style={{ width: '100%', maxWidth: '95%', boxSizing: 'border-box' }}
             />
           </div>
           <Button
@@ -259,12 +262,11 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
               marginBottom: spacing[3]
             }}
           >
-            <Icon glyph="CloudUpload" size="large" fill={palette.gray.base} />
             <Body style={{ marginTop: spacing[2] }}>
               Drag & drop an image here, or click to browse
             </Body>
             <Body size="small" style={{ color: palette.gray.dark1 }}>
-              JPG, PNG, JPEG (Max 5MB)
+              PNG, JPG, JPEG (Max 5MB)
             </Body>
             <input
               ref={fileInputRef}
@@ -313,7 +315,7 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
                   }}
                 >
                   <img
-                    src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/images/${sample.id}/file`}
+                    src={`/${sample.id}`}
                     alt={sample.label}
                     style={{
                       width: '100%',
@@ -323,8 +325,8 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
                       marginBottom: spacing[1]
                     }}
                     onError={(e) => {
-                      // Fallback for missing images
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em"%3ENo Image%3C/text%3E%3C/svg%3E';
+                      // Fallback for missing images in public folder
+                      (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" font-size="12"%3EAdd to /public%3C/text%3E%3C/svg%3E';
                     }}
                   />
                   <Body size="xsmall">{sample.label}</Body>

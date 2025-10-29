@@ -54,14 +54,14 @@ function MultimodalSearchResults({ response }: MultimodalSearchResultsProps) {
         <ExpandableCard
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-              <Icon glyph="Camera" size="small" fill={palette.green.base} />
+              <Icon glyph="Camera" size="small" fill={palette.yellow.dark2} />
               <span>MongoDB Multimodal Vector Search Query</span>
             </div>
           }
           description="Uses MongoDB Atlas Vector Search with Voyage AI multimodal embeddings to find semantically similar images"
           defaultOpen={false}
           style={{
-            border: `1px solid ${palette.green.base}`,
+            border: `1px solid ${palette.yellow.dark2}`,
             boxShadow: '0 2px 5px rgba(0, 0, 0, 0.05)'
           }}
         >
@@ -126,7 +126,7 @@ function MultimodalSearchResults({ response }: MultimodalSearchResultsProps) {
               marginTop: spacing[3],
               padding: spacing[2],
               backgroundColor: 'white',
-              borderLeft: `4px solid ${palette.green.base}`,
+              borderLeft: `4px solid ${palette.yellow.dark2}`,
               borderRadius: '4px'
             }}>
               <Body size="small">

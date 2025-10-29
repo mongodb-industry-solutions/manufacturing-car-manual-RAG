@@ -562,7 +562,7 @@ function SearchPageContent() {
                   fontSize: '14px',
                   color: palette.gray.dark2
                 }}>
-                  Multilingual Searches
+                  Multi-Language Searches
                 </span>
               </div>
 
@@ -572,23 +572,6 @@ function SearchPageContent() {
                 gap: spacing[2],
                 paddingBottom: spacing[2]
               }}>
-                {/* Spanish */}
-                <Button
-                  size="small"
-                  variant="default"
-                  onClick={() => {
-                    setMultimodalTextQuery('símbolos del tablero');
-                    handleMultimodalSearch({ query_type: 'text', query_text: 'símbolos del tablero' });
-                  }}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                  style={{
-                    borderColor: palette.yellow.dark2,
-                    color: palette.yellow.dark2
-                  }}
-                >
-                  🇪🇸 Símbolos del tablero
-                </Button>
-
                 {/* French */}
                 <Button
                   size="small"
@@ -611,8 +594,8 @@ function SearchPageContent() {
                   size="small"
                   variant="default"
                   onClick={() => {
-                    setMultimodalTextQuery('Armaturenbrett-Symbole');
-                    handleMultimodalSearch({ query_type: 'text', query_text: 'Armaturenbrett-Symbole' });
+                    setMultimodalTextQuery('Gangschaltung');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'Gangschaltung' });
                   }}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
@@ -620,7 +603,7 @@ function SearchPageContent() {
                     color: palette.yellow.dark2
                   }}
                 >
-                  🇩🇪 Armaturenbrett-Symbole
+                  🇩🇪 Gangschaltung
                 </Button>
 
                 {/* Japanese */}
@@ -628,8 +611,8 @@ function SearchPageContent() {
                   size="small"
                   variant="default"
                   onClick={() => {
-                    setMultimodalTextQuery('ダッシュボード記号');
-                    handleMultimodalSearch({ query_type: 'text', query_text: 'ダッシュボード記号' });
+                    setMultimodalTextQuery('氷が溶ける');
+                    handleMultimodalSearch({ query_type: 'text', query_text: '氷が溶ける' });
                   }}
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
@@ -637,7 +620,24 @@ function SearchPageContent() {
                     color: palette.yellow.dark2
                   }}
                 >
-                  🇯🇵 ダッシュボード記号
+                  🇯🇵 氷が溶ける
+                </Button>
+
+                {/* Hindi */}
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => {
+                    setMultimodalTextQuery('आपातकालीन किट');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'आपातकालीन किट' });
+                  }}
+                  leftGlyph={<Icon glyph="Camera" size="small" />}
+                  style={{
+                    borderColor: palette.yellow.dark2,
+                    color: palette.yellow.dark2
+                  }}
+                >
+                  🇮🇳 आपातकालीन किट
                 </Button>
               </div>
             </div>

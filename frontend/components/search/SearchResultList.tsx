@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { SearchResult } from '../../types/Search';
 import SearchResultCard from './SearchResultCard';
-import { H2, Body } from '@leafygreen-ui/typography';
+import { H2, Body, H3 } from '@leafygreen-ui/typography';
 import Button from '@leafygreen-ui/button';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
@@ -101,15 +101,17 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
         {/* Knowledge Graph button - only show for GraphRAG searches */}
         {results.length > 0 && searchMethod?.includes('graph') && (
           <Button 
-            size="large"
+            size="default"
             variant="default"
             onClick={() => setShowKnowledgeGraph(true)}
-            leftGlyph={<Icon glyph="Relationship" />}
+            leftGlyph={<span style={{ color: 'black' }}><Icon glyph="Relationship" /></span>}
             style={{ 
-              fontWeight: 600,
-              borderColor: palette.red.dark2,
-              color: palette.red.dark2,
-              boxShadow: `0 4px 8px ${palette.red.light3}`
+              fontWeight: 400,
+              fontSize: '15px',
+              backgroundColor: '#0D9488',  // Teal-600 fill
+              borderColor: '#0D9488',  // Teal-600
+              color: 'white',  // White text on teal background
+              boxShadow: '0 2px 4px rgba(13, 148, 136, 0.3)'  // Subtle teal shadow
             }}
           >
             Visualize Knowledge Graph
@@ -208,9 +210,9 @@ const SearchResultList: React.FC<SearchResultListProps> = ({
           
           {/* All Results - Always Visible (Not Expandable) */}
           <div style={{ marginTop: spacing[3] }}>
-            <H2 style={{ marginBottom: spacing[3] }}>
+            <H3 style={{ marginBottom: spacing[3] }}>
               All Results 
-            </H2>
+            </H3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[2] }}>
               {finalResults.map((result) => (
                 <SearchResultCard 
