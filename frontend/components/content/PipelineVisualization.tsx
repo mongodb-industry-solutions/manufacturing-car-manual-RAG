@@ -272,17 +272,6 @@ const initialEdges: Edge[] = [
     },
   },
   {
-    id: 'e4-4',
-    source: '4-multimodal',
-    target: '5-reranking',
-    animated: true,
-    style: { stroke: palette.green.dark2, strokeWidth: 2 },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: palette.green.dark2,
-    },
-  },
-  {
     id: 'e4-5',
     source: '4-hybrid',
     target: '5-reranking',

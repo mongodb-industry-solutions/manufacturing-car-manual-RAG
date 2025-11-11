@@ -21,6 +21,8 @@ import { ParagraphSkeleton } from '@leafygreen-ui/skeleton-loader';
 import { RadioGroup, Radio } from '@leafygreen-ui/radio-group';
 import { CARD_STYLES } from '@/lib/styleConstants';
 import ExpandableCard from '@leafygreen-ui/expandable-card';
+import InfoWizard from '@/components/common/InfoWizard';
+import { graphSearchInfo } from '@/content/graphSearchInfo';
 
 import { searchService } from '@/services/searchService';
 import { KnowledgeGraphResponse } from '@/types/Search';
@@ -53,6 +55,7 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
   const [selectedLayout, setSelectedLayout] = useState<'cose' | 'dagre' | 'circle'>('circle');
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [graphInfoOpen, setGraphInfoOpen] = useState(false);
   
   // Fetch knowledge graph data from API
   const fetchKnowledgeGraph = useCallback(async () => {
@@ -832,6 +835,27 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
               Knowledge Graph
             </H3>
 
+            <div style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+              <Badge variant="blue" style={{ fontSize: '10px' }}>
+                $graphLookup
+              </Badge>
+              <Icon
+                glyph="Wizard"
+                size={14}
+                onClick={() => setGraphInfoOpen(true)}
+                style={{
+                  cursor: 'pointer',
+                  opacity: 0.4,
+                  color: palette.gray.dark1,
+                  transition: 'opacity 0.2s',
+                  flexShrink: 0,
+                  minWidth: '14px'
+                }}
+                onMouseEnter={(e: any) => e.currentTarget.style.opacity = '0.8'}
+                onMouseLeave={(e: any) => e.currentTarget.style.opacity = '0.4'}
+              />
+            </div>
+
             {graphData?.total_nodes && (
               <Badge variant="lightgray">
                 {graphData.total_nodes} nodes
@@ -1238,6 +1262,15 @@ const KnowledgeGraphVisualization: React.FC<KnowledgeGraphVisualizationProps> = 
         </div>
         </Dialog.Content>
       </Dialog.Portal>
+
+      {/* InfoWizard Modal */}
+      <InfoWizard
+        open={graphInfoOpen}
+        setOpen={setGraphInfoOpen}
+        iconGlyph="Diagram"
+        sections={graphSearchInfo.sections}
+        showButton={false}
+      />
     </Dialog.Root>
   );
 };

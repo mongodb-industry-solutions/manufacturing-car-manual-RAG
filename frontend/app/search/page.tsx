@@ -62,7 +62,11 @@ function SearchPageContent() {
     useReranker: boolean;
   } | null>(null);
   
-  // Handle search based on URL parameters - URL is the single source of truth
+  // Handle search based on URL parameters
+  // This useEffect handles:
+  // 1. Initial page loads (when user navigates directly to a search URL)
+  // 2. Browser back/forward button navigation
+  // It does NOT execute when search is triggered directly via handleSearch/handleMethodChange
   useEffect(() => {
     // Skip if no query parameter is present
     if (!queryParam) {
@@ -82,7 +86,7 @@ function SearchPageContent() {
       return;
     }
     
-    // Check if this search was already executed
+    // Check if this exact search was just executed directly (via handleSearch/handleMethodChange)
     const lastSearch = lastSearchRef.current;
     const isSameSearch = lastSearch && 
       lastSearch.query === queryParam && 
@@ -90,13 +94,18 @@ function SearchPageContent() {
       lastSearch.useReranker === useReranker;
     
     if (isSameSearch) {
-      // Same search already executed, just update state if needed
+      // Same search already executed directly, just sync state if needed
       if (query !== queryParam) setQuery(queryParam);
       if (searchMethod !== method) setSearchMethod(method);
       return;
     }
     
-    // New search - update state
+    // This is either:
+    // - An initial page load with URL params
+    // - Browser back/forward navigation
+    // Execute the search
+    
+    // Update state
     setQuery(queryParam);
     setSearchMethod(method);
     
@@ -147,28 +156,39 @@ function SearchPageContent() {
     return `/search?${params.toString()}`;
   };
   
-  const handleSearch = (newQuery: string) => {
+  const handleSearch = async (newQuery: string) => {
     if (!newQuery.trim()) return;
     
     // Update local state
     setQuery(newQuery);
     setSearchPlaceholder(newQuery); // Update placeholder to match current query
     
-    // Get the search URL
-    const searchUrl = performSearch(newQuery, searchMethod);
+    // Create URL params
+    const params = new URLSearchParams();
+    params.set('q', newQuery);
+    params.set('method', searchMethod);
+    const searchUrl = `/search?${params.toString()}`;
     
-    // Save to sessionStorage before navigation
+    // Update URL silently without navigation (no re-render, no blink)
     if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', searchUrl);
       sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
       sessionStorage.setItem('car_manual_referrer_type', 'search');
     }
     
-    // Use router.push for client-side navigation - this will trigger a re-render
-    // which will then call the useEffect, which performs the search
-    router.push(searchUrl);
+    // Record this search to prevent duplicate execution in useEffect
+    lastSearchRef.current = {
+      query: newQuery,
+      method: searchMethod,
+      useReranker: useReranker
+    };
+    
+    // Execute search directly without navigation
+    const resultLimit = searchMethod === 'graph' ? 30 : 10;
+    searchRef.current?.(searchMethod, newQuery, resultLimit, undefined, useReranker);
   };
   
-  const handleMethodChange = (method: SearchMethod) => {
+  const handleMethodChange = async (method: SearchMethod) => {
     console.log(`Method changed to: ${method}`);
     
     // Clear multimodal results when switching away
@@ -177,22 +197,34 @@ function SearchPageContent() {
       setMultimodalError(null);
     }
     
-    // Only update the URL if we have a query
-    if (query.trim()) {
-      // Get the search URL with the new method
-      const searchUrl = performSearch(query, method);
+    // Update state
+    setSearchMethod(method);
+    
+    // Only perform search and update URL if we have a query and it's not multimodal
+    if (query.trim() && method !== 'multimodal') {
+      // Create URL params
+      const params = new URLSearchParams();
+      params.set('q', query);
+      params.set('method', method);
+      const searchUrl = `/search?${params.toString()}`;
       
-      // Save to sessionStorage before navigation
+      // Update URL silently without navigation (no re-render, no blink)
       if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', searchUrl);
         sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
         sessionStorage.setItem('car_manual_referrer_type', 'search');
       }
       
-      // Use router.push to navigate, which will trigger useEffect to perform the search
-      router.push(searchUrl);
-    } else {
-      // If no query, just update the state without navigation
-      setSearchMethod(method);
+      // Record this search to prevent duplicate execution in useEffect
+      lastSearchRef.current = {
+        query: query,
+        method: method,
+        useReranker: useReranker
+      };
+      
+      // Execute search directly without navigation
+      const resultLimit = method === 'graph' ? 30 : 10;
+      searchRef.current?.(method, query, resultLimit, undefined, useReranker);
     }
   };
   

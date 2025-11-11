@@ -1015,7 +1015,7 @@ export default function Home() {
               >
                 <li>Re-scores all results</li>
                 <li>Semantic relevance boost</li>
-                <li>Works with any method</li>
+                <li>Works with text-based methods</li>
               </ul>
 
               <Body

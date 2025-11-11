@@ -20,6 +20,9 @@ import { CARD_STYLES } from '@/lib/styleConstants';
 // Custom components
 import SafetyNotice from './SafetyNotice';
 import ProceduralSteps from './ProceduralSteps';
+import ImageChunkViewer from './ImageChunkViewer';
+import InfoWizard from '@/components/common/InfoWizard';
+import { documentModelInfo } from '@/content/documentModelInfo';
 
 interface ChunkViewerProps {
   chunk: Chunk;
@@ -27,6 +30,15 @@ interface ChunkViewerProps {
 }
 
 const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true }) => {
+  // Detect if this is an image chunk (has gridfs_file_id)
+  const isImageChunk = !!chunk.gridfs_file_id;
+
+  // If it's an image chunk, delegate to ImageChunkViewer
+  if (isImageChunk) {
+    return <ImageChunkViewer chunk={chunk} showNavigation={showNavigation} />;
+  }
+
+  // Otherwise, render as text chunk (existing logic below)
   // State for hover effects
   const [hoveredChunk, setHoveredChunk] = useState<string | null>(null);
   
@@ -44,6 +56,7 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
   
   // State to toggle MongoDB document view
   const [showMongoDoc, setShowMongoDoc] = useState(false);
+  const [docModelInfoOpen, setDocModelInfoOpen] = useState(false);
   
   // Generate realistic fake embedding for display purposes
   const generateFakeEmbedding = () => {
@@ -364,6 +377,21 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
             <span style={{ color: palette.blue.base, fontSize: '16px' }}>{ '{' }</span>
             <span style={{ fontSize: '13px', fontWeight: 'medium' }}>MongoDB Document</span>
             <span style={{ color: palette.blue.base, fontSize: '16px' }}>{ '}' }</span>
+            <a
+              onClick={(e) => {
+                e.stopPropagation();
+                setDocModelInfoOpen(true);
+              }}
+              style={{
+                fontSize: '10px',
+                color: palette.blue.dark2,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                marginLeft: spacing[2]
+              }}
+            >
+              Why this structure?
+            </a>
           </span>
         }
         description="View the raw MongoDB document structure"
@@ -459,6 +487,15 @@ const ChunkViewer: React.FC<ChunkViewerProps> = ({ chunk, showNavigation = true 
           </div>
         </Card>
       )}
+
+      {/* Document Model Info Modal */}
+      <InfoWizard
+        open={docModelInfoOpen}
+        setOpen={setDocModelInfoOpen}
+        iconGlyph="Beaker"
+        sections={documentModelInfo.sections}
+        showButton={false}
+      />
     </div>
   );
 };

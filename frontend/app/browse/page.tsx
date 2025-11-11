@@ -367,34 +367,6 @@ export default function BrowsePage() {
   return (
     <MainLayout>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: spacing[3] }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'flex-end', 
-          marginBottom: spacing[3]
-        }}>
-          <div style={{ display: 'flex', gap: spacing[2] }}>
-            <Button
-              variant="primaryOutline"
-              onClick={() => {
-                clearCache();
-                if (typeof window !== 'undefined') {
-                  window.location.reload();
-                }
-              }}
-              leftGlyph={<Icon glyph="Refresh" />}
-            >
-              Refresh Cache
-            </Button>
-            <Button
-              variant="default"
-              onClick={() => router.push('/')}
-              leftGlyph={<Icon glyph="Home" />}
-            >
-              Home
-            </Button>
-          </div>
-        </div>
-        
         <Card style={{ padding: spacing[3], marginBottom: spacing[3] }}>
           <div style={{ marginBottom: spacing[3] }}>
             <H3 style={{ marginBottom: spacing[2], color: palette.green.dark2 }}>
@@ -570,20 +542,115 @@ export default function BrowsePage() {
         
         {/* Chunk list */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[3], marginBottom: spacing[3] }}>
-          {currentItems.map(chunk => (
-            <Card 
-              key={chunk.id || (chunk._id ? (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid) : Math.random().toString())} 
-              style={{ padding: spacing[3], cursor: 'pointer' }} 
-              onClick={() => handleChunkClick(chunk)}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
-                <H3>{getChunkTitle(chunk)}</H3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
-                  <Body size="small" style={{ color: palette.gray.dark1 }}>
-                    Page {chunk.page_numbers.join(', ')}
-                  </Body>
-                </div>
-              </div>
+          {currentItems.map(chunk => {
+            // Detect if this is an image chunk
+            const isImageChunk = !!chunk.gridfs_file_id;
+
+            return (
+              <Card
+                key={chunk.id || (chunk._id ? (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid) : Math.random().toString())}
+                style={{ padding: 0, cursor: 'pointer', overflow: 'hidden' }}
+                onClick={() => handleChunkClick(chunk)}
+              >
+                {isImageChunk ? (
+                  // Image chunk rendering
+                  <div style={{ display: 'flex', gap: spacing[3] }}>
+                    {/* Image preview */}
+                    <div style={{
+                      width: '200px',
+                      height: '150px',
+                      flexShrink: 0,
+                      backgroundColor: palette.gray.light3,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}>
+                      <img
+                        src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/images/${chunk.id || (chunk._id && (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid))}/file`}
+                        alt={chunk.title || 'Image'}
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          objectFit: 'contain'
+                        }}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `
+                              <div style="text-align: center; padding: ${spacing[2]}px; color: ${palette.gray.base};">
+                                <div style="font-size: 40px;">📷</div>
+                                <div style="font-size: 12px; margin-top: 4px;">Image unavailable</div>
+                              </div>
+                            `;
+                          }
+                        }}
+                      />
+                    </div>
+
+                    {/* Image metadata */}
+                    <div style={{ padding: spacing[3], flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
+                        <H3>{chunk.title || chunk.description || `Image ${chunk.id || 'Unknown'}`}</H3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                          {chunk.page_numbers && chunk.page_numbers.length > 0 && (
+                            <Body size="small" style={{ color: palette.gray.dark1 }}>
+                              Page {chunk.page_numbers.join(', ')}
+                            </Body>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2], marginBottom: spacing[2] }}>
+                        <Badge variant="blue">
+                          <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                            <Icon glyph="Camera" size="small" /> Image
+                          </span>
+                        </Badge>
+
+                        {chunk.category && (
+                          <Badge variant="darkgray">{chunk.category}</Badge>
+                        )}
+
+                        {chunk.keywords && chunk.keywords.length > 0 && (
+                          <Badge variant="lightgray">
+                            {chunk.keywords.length} keyword{chunk.keywords.length !== 1 ? 's' : ''}
+                          </Badge>
+                        )}
+
+                        {chunk.associated_chunk_ids && chunk.associated_chunk_ids.length > 0 && (
+                          <Badge variant="green">
+                            {chunk.associated_chunk_ids.length} associated chunk{chunk.associated_chunk_ids.length !== 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {chunk.description && (
+                        <Body style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
+                          {chunk.description}
+                        </Body>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  // Text chunk rendering (existing logic)
+                  <div style={{ padding: spacing[3] }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: spacing[2] }}>
+                      <H3>{getChunkTitle(chunk)}</H3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2] }}>
+                        <Body size="small" style={{ color: palette.gray.dark1 }}>
+                          Page {chunk.page_numbers.join(', ')}
+                        </Body>
+                      </div>
+                    </div>
               
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing[2], marginBottom: spacing[3] }}>
                 {chunk.content_type?.map(type => (
@@ -684,17 +751,20 @@ export default function BrowsePage() {
                 )}
               </div>
               
-              <Body style={{ 
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>
-                {chunk.text}
-              </Body>
-            </Card>
-          ))}
+                    <Body style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      {chunk.text}
+                    </Body>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
         
         {/* Infinite scroll loading indicator */}
