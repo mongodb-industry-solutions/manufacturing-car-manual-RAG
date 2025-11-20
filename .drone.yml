@@ -1,0 +1,92 @@
+---
+kind: pipeline
+type: kubernetes
+name: staging
+
+trigger:
+  branch:
+    - staging
+
+steps:
+  # Backend Build & Push
+  - name: publish-manufacturing-car-manual-backend
+    image: plugins/kaniko-ecr
+    settings:
+      create_repository: true
+      registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
+      repo: industrysolutions/manufacturing-car-manual-RAG
+      tags:
+        - git-${DRONE_COMMIT_SHA:0:7}
+        - latest
+      dockerfile: Dockerfile.backend
+      access_key:
+        from_secret: ecr_access_key
+      secret_key:
+        from_secret: ecr_secret_key
+    when:
+      event:
+        - push
+
+  # Frontend Build & Push
+  - name: publish-manufacturing-car-manual-frontend
+    image: plugins/kaniko-ecr
+    settings:
+      create_repository: true
+      registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
+      repo: industrysolutions/manufacturing-car-manual-RAG-frontend
+      tags:
+        - git-${DRONE_COMMIT_SHA:0:7}
+        - latest
+      dockerfile: Dockerfile.frontend
+      # Pass build-time variables
+      build_args:
+        - NODE_ENV=staging
+        # Fallback for build time, but runtime will use INTERNAL_API_URL via proxy
+        - NEXT_PUBLIC_API_URL=https://manufacturing-car-manual-RAG.industrysolutions.staging.corp.mongodb.com
+      access_key:
+        from_secret: ecr_access_key
+      secret_key:
+        from_secret: ecr_secret_key
+    when:
+      event:
+        - push
+
+  # Backend Deployment
+  - name: deploy-backend-staging
+    image: public.ecr.aws/kanopy/drone-helm:v3
+    settings:
+      chart: mongodb/web-app
+      chart_version: 4.25.0
+      add_repos: [mongodb=https://10gen.github.io/helm-charts]
+      namespace: industrysolutions
+      release: manufacturing-car-manual-RAG
+      values:
+        - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}'
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG'
+      api_server: https://api.staging.corp.mongodb.com
+      kubernetes_token:
+        from_secret: staging_kubernetes_token
+      values_files: ['environment/staging.yaml']
+    when:
+      event:
+        - push
+
+  # Frontend Deployment
+  - name: deploy-frontend-staging
+    image: public.ecr.aws/kanopy/drone-helm:v3
+    settings:
+      chart: mongodb/web-app
+      chart_version: 4.25.0
+      add_repos: [mongodb=https://10gen.github.io/helm-charts]
+      namespace: industrysolutions
+      release: manufacturing-car-manual-RAG-frontend
+      values:
+        - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}'
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-frontend'
+      api_server: https://api.staging.corp.mongodb.com
+      kubernetes_token:
+        from_secret: staging_kubernetes_token
+      values_files: ['environment/staging-frontend.yaml']
+    when:
+      event:
+        - push

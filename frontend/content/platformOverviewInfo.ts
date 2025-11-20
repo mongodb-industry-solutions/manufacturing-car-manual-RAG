@@ -111,19 +111,6 @@ MongoDB: 1 database.`
           body: "All queries—text search, vector search, hybrid search, graph traversal—use the same MongoDB aggregation pipeline syntax. Combine multiple search methods in a single query. Filter, project, group, and sort across all data types with consistent API.",
         },
         {
-          heading: "Honest Trade-offs",
-          body: `MongoDB is optimized for unified developer experience. Some trade-offs:
-
-• Deep graph traversal (10+ hops): Neo4j faster with index-free adjacency
-• Billions of vectors with specialized filtering: Pinecone more optimized
-• Complex text analysis (phonetic matching, custom analyzers): Elasticsearch richer
-• Multi-region data residency for blobs: S3 more flexible
-
-For RAG applications needing text + vectors + graphs + binaries together (the typical case), MongoDB's unified platform eliminates 80% of integration complexity.
-
-Choose based on your actual requirements, not maximum theoretical capabilities.`
-        },
-        {
           heading: "Learn More",
           body: "Click the Wizard icons (🧙) next to search methods, the Knowledge Graph badge, and other features throughout this demo to learn technical details about each capability.",
         },

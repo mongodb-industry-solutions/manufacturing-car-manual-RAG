@@ -126,18 +126,6 @@ MongoDB: One query returns vectors + full documents + relationships. No synchron
           heading: "Index Strategy",
           body: "MongoDB supports multiple index types on same collection: vector index on embeddings, text index on content, compound index on relationships.target_id, standard indexes on id and page_numbers. All coexist efficiently. Query optimizer chooses appropriate indexes automatically.",
         },
-        {
-          heading: "When PostgreSQL JSONB Makes Sense",
-          body: `PostgreSQL with JSONB works well for:
-
-• Primarily relational data with some flexible fields (80% structured, 20% flexible)
-• Complex SQL joins across many normalized tables
-• Existing PostgreSQL infrastructure and expertise
-• Strict referential integrity with foreign key constraints
-• Transactional workflows with complex multi-table updates
-
-For document-heavy workloads with vectors, graphs, and flexible schemas (like RAG applications), MongoDB's native document model is optimized for this pattern.`
-        },
       ],
     },
   ],

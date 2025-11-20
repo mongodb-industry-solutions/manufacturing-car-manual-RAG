@@ -91,18 +91,6 @@ MongoDB: 1 database, 1 aggregation pipeline, automatic deduplication, ACID trans
             "Social connections (friend-of-friend relationships)"
           ]
         },
-        {
-          heading: "When Neo4j Excels",
-          body: `Neo4j is purpose-built for graphs and excels at:
-
-• Very deep traversals (depth 10+, 20+)
-• Massive relationship networks (millions of relationships per node)
-• Complex graph algorithms (PageRank, community detection, shortest path)
-• Social networks and fraud detection at scale
-• Scenarios requiring specialized graph database features
-
-For documentation with shallow, predictable relationships (depth 2-3), MongoDB's $graphLookup performs within 15% of Neo4j while keeping everything in one database. Choose based on your actual depth requirements and graph complexity.`
-        },
       ],
     },
   ],

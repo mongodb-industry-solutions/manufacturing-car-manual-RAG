@@ -87,18 +87,6 @@ Atlas Search: Advanced scoring, rich query operators, fuzzy/phonetic matching, f
           heading: "Index Management",
           body: "Text search indexes are managed like vector indexes—through Atlas UI or API. Auto-sync with data changes. No manual reindexing required. Configure analyzers, language support, and field weights through JSON-based index definitions.",
         },
-        {
-          heading: "When Elasticsearch Excels",
-          body: `Elasticsearch is purpose-built for search and excels at:
-
-• Complex text analysis (custom analyzers, phonetic matching, language detection)
-• Advanced aggregations and faceting at massive scale
-• Real-time analytics dashboards (ELK stack)
-• Log analysis and time-series data
-• Self-managed deployments with specific tuning requirements
-
-For application search where documents already live in MongoDB, Atlas Search eliminates infrastructure complexity while providing excellent search quality for typical use cases.`
-        },
       ],
     },
   ],

@@ -94,18 +94,6 @@ MongoDB: 1 database, vectors + images + text together, single query returns ever
           heading: "Query Simplicity",
           body: "Search for images, get results with metadata, stream binary data—all using MongoDB API. No orchestration between S3, vector database, and document store. Single pipeline can filter by metadata, search by vector similarity, and return full results.",
         },
-        {
-          heading: "When Weaviate Excels",
-          body: `Weaviate is purpose-built for multimodal AI and excels at:
-
-• Built-in vectorization modules (automatic embedding generation)
-• Native multi-tenancy with complex isolation requirements
-• Hybrid cloud deployments with specific vector scaling needs
-• Advanced vector operations (multi-target vectors, custom distance metrics)
-• Specialized multimodal scenarios beyond standard search
-
-For RAG applications needing text, images, and vectors together with unified queries, MongoDB's platform approach eliminates integration complexity while providing excellent multimodal capabilities.`
-        },
       ],
     },
   ],

@@ -84,10 +84,6 @@ MongoDB: Single database, single aggregation pipeline, automatic score normaliza
           heading: "Flexible Weighting",
           body: "Adjust relative importance of search methods dynamically. For example, weight vector search at 0.7 and text at 0.3 for semantic-heavy queries, or reverse for keyword-focused searches. Changes require no infrastructure modifications.",
         },
-        {
-          heading: "When Specialized Tools Excel",
-          body: "Elasticsearch offers richer text analysis (phonetic matching, complex analyzers, language detection). Pinecone provides specialized vector operations at billions-of-vectors scale. If you need only text OR only vectors, specialized tools may be optimal. Hybrid search is where MongoDB's unified platform provides the greatest value by eliminating integration overhead.",
-        },
       ],
     },
   ],

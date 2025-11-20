@@ -92,18 +92,6 @@ MongoDB uses HNSW algorithm purpose-built for approximate nearest neighbor searc
           heading: "Query Flexibility",
           body: "Combine vector search with filters on metadata fields. For example: find semantically similar documents AND created in the last 30 days AND tagged 'engineering'. All in a single query with efficient index usage.",
         },
-        {
-          heading: "When Pinecone Excels",
-          body: `Pinecone is purpose-built for vectors and excels at:
-
-• Billions of vectors with complex metadata filtering
-• Real-time updates at massive scale (millions of updates/sec)
-• Namespaces for multi-tenancy isolation
-• Specialized vector operations (sparse-dense hybrid)
-• Dedicated infrastructure for vector-only workloads
-
-For RAG applications needing text, metadata, and vectors together (the typical case), MongoDB's unified platform eliminates the complexity of managing and synchronizing multiple systems.`
-        },
       ],
     },
   ],

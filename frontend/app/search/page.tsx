@@ -558,7 +558,7 @@ function SearchPageContent() {
                 gap: spacing[2],
                 paddingBottom: spacing[2]
               }}>
-                {['Infotainment System', 'Climate Control', 'Electrical System', 'Transmission'].map((query) => (
+                {['Infotainment System', 'Climate Control', 'Electrical System'].map((query) => (
                   <Button
                     key={query}
                     size="small"
@@ -604,22 +604,6 @@ function SearchPageContent() {
                 gap: spacing[2],
                 paddingBottom: spacing[2]
               }}>
-                {/* French */}
-                <Button
-                  size="small"
-                  variant="default"
-                  onClick={() => {
-                    setMultimodalTextQuery('système d\'infodivertissement');
-                    handleMultimodalSearch({ query_type: 'text', query_text: 'système d\'infodivertissement' });
-                  }}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                  style={{
-                    borderColor: palette.yellow.dark2,
-                    color: palette.yellow.dark2
-                  }}
-                >
-                  🇫🇷 Système d&apos;infodivertissement
-                </Button>
 
                 {/* German */}
                 <Button
