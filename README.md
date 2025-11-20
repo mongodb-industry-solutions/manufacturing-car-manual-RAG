@@ -9,7 +9,7 @@
 ![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
 ![Google Cloud](https://img.shields.io/badge/GoogleCloud-%234285F4.svg?style=for-the-badge&logo=google-cloud&logoColor=white)
 
-**Intelligent search and retrieval for automotive technical documentation powered by MongoDB Atlas.**
+**Intelligent search and retrieval for automotive technical documentation.**
 
 This platform demonstrates MongoDB's Unified Data Platform capabilities, showcasing how flexible JSON document storage enables multiple retrieval pipelines working together: smart chunking, full-text search, vector embeddings, knowledge graphs, multimodal search, and Voyage AI reranking.
 
