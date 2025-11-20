@@ -19,7 +19,7 @@ env:
   MULTIMODAL_MODEL_ID: 'voyage-multimodal-3'
 
   # API Configuration
-  ORIGINS: 'http://manufacturing-car-manual-RAG-frontend.industrysolutions.staging.corp.mongodb.com'
+  ORIGINS: 'http://manufacturing-car-manual-rag-frontend.industrysolutions.staging.corp.mongodb.com'
   DEBUG: 'False'
 
 envSecrets:
@@ -79,7 +79,7 @@ probes:
 ingress:
   enabled: true
   hosts:
-    - manufacturing-car-manual-RAG.industrysolutions.staging.corp.mongodb.com
+    - manufacturing-car-manual-rag.industrysolutions.staging.corp.mongodb.com
 
 mesh:
   enabled: true

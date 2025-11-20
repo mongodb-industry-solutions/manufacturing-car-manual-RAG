@@ -2,7 +2,7 @@ env:
   # Frontend Configuration
   NODE_ENV: staging
   # Internal URL for server-side calls (Next.js Proxy -> Backend Service)
-  INTERNAL_API_URL: http://manufacturing-car-manual-RAG:8000
+  INTERNAL_API_URL: http://manufacturing-car-manual-rag:8000
 
 serviceAccount:
   enabled: false
@@ -10,7 +10,7 @@ serviceAccount:
 ingress:
   enabled: true
   hosts:
-    - manufacturing-car-manual-RAG-frontend.industrysolutions.staging.corp.mongodb.com
+    - manufacturing-car-manual-rag-frontend.industrysolutions.staging.corp.mongodb.com
 
 mesh:
   enabled: true
