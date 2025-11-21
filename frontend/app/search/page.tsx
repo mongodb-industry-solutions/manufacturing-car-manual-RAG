@@ -619,7 +619,10 @@ function SearchPageContent() {
                     color: palette.yellow.dark2
                   }}
                 >
-                  🇩🇪 Gangschaltung
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span>🇩🇪 Gangschaltung</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8 }}>(gear shift)</span>
+                  </div>
                 </Button>
 
                 {/* Japanese */}
@@ -636,7 +639,10 @@ function SearchPageContent() {
                     color: palette.yellow.dark2
                   }}
                 >
-                  🇯🇵 氷が溶ける
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span>🇯🇵 氷が溶ける</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8 }}>(ice melts)</span>
+                  </div>
                 </Button>
 
                 {/* Hindi */}
@@ -653,7 +659,10 @@ function SearchPageContent() {
                     color: palette.yellow.dark2
                   }}
                 >
-                  🇮🇳 आपातकालीन किट
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <span>🇮🇳 आपातकालीन किट</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8 }}>(emergency kit)</span>
+                  </div>
                 </Button>
               </div>
             </div>

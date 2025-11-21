@@ -30,13 +30,13 @@ envSecrets:
   CHUNKS_COLLECTION: manufacturing-car-manual-secrets
   VOYAGE_API_KEY: manufacturing-car-manual-secrets
 
+# GCP Workload Identity Configuration
 serviceAccount:
   enabled: true
-  irsa:
-    accountId: '275662791714'
-    roleName: 'kanopy-staging-cicd-irsa'
+  annotations:
+    iam.gke.io/gcp-service-account: 'manufacturing-kanopy-sa@manufacturing-project-425012.iam.gserviceaccount.com'
 
-# GCP Workload Identity Configuration
+# Mount GCP credential config and service account token
 extraVolumes:
   - name: gcp-creds
     configMap:
