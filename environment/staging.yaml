@@ -57,7 +57,7 @@ extraVolumeMounts:
     mountPath: /var/run/service-account
     readOnly: true
 
-# Resource Limits (from user example)
+# Resource Limits
 resources:
   limits:
     cpu: 1000m
@@ -65,22 +65,3 @@ resources:
   requests:
     cpu: 250m
     memory: 512Mi
-
-# Probes
-probes:
-  liveness:
-    initialDelaySeconds: 60
-    timeoutSeconds: 5
-    periodSeconds: 10
-  readiness:
-    initialDelaySeconds: 45
-    timeoutSeconds: 5
-    periodSeconds: 10
-
-ingress:
-  enabled: true
-  hosts:
-    - manufacturing-car-manual-rag.industrysolutions.staging.corp.mongodb.com
-
-mesh:
-  enabled: true
