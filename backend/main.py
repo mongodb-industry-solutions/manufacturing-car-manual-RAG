@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # Create FastAPI app
-app = FastAPI(title=settings.PROJECT_NAME, redirect_slashes=False)
+# Enable automatic trailing slash redirects for better compatibility
+app = FastAPI(title=settings.PROJECT_NAME, redirect_slashes=True)
 
 # Configure CORS
 app.add_middleware(
@@ -45,8 +46,8 @@ app.include_router(search.router, prefix=f"{settings.API_V1_STR}/search", tags=[
 app.include_router(graph_search.router, prefix=f"{settings.API_V1_STR}/search", tags=["search"])
 app.include_router(images.router, prefix=f"{settings.API_V1_STR}/images", tags=["images"])
 
-# Allow redirects for slash handling (default behavior)
-# Our frontend will consistently use trailing slashes
+# FastAPI will now automatically redirect requests with/without trailing slashes
+# This provides better compatibility with frontend proxy requests
 
 # Root endpoint
 @app.get("/")
