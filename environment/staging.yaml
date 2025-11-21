@@ -57,15 +57,10 @@ extraVolumeMounts:
     mountPath: /var/run/service-account
     readOnly: true
 
-# Service and Port Configuration
+# Service Configuration
 service:
   port: 80
-  targetPort: http
-
-ports:
-  - name: http
-    containerPort: 8000
-    protocol: TCP
+  targetPort: 8000
 
 # Resource Limits
 resources:
