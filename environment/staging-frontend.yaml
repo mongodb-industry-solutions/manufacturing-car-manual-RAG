@@ -2,7 +2,7 @@ env:
   # Frontend Configuration
   NODE_ENV: staging
   # Internal URL for server-side calls (Next.js Proxy -> Backend Service)
-  INTERNAL_API_URL: http://manufacturing-car-manual-rag:8000
+  INTERNAL_API_URL: http://manufacturing-car-manual-rag-web-app
 
 serviceAccount:
   enabled: false
