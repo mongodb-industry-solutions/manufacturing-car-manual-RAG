@@ -57,13 +57,15 @@ extraVolumeMounts:
     mountPath: /var/run/service-account
     readOnly: true
 
-# Service Configuration
+# Service and Port Configuration
 service:
   port: 80
-  targetPort: 8000
+  targetPort: http
 
-# Container Port (must match Dockerfile EXPOSE)
-containerPort: 8000
+ports:
+  - name: http
+    containerPort: 8000
+    protocol: TCP
 
 # Resource Limits
 resources:
