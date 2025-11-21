@@ -32,8 +32,9 @@ envSecrets:
 
 serviceAccount:
   enabled: true
-  name: irsa-staging
-  annotations: {}
+  irsa:
+    accountId: '275662791714'
+    roleName: 'kanopy-staging-cicd-irsa'
 
 # GCP Workload Identity Configuration
 extraVolumes:
