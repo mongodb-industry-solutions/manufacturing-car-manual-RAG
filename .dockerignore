@@ -1,8 +1,5 @@
 #-------------------------------------------------------- General --------------------------------------------------------
 
-# Important: Include frontend/lib directory (overrides .gitignore)
-!frontend/lib/
-
 # Byte-compiled files
 __pycache__
 *.py[cod]
