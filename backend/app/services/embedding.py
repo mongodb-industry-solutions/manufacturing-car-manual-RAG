@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional
 import logging
 import os
 from google.cloud import aiplatform
-from google.oauth2 import service_account
+import google.auth
 from vertexai.preview.language_models import TextEmbeddingModel
 
 from app.core.config import get_settings
@@ -21,16 +21,20 @@ class EmbeddingService:
         logger.info(f"Initialized Vertex AI embedding model: {self.model_id}")
     
     def _initialize_client(self):
-        """Initialize the Vertex AI client"""
+        """Initialize the Vertex AI client with Application Default Credentials"""
         try:
-            # Check if service account key file exists in environment variable
-            credentials = None
-            if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-                credentials = service_account.Credentials.from_service_account_file(
-                    os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-                )
+            # Use Application Default Credentials (ADC)
+            # This automatically detects the authentication method:
+            # - In GKE with Workload Identity: uses the mapped service account
+            # - Locally: uses GOOGLE_APPLICATION_CREDENTIALS or gcloud auth
+            # - Other environments: falls back to other methods
+            credentials, project = google.auth.default()
             
-            # Initialize Vertex AI client
+            # Log the detected authentication method for debugging
+            logger.info(f"Detected GCP credentials type: {type(credentials).__name__}")
+            logger.info(f"Using GCP project: {self.settings.GCP_PROJECT_ID}")
+            
+            # Initialize Vertex AI client with detected credentials
             aiplatform.init(
                 project=self.settings.GCP_PROJECT_ID,
                 location=self.settings.GCP_LOCATION,
@@ -40,6 +44,7 @@ class EmbeddingService:
             logger.info(f"Successfully initialized Vertex AI client for project {self.settings.GCP_PROJECT_ID}")
         except Exception as e:
             logger.error(f"Failed to initialize Vertex AI client: {e}")
+            logger.error(f"Make sure the service account has 'Vertex AI User' role")
             raise
     
     async def generate_embedding(self, text: str) -> List[float]:
