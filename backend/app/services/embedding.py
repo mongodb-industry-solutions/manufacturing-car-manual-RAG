@@ -42,11 +42,7 @@ class EmbeddingService:
             
             # Use Application Default Credentials (ADC)
             # Automatically detects: Workload Identity, service account file, or gcloud auth
-            # Explicitly set quota_project_id and scopes for Vertex AI
-            credentials, project = google.auth.default(
-                scopes=['https://www.googleapis.com/auth/cloud-platform'],
-                quota_project_id=self.settings.GCP_PROJECT_ID
-            )
+            credentials, project = google.auth.default()
             
             logger.info(f"Authenticated as {type(credentials).__name__} for project {self.settings.GCP_PROJECT_ID}")
             logger.info(f"Detected project from credentials: {project}")
