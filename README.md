@@ -13,7 +13,7 @@
 
 This platform demonstrates MongoDB's Unified Data Platform capabilities, showcasing how flexible JSON document storage enables multiple retrieval pipelines working together: smart chunking, full-text search, vector embeddings, knowledge graphs, multimodal search, and Voyage AI reranking.
 
-By the end of this guide, you'll have a comprehensive car manual exploration system up and running capable of all the solutions mentioned above.
+By the end of this guide, you'll have a comprehensive car manual exploration system up and running, capable of all the solutions mentioned above.
 
 We will walk you through the process of configuring and using [MongoDB Atlas](https://www.mongodb.com/atlas) as your backend with [Google Vertex AI](https://cloud.google.com/vertex-ai) for MongoDB-powered search and question answering in your [Next.js](https://nextjs.org/) and [FastAPI](https://fastapi.tiangolo.com/) application.
 
