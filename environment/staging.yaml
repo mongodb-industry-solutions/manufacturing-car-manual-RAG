@@ -30,6 +30,11 @@ envSecrets:
   DATABASE_NAME: manufacturing-car-manual-secrets
   CHUNKS_COLLECTION: manufacturing-car-manual-secrets
   VOYAGE_API_KEY: manufacturing-car-manual-secrets
+  GCP_PROJECT_ID: manufacturing-car-manual-secrets
+  GCP_LOCATION: manufacturing-car-manual-secrets
+  EMBEDDINGS_MODEL_ID: manufacturing-car-manual-secrets
+  MULTIMODAL_MODEL_ID: manufacturing-car-manual-secrets
+  MULTIMODAL_VECTOR_INDEX_NAME: manufacturing-car-manual-secrets
 
 serviceAccount:
   enabled: true
