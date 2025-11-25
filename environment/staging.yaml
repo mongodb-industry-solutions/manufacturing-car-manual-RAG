@@ -3,6 +3,9 @@ env:
   BACKEND_PORT: 8000
   BACKEND_HOST: 0.0.0.0
   RELOAD_ENABLED: false
+  
+  # Frontend Configuration (for Next.js proxy)
+  INTERNAL_API_URL: 'http://manufacturing-car-manual-rag-backend:8080'
 
   # Application Settings
   GCP_PROJECT_ID: 'manufacturing-project-425012'

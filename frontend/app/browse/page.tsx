@@ -175,7 +175,7 @@ export default function BrowsePage() {
       try {
         console.log('Fetching available filter values from API...');
         // Use the existing API endpoint to get all available filter values
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/chunks/filters`);
+        const response = await fetch('/api/v1/chunks/filters');
         if (response.ok) {
           const filterData = await response.json();
           setAvailableFilters({
@@ -567,7 +567,7 @@ export default function BrowsePage() {
                       overflow: 'hidden'
                     }}>
                       <img
-                        src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/images/${chunk.id || (chunk._id && (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid))}/file`}
+                        src={`/api/v1/images/${chunk.id || (chunk._id && (typeof chunk._id === 'string' ? chunk._id : chunk._id.$oid))}/file`}
                         alt={chunk.title || 'Image'}
                         style={{
                           maxWidth: '100%',
