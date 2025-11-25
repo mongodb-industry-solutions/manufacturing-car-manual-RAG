@@ -19,6 +19,7 @@ env:
   MULTIMODAL_MODEL_ID: 'voyage-multimodal-3'
 
   # API Configuration
+  INTERNAL_API_URL: 'http://manufacturing-car-manual-RAG-backend-web-app:80'
   ORIGINS: 'http://manufacturing-car-manual-rag-frontend.industrysolutions.staging.corp.mongodb.com'
   DEBUG: 'False'
 
@@ -30,7 +31,6 @@ envSecrets:
   CHUNKS_COLLECTION: manufacturing-car-manual-secrets
   VOYAGE_API_KEY: manufacturing-car-manual-secrets
 
-# GCP Workload Identity Configuration
 serviceAccount:
   enabled: true
   annotations:
@@ -56,17 +56,3 @@ extraVolumeMounts:
   - name: gcp-token
     mountPath: /var/run/service-account
     readOnly: true
-
-# Service Configuration
-service:
-  port: 80
-  targetPort: 8000
-
-# Resource Limits
-resources:
-  limits:
-    cpu: 1000m
-    memory: 2048Mi
-  requests:
-    cpu: 250m
-    memory: 512Mi

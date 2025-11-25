@@ -7,17 +7,117 @@ trigger:
   branch:
     - staging
 
+# replace manufacturing-car-manual-RAG with your demo name for eg.: financial-news-vector-search
 steps:
-  # Backend Build & Push
-  - name: publish-manufacturing-car-manual-backend
+  - name: publish-backend
+    image: plugins/kaniko-ecr
+    settings:
+      create_repository: true
+      registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com ## keep same for all demos < - aws ecr registry used to store docker image
+      repo: industrysolutions/manufacturing-car-manual-RAG-backend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
+      tags:
+        - git-${DRONE_COMMIT_SHA:0:7}
+        - latest
+      dockerfile: Dockerfile.backend
+      access_key:
+        from_secret: ecr_access_key ## set in drone web ui
+      secret_key:
+        from_secret: ecr_secret_key ## set in drone web ui
+    when:
+      event:
+        - push
+
+  - name: publish-frontend
     image: plugins/kaniko-ecr
     settings:
       create_repository: true
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
-      repo: industrysolutions/manufacturing-car-manual-rag
+      repo: industrysolutions/manufacturing-car-manual-RAG-frontend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
       tags:
         - git-${DRONE_COMMIT_SHA:0:7}
         - latest
+      # build_args:
+      #   - NEXT_BACKEND_URL: http://kanopy-session-backend-web-app:80
+      dockerfile: Dockerfile.frontend
+      access_key:
+        from_secret: ecr_access_key ## set in drone web ui
+      secret_key:
+        from_secret: ecr_secret_key ## set in drone web ui
+    when:
+      event:
+        - push
+
+  - name: deploy-backend-staging
+    image: public.ecr.aws/kanopy/drone-helm:v3
+    settings:
+      chart: mongodb/web-app
+      chart_version: 4.25.0
+      add_repos: [mongodb=https://10gen.github.io/helm-charts]
+      namespace: industrysolutions
+      release: manufacturing-car-manual-RAG-backend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
+      values:
+        - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}'
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-backend' ## NEED TO CHANGE replace manufacturing-car-manual-RAG with your backend pod name from above
+        - 'ingress.enabled=true'
+        - 'ingress.hosts[0]=manufacturing-car-manual-RAG-backend.industrysolutions.staging.corp.mongodb.com' ## NEED TO CHANGE replace manufacturing-car-manual-RAG with your demo name for eg.: financial-news-vector-search
+        - 'mesh.enabled=true'
+        - 'resources.limits.cpu=1000m'
+        - 'resources.limits.memory=1024Mi'
+        - 'resources.requests.cpu=250m'
+        - 'resources.requests.memory=256Mi'
+      api_server: https://api.staging.corp.mongodb.com
+      kubernetes_token:
+        from_secret: staging_kubernetes_token ## set in drone web ui
+      values_files: ['environment/staging.yaml']
+    when:
+      event:
+        - push
+
+  - name: deploy-frontend-staging
+    image: public.ecr.aws/kanopy/drone-helm:v3
+    settings:
+      chart: mongodb/web-app
+      chart_version: 4.25.0
+      add_repos: [mongodb=https://10gen.github.io/helm-charts]
+      namespace: industrysolutions
+      release: manufacturing-car-manual-RAG-frontend
+      values:
+        - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}'
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-frontend' ## NEED TO CHANGE replace manufacturing-car-manual-RAG
+        - 'ingress.enabled=true'
+        - 'ingress.hosts[0]=manufacturing-car-manual-RAG-frontend.industrysolutions.staging.corp.mongodb.com' ## NEED TO CHANGE replace manufacturing-car-manual-RAG with your demo name for eg.: financial-news-vector-search
+        - 'mesh.enabled=true'
+        - 'resources.limits.cpu=1000m'
+        - 'resources.limits.memory=1024Mi'
+        - 'resources.requests.cpu=250m'
+        - 'resources.requests.memory=256Mi'
+      api_server: https://api.staging.corp.mongodb.com
+      kubernetes_token:
+        from_secret: staging_kubernetes_token ## set in drone web ui
+      values_files: ['environment/staging.yaml']
+    when:
+      event:
+        - push
+
+---
+kind: pipeline
+type: kubernetes
+name: production
+
+trigger:
+  branch:
+    - main # or master, depending on your main branch name
+
+steps:
+  - name: publish-backend-prod
+    image: plugins/kaniko-ecr
+    settings:
+      create_repository: true
+      registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com # keep same for all demos < - aws ecr registry used to store docker image
+      repo: industrysolutions/manufacturing-car-manual-RAG-backend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-backend-prod
+      tags:
+        - git-${DRONE_COMMIT_SHA:0:7}-prod
+        - prod-latest
       dockerfile: Dockerfile.backend
       access_key:
         from_secret: ecr_access_key
@@ -27,22 +127,16 @@ steps:
       event:
         - push
 
-  # Frontend Build & Push
-  - name: publish-manufacturing-car-manual-frontend
+  - name: publish-frontend-prod
     image: plugins/kaniko-ecr
     settings:
       create_repository: true
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
-      repo: industrysolutions/manufacturing-car-manual-rag-frontend
+      repo: industrysolutions/manufacturing-car-manual-RAG-frontend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-frontend
       tags:
-        - git-${DRONE_COMMIT_SHA:0:7}
-        - latest
+        - git-${DRONE_COMMIT_SHA:0:7}-prod
+        - prod-latest
       dockerfile: Dockerfile.frontend
-      # Pass build-time variables
-      build_args:
-        - NODE_ENV=staging
-        # Fallback for build time, but runtime will use INTERNAL_API_URL via proxy
-        - NEXT_PUBLIC_API_URL=https://manufacturing-car-manual-rag.industrysolutions.staging.corp.mongodb.com
       access_key:
         from_secret: ecr_access_key
       secret_key:
@@ -51,42 +145,54 @@ steps:
       event:
         - push
 
-  # Backend Deployment
-  - name: deploy-backend-staging
+  - name: deploy-backend-production
     image: public.ecr.aws/kanopy/drone-helm:v3
     settings:
       chart: mongodb/web-app
       chart_version: 4.25.0
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
       namespace: industrysolutions
-      release: manufacturing-car-manual-rag
+      release: manufacturing-car-manual-RAG-backend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-backend-prod
       values:
-        - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}'
-        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-rag'
-      api_server: https://api.staging.corp.mongodb.com
+        - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}-prod'
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-backend-prod' ## NEED TO CHANGE replace manufacturing-car-manual-RAG with your backend pod name from above
+        - 'ingress.enabled=true'
+        - 'ingress.hosts[0]=manufacturing-car-manual-RAG-backend.industrysolutions.prod.corp.mongodb.com'
+        - 'mesh.enabled=true'
+        - 'resources.limits.cpu=1000m'
+        - 'resources.limits.memory=1024Mi'
+        - 'resources.requests.cpu=250m'
+        - 'resources.requests.memory=256Mi'
+      api_server: https://api.prod.corp.mongodb.com
       kubernetes_token:
-        from_secret: staging_kubernetes_token
-      values_files: ['environment/staging.yaml']
+        from_secret: production_kubernetes_token
+      values_files: ['environment/production.yaml']
     when:
       event:
         - push
 
-  # Frontend Deployment
-  - name: deploy-frontend-staging
+  - name: deploy-frontend-production
     image: public.ecr.aws/kanopy/drone-helm:v3
     settings:
       chart: mongodb/web-app
       chart_version: 4.25.0
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
       namespace: industrysolutions
-      release: manufacturing-car-manual-rag-frontend
+      release: manufacturing-car-manual-RAG-frontend-prod
       values:
-        - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}'
-        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-rag-frontend'
-      api_server: https://api.staging.corp.mongodb.com
+        - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}-prod'
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-frontend-prod'
+        - 'ingress.enabled=true'
+        - 'ingress.hosts[0]=manufacturing-car-manual-RAG-frontend.industrysolutions.prod.corp.mongodb.com'
+        - 'mesh.enabled=true'
+        - 'resources.limits.cpu=1000m'
+        - 'resources.limits.memory=1024Mi'
+        - 'resources.requests.cpu=250m'
+        - 'resources.requests.memory=256Mi'
+      api_server: https://api.prod.corp.mongodb.com
       kubernetes_token:
-        from_secret: staging_kubernetes_token
-      values_files: ['environment/staging-frontend.yaml']
+        from_secret: production_kubernetes_token
+      values_files: ['environment/production.yaml']
     when:
       event:
         - push
