@@ -616,7 +616,8 @@ function SearchPageContent() {
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
                     borderColor: palette.yellow.dark2,
-                    color: palette.yellow.dark2
+                    color: palette.yellow.dark2,
+                    minWidth: '140px'
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -636,7 +637,8 @@ function SearchPageContent() {
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
                     borderColor: palette.yellow.dark2,
-                    color: palette.yellow.dark2
+                    color: palette.yellow.dark2,
+                    minWidth: '140px'
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -656,7 +658,8 @@ function SearchPageContent() {
                   leftGlyph={<Icon glyph="Camera" size="small" />}
                   style={{
                     borderColor: palette.yellow.dark2,
-                    color: palette.yellow.dark2
+                    color: palette.yellow.dark2,
+                    minWidth: '160px'
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
