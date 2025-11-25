@@ -19,7 +19,7 @@ env:
   MULTIMODAL_MODEL_ID: 'voyage-multimodal-3'
 
   # API Configuration
-  INTERNAL_API_URL: 'http://manufacturing-car-manual-RAG-backend-web-app:80'
+  INTERNAL_API_URL: 'http://manufacturing-car-manual-rag-backend-web-app:80'
   ORIGINS: 'http://manufacturing-car-manual-rag-frontend.industrysolutions.staging.corp.mongodb.com'
   DEBUG: 'False'
 

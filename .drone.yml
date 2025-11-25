@@ -7,14 +7,14 @@ trigger:
   branch:
     - staging
 
-# replace manufacturing-car-manual-RAG with your demo name for eg.: financial-news-vector-search
+# replace manufacturing-car-manual-rag with your demo name for eg.: financial-news-vector-search
 steps:
   - name: publish-backend
     image: plugins/kaniko-ecr
     settings:
       create_repository: true
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com ## keep same for all demos < - aws ecr registry used to store docker image
-      repo: industrysolutions/manufacturing-car-manual-RAG-backend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
+      repo: industrysolutions/manufacturing-car-manual-rag-backend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
       tags:
         - git-${DRONE_COMMIT_SHA:0:7}
         - latest
@@ -32,7 +32,7 @@ steps:
     settings:
       create_repository: true
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
-      repo: industrysolutions/manufacturing-car-manual-RAG-frontend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
+      repo: industrysolutions/manufacturing-car-manual-rag-frontend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
       tags:
         - git-${DRONE_COMMIT_SHA:0:7}
         - latest
@@ -54,12 +54,12 @@ steps:
       chart_version: 4.25.0
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
       namespace: industrysolutions
-      release: manufacturing-car-manual-RAG-backend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
+      release: manufacturing-car-manual-rag-backend ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search
       values:
         - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}'
-        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-backend' ## NEED TO CHANGE replace manufacturing-car-manual-RAG with your backend pod name from above
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-rag-backend' ## NEED TO CHANGE replace manufacturing-car-manual-rag with your backend pod name from above
         - 'ingress.enabled=true'
-        - 'ingress.hosts[0]=manufacturing-car-manual-RAG-backend.industrysolutions.staging.corp.mongodb.com' ## NEED TO CHANGE replace manufacturing-car-manual-RAG with your demo name for eg.: financial-news-vector-search
+        - 'ingress.hosts[0]=manufacturing-car-manual-rag-backend.industrysolutions.staging.corp.mongodb.com' ## NEED TO CHANGE replace manufacturing-car-manual-rag with your demo name for eg.: financial-news-vector-search
         - 'mesh.enabled=true'
         - 'resources.limits.cpu=1000m'
         - 'resources.limits.memory=1024Mi'
@@ -80,12 +80,12 @@ steps:
       chart_version: 4.25.0
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
       namespace: industrysolutions
-      release: manufacturing-car-manual-RAG-frontend
+      release: manufacturing-car-manual-rag-frontend
       values:
         - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}'
-        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-frontend' ## NEED TO CHANGE replace manufacturing-car-manual-RAG
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-rag-frontend' ## NEED TO CHANGE replace manufacturing-car-manual-rag
         - 'ingress.enabled=true'
-        - 'ingress.hosts[0]=manufacturing-car-manual-RAG-frontend.industrysolutions.staging.corp.mongodb.com' ## NEED TO CHANGE replace manufacturing-car-manual-RAG with your demo name for eg.: financial-news-vector-search
+        - 'ingress.hosts[0]=manufacturing-car-manual-rag-frontend.industrysolutions.staging.corp.mongodb.com' ## NEED TO CHANGE replace manufacturing-car-manual-rag with your demo name for eg.: financial-news-vector-search
         - 'mesh.enabled=true'
         - 'resources.limits.cpu=1000m'
         - 'resources.limits.memory=1024Mi'
@@ -114,7 +114,7 @@ steps:
     settings:
       create_repository: true
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com # keep same for all demos < - aws ecr registry used to store docker image
-      repo: industrysolutions/manufacturing-car-manual-RAG-backend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-backend-prod
+      repo: industrysolutions/manufacturing-car-manual-rag-backend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-backend-prod
       tags:
         - git-${DRONE_COMMIT_SHA:0:7}-prod
         - prod-latest
@@ -132,7 +132,7 @@ steps:
     settings:
       create_repository: true
       registry: 795250896452.dkr.ecr.us-east-1.amazonaws.com
-      repo: industrysolutions/manufacturing-car-manual-RAG-frontend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-frontend
+      repo: industrysolutions/manufacturing-car-manual-rag-frontend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-frontend
       tags:
         - git-${DRONE_COMMIT_SHA:0:7}-prod
         - prod-latest
@@ -152,12 +152,12 @@ steps:
       chart_version: 4.25.0
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
       namespace: industrysolutions
-      release: manufacturing-car-manual-RAG-backend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-backend-prod
+      release: manufacturing-car-manual-rag-backend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-backend-prod
       values:
         - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}-prod'
-        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-backend-prod' ## NEED TO CHANGE replace manufacturing-car-manual-RAG with your backend pod name from above
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-rag-backend-prod' ## NEED TO CHANGE replace manufacturing-car-manual-rag with your backend pod name from above
         - 'ingress.enabled=true'
-        - 'ingress.hosts[0]=manufacturing-car-manual-RAG-backend.industrysolutions.prod.corp.mongodb.com'
+        - 'ingress.hosts[0]=manufacturing-car-manual-rag-backend.industrysolutions.prod.corp.mongodb.com'
         - 'mesh.enabled=true'
         - 'resources.limits.cpu=1000m'
         - 'resources.limits.memory=1024Mi'
@@ -178,12 +178,12 @@ steps:
       chart_version: 4.25.0
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
       namespace: industrysolutions
-      release: manufacturing-car-manual-RAG-frontend-prod
+      release: manufacturing-car-manual-rag-frontend-prod
       values:
         - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}-prod'
-        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-RAG-frontend-prod'
+        - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-rag-frontend-prod'
         - 'ingress.enabled=true'
-        - 'ingress.hosts[0]=manufacturing-car-manual-RAG-frontend.industrysolutions.prod.corp.mongodb.com'
+        - 'ingress.hosts[0]=manufacturing-car-manual-rag-frontend.industrysolutions.prod.corp.mongodb.com'
         - 'mesh.enabled=true'
         - 'resources.limits.cpu=1000m'
         - 'resources.limits.memory=1024Mi'
