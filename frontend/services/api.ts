@@ -3,7 +3,8 @@
  */
 import axios from 'axios';
 
-// Use relative path for proxy pattern (same origin)
+// Use relative path for proxy pattern (same origin).
+// Proxy implementation is configured in `frontend/app/api/v1/[...path]/route.ts`
 const API_BASE = '/api/v1';
 
 export const api = axios.create({
