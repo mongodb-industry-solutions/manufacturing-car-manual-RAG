@@ -606,67 +606,73 @@ function SearchPageContent() {
               }}>
 
                 {/* German */}
-                <Button
-                  size="small"
-                  variant="default"
-                  onClick={() => {
-                    setMultimodalTextQuery('Gangschaltung');
-                    handleMultimodalSearch({ query_type: 'text', query_text: 'Gangschaltung' });
-                  }}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                  style={{
-                    borderColor: palette.yellow.dark2,
-                    color: palette.yellow.dark2,
-                    minWidth: '140px'
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span>🇩🇪 Gangschaltung</span>
-                    <span style={{ fontSize: '11px', opacity: 0.8 }}>(gear shift)</span>
-                  </div>
-                </Button>
+                <div style={{ width: '150px' }}>
+                  <Button
+                    size="small"
+                    variant="default"
+                    onClick={() => {
+                      setMultimodalTextQuery('Gangschaltung');
+                      handleMultimodalSearch({ query_type: 'text', query_text: 'Gangschaltung' });
+                    }}
+                    leftGlyph={<Icon glyph="Camera" size="small" />}
+                    style={{
+                      borderColor: palette.yellow.dark2,
+                      color: palette.yellow.dark2,
+                      width: '100%'
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <span>🇩🇪 Gangschaltung</span>
+                      <span style={{ fontSize: '11px', opacity: 0.8 }}>(gear shift)</span>
+                    </div>
+                  </Button>
+                </div>
 
                 {/* Japanese */}
-                <Button
-                  size="small"
-                  variant="default"
-                  onClick={() => {
-                    setMultimodalTextQuery('氷が溶ける');
-                    handleMultimodalSearch({ query_type: 'text', query_text: '氷が溶ける' });
-                  }}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                  style={{
-                    borderColor: palette.yellow.dark2,
-                    color: palette.yellow.dark2,
-                    minWidth: '140px'
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span>🇯🇵 氷が溶ける</span>
-                    <span style={{ fontSize: '11px', opacity: 0.8 }}>(ice melts)</span>
-                  </div>
-                </Button>
+                <div style={{ width: '150px' }}>
+                  <Button
+                    size="small"
+                    variant="default"
+                    onClick={() => {
+                      setMultimodalTextQuery('氷が溶ける');
+                      handleMultimodalSearch({ query_type: 'text', query_text: '氷が溶ける' });
+                    }}
+                    leftGlyph={<Icon glyph="Camera" size="small" />}
+                    style={{
+                      borderColor: palette.yellow.dark2,
+                      color: palette.yellow.dark2,
+                      width: '100%'
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <span>🇯🇵 氷が溶ける</span>
+                      <span style={{ fontSize: '11px', opacity: 0.8 }}>(ice melts)</span>
+                    </div>
+                  </Button>
+                </div>
 
                 {/* Hindi */}
-                <Button
-                  size="small"
-                  variant="default"
-                  onClick={() => {
-                    setMultimodalTextQuery('आपातकालीन किट');
-                    handleMultimodalSearch({ query_type: 'text', query_text: 'आपातकालीन किट' });
-                  }}
-                  leftGlyph={<Icon glyph="Camera" size="small" />}
-                  style={{
-                    borderColor: palette.yellow.dark2,
-                    color: palette.yellow.dark2,
-                    minWidth: '160px'
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span>🇮🇳 आपातकालीन किट</span>
-                    <span style={{ fontSize: '11px', opacity: 0.8 }}>(emergency kit)</span>
-                  </div>
-                </Button>
+                <div style={{ width: '170px' }}>
+                  <Button
+                    size="small"
+                    variant="default"
+                    onClick={() => {
+                      setMultimodalTextQuery('आपातकालीन किट');
+                      handleMultimodalSearch({ query_type: 'text', query_text: 'आपातकालीन किट' });
+                    }}
+                    leftGlyph={<Icon glyph="Camera" size="small" />}
+                    style={{
+                      borderColor: palette.yellow.dark2,
+                      color: palette.yellow.dark2,
+                      width: '100%'
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <span>🇮🇳 आपातकालीन किट</span>
+                      <span style={{ fontSize: '11px', opacity: 0.8 }}>(emergency kit)</span>
+                    </div>
+                  </Button>
+                </div>
               </div>
             </div>
           </>

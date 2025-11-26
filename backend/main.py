@@ -60,4 +60,5 @@ async def root():
 
 if __name__ == "__main__":
     # Run the application with uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG)
+    # Set limit_max_requests_body to 10MB (10485760 bytes) to handle base64-encoded images up to 5MB
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG, limit_max_requests_body=10485760)
