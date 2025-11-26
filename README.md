@@ -82,7 +82,7 @@ Now it's time to clone the Car Manual Explorer source code from GitHub to your l
    git clone https://github.com/mongodb-industry-solutions/manufacturing-car-manual-RAG.git
    ```
 
-4. After running the `git clone` command, a new directory with the repository's name will be created in your chosen directory. To navigate into the cloned repository, use the `cd` command:
+4. After running the `git clone` command a new directory with the repository's name will be created in your chosen directory. To navigate into the cloned repository, use the `cd` command:
 
    ```bash
    cd car-manual-explorer
