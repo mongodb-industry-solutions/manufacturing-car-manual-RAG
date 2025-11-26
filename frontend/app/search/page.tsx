@@ -24,6 +24,7 @@ const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
 const QueryVisualizationPanel = dynamic(() => import('@/components/content/QueryVisualizationPanel'));
 const MultimodalSearchInput = dynamic(() => import('@/components/search/MultimodalSearchInput'));
 const MultimodalSearchResults = dynamic(() => import('@/components/search/MultimodalSearchResults'));
+const CustomButton = dynamic(() => import('@/components/common/CustomButton'));
 import { RerankingSummary } from '@/components/search/PositionIndicator';
 
 import { useSearch } from '@/hooks/useSearch';
@@ -606,82 +607,61 @@ function SearchPageContent() {
               }}>
 
                 {/* German */}
-                <div className="multilang-button-wrapper">
-                  <Button
-                    size="small"
-                    variant="default"
-                    onClick={() => {
-                      setMultimodalTextQuery('Gangschaltung');
-                      handleMultimodalSearch({ query_type: 'text', query_text: 'Gangschaltung' });
-                    }}
-                    leftGlyph={<Icon glyph="Camera" size="small" />}
-                    style={{
-                      borderColor: palette.yellow.dark2,
-                      color: palette.yellow.dark2
-                    }}
-                  >
-                    <div style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ whiteSpace: 'nowrap' }}>🇩🇪 Gangschaltung</span>
-                      <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(gear shift)</span>
-                    </div>
-                  </Button>
-                </div>
+                <CustomButton
+                  minWidth="180px"
+                  onClick={() => {
+                    setMultimodalTextQuery('Gangschaltung');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'Gangschaltung' });
+                  }}
+                  leftGlyph={<Icon glyph="Camera" size="small" />}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>🇩🇪 Gangschaltung</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(gear shift)</span>
+                  </div>
+                </CustomButton>
 
                 {/* Japanese */}
-                <div className="multilang-button-wrapper">
-                  <Button
-                    size="small"
-                    variant="default"
-                    onClick={() => {
-                      setMultimodalTextQuery('氷が溶ける');
-                      handleMultimodalSearch({ query_type: 'text', query_text: '氷が溶ける' });
-                    }}
-                    leftGlyph={<Icon glyph="Camera" size="small" />}
-                    style={{
-                      borderColor: palette.yellow.dark2,
-                      color: palette.yellow.dark2
-                    }}
-                  >
-                    <div style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ whiteSpace: 'nowrap' }}>🇯🇵 氷が溶ける</span>
-                      <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(ice melts)</span>
-                    </div>
-                  </Button>
-                </div>
+                <CustomButton
+                  minWidth="180px"
+                  onClick={() => {
+                    setMultimodalTextQuery('氷が溶ける');
+                    handleMultimodalSearch({ query_type: 'text', query_text: '氷が溶ける' });
+                  }}
+                  leftGlyph={<Icon glyph="Camera" size="small" />}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>🇯🇵 氷が溶ける</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(ice melts)</span>
+                  </div>
+                </CustomButton>
 
                 {/* Hindi */}
-                <div className="multilang-button-wrapper" style={{ minWidth: '200px' }}>
-                  <Button
-                    size="small"
-                    variant="default"
-                    onClick={() => {
-                      setMultimodalTextQuery('आपातकालीन किट');
-                      handleMultimodalSearch({ query_type: 'text', query_text: 'आपातकालीन किट' });
-                    }}
-                    leftGlyph={<Icon glyph="Camera" size="small" />}
-                    style={{
-                      borderColor: palette.yellow.dark2,
-                      color: palette.yellow.dark2
-                    }}
-                  >
-                    <div style={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center'
-                    }}>
-                      <span style={{ whiteSpace: 'nowrap' }}>🇮🇳 आपातकालीन किट</span>
-                      <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(emergency kit)</span>
-                    </div>
-                  </Button>
-                </div>
+                <CustomButton
+                  minWidth="200px"
+                  onClick={() => {
+                    setMultimodalTextQuery('आपातकालीन किट');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'आपातकालीन किट' });
+                  }}
+                  leftGlyph={<Icon glyph="Camera" size="small" />}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>🇮🇳 आपातकालीन किट</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(emergency kit)</span>
+                  </div>
+                </CustomButton>
               </div>
             </div>
           </>
