@@ -606,7 +606,7 @@ function SearchPageContent() {
               }}>
 
                 {/* German */}
-                <div style={{ width: '150px' }}>
+                <div className="multilang-button-wrapper">
                   <Button
                     size="small"
                     variant="default"
@@ -617,19 +617,22 @@ function SearchPageContent() {
                     leftGlyph={<Icon glyph="Camera" size="small" />}
                     style={{
                       borderColor: palette.yellow.dark2,
-                      color: palette.yellow.dark2,
-                      width: '100%'
+                      color: palette.yellow.dark2
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <span>🇩🇪 Gangschaltung</span>
-                      <span style={{ fontSize: '11px', opacity: 0.8 }}>(gear shift)</span>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center'
+                    }}>
+                      <span style={{ whiteSpace: 'nowrap' }}>🇩🇪 Gangschaltung</span>
+                      <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(gear shift)</span>
                     </div>
                   </Button>
                 </div>
 
                 {/* Japanese */}
-                <div style={{ width: '150px' }}>
+                <div className="multilang-button-wrapper">
                   <Button
                     size="small"
                     variant="default"
@@ -640,19 +643,22 @@ function SearchPageContent() {
                     leftGlyph={<Icon glyph="Camera" size="small" />}
                     style={{
                       borderColor: palette.yellow.dark2,
-                      color: palette.yellow.dark2,
-                      width: '100%'
+                      color: palette.yellow.dark2
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <span>🇯🇵 氷が溶ける</span>
-                      <span style={{ fontSize: '11px', opacity: 0.8 }}>(ice melts)</span>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center'
+                    }}>
+                      <span style={{ whiteSpace: 'nowrap' }}>🇯🇵 氷が溶ける</span>
+                      <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(ice melts)</span>
                     </div>
                   </Button>
                 </div>
 
                 {/* Hindi */}
-                <div style={{ width: '170px' }}>
+                <div className="multilang-button-wrapper" style={{ minWidth: '200px' }}>
                   <Button
                     size="small"
                     variant="default"
@@ -663,13 +669,16 @@ function SearchPageContent() {
                     leftGlyph={<Icon glyph="Camera" size="small" />}
                     style={{
                       borderColor: palette.yellow.dark2,
-                      color: palette.yellow.dark2,
-                      width: '100%'
+                      color: palette.yellow.dark2
                     }}
                   >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <span>🇮🇳 आपातकालीन किट</span>
-                      <span style={{ fontSize: '11px', opacity: 0.8 }}>(emergency kit)</span>
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center'
+                    }}>
+                      <span style={{ whiteSpace: 'nowrap' }}>🇮🇳 आपातकालीन किट</span>
+                      <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(emergency kit)</span>
                     </div>
                   </Button>
                 </div>

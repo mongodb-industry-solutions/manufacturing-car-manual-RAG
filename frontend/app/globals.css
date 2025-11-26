@@ -194,3 +194,35 @@
 [data-leafygreen-ui="modal-container"] {
   z-index: 10000;
 }
+
+/* Multi-language search button overrides */
+.multilang-button-wrapper {
+  min-width: 180px;
+  flex-shrink: 0;
+}
+
+.multilang-button-wrapper:last-child {
+  min-width: 200px;
+}
+
+.multilang-button-wrapper button,
+.multilang-button-wrapper [role="button"],
+.multilang-button-wrapper > * {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  height: auto !important;
+  min-height: auto !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+.multilang-button-wrapper button > div,
+.multilang-button-wrapper [role="button"] > div,
+.multilang-button-wrapper > * > div {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
