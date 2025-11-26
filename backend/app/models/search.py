@@ -131,7 +131,7 @@ class MultimodalSearchRequest(BaseModel):
     """Request model for multimodal search (text or image input)"""
     query_type: Literal["text", "image"] = Field(..., description="Type of query: text or image")
     query_text: Optional[str] = Field(None, description="Text query (required if query_type='text')")
-    image_base64: Optional[str] = Field(None, description="Base64 encoded image (required if query_type='image')")
+    sample_image_id: Optional[str] = Field(None, description="Sample image filename (required if query_type='image')")
     limit: int = Field(3, ge=1, le=50, description="Maximum number of image results to return")
     include_text_chunks: bool = Field(True, description="Include associated text chunks in results")
     num_candidates_multiplier: int = Field(10, ge=1, le=50, description="Multiplier for vector search candidates")

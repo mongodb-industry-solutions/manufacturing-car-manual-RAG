@@ -3,7 +3,6 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from starlette.requests import Request as StarletteRequest
 
 from app.core.config import get_settings
 from app.api.routes import chunks, search, health, graph_search, images
@@ -14,10 +13,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-# Override Starlette's default max request body size (1MB) to 10MB
-# This allows base64-encoded images up to 5MB (which become ~6.7MB when encoded)
-StarletteRequest.max_request_body_size = 10 * 1024 * 1024  # 10MB
 
 # Load settings
 settings = get_settings()

@@ -2,7 +2,7 @@
  * Multimodal Search Input Component
  * Supports both text and image queries for multimodal search
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import TextInput from '@leafygreen-ui/text-input';
 import Card from '@leafygreen-ui/card';
 import { Body } from '@leafygreen-ui/typography';
@@ -14,7 +14,7 @@ import Badge from '@leafygreen-ui/badge';
 import { CARD_STYLES } from '@/lib/styleConstants';
 
 interface MultimodalSearchInputProps {
-  onSearch: (params: { query_type: 'text' | 'image'; query_text?: string; image_base64?: string }) => void;
+  onSearch: (params: { query_type: 'text' | 'image'; query_text?: string; sample_image_id?: string }) => void;
   isLoading: boolean;
   initialTextQuery?: string; // External value to sync with (like SearchInput)
 }
@@ -31,86 +31,17 @@ const SAMPLE_IMAGES = [
 function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: MultimodalSearchInputProps) {
   const [activeTab, setActiveTab] = useState<'text' | 'image'>('text');
   const [textQuery, setTextQuery] = useState(initialTextQuery);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Update internal state when initialTextQuery prop changes (same pattern as SearchInput)
   useEffect(() => {
     setTextQuery(initialTextQuery);
   }, [initialTextQuery]);
 
-  // Convert File to base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          // Remove the data:image/jpeg;base64, prefix
-          const base64 = reader.result.split(',')[1];
-          resolve(base64);
-        } else {
-          reject(new Error('Failed to convert file to base64'));
-        }
-      };
-      reader.onerror = error => reject(error);
-    });
-  };
-
-  // Handle file upload
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
-        return;
-      }
-      
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
-        return;
-      }
-      
-      setSelectedFile(file);
-      setSelectedSampleId(null);
-      
-      // Create preview URL
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-    }
-  };
-
-  // Handle drag and drop
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      handleFileChange({ target: { files: [file] } } as any);
-    }
-  };
-
   // Handle sample image selection
-  const handleSampleSelect = async (imageId: string) => {
+  const handleSampleSelect = (imageId: string) => {
     setSelectedSampleId(imageId);
-    setSelectedFile(null);
     
     // Use image from public folder
     const imageUrl = `/${imageId}`;
@@ -118,7 +49,7 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
   };
 
   // Handle search submission
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (activeTab === 'text') {
       if (!textQuery.trim()) {
         alert('Please enter a search query');
@@ -129,37 +60,14 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
         query_text: textQuery
       });
     } else {
-      if (selectedFile) {
-        // Upload file
-        try {
-          const base64 = await fileToBase64(selectedFile);
-          onSearch({
-            query_type: 'image',
-            image_base64: base64
-          });
-        } catch (error) {
-          console.error('Error converting image:', error);
-          alert('Failed to process image');
-        }
-      } else if (selectedSampleId) {
-        // Use sample image from public folder - fetch and convert to base64
-        try {
-          const response = await fetch(`/${selectedSampleId}`);
-          const blob = await response.blob();
-          // Determine file type from extension
-          const fileType = selectedSampleId.endsWith('.png') ? 'image/png' : 'image/jpeg';
-          const file = new File([blob], selectedSampleId, { type: fileType });
-          const base64 = await fileToBase64(file);
-          onSearch({
-            query_type: 'image',
-            image_base64: base64
-          });
-        } catch (error) {
-          console.error('Error fetching sample image:', error);
-          alert('Failed to load sample image from public folder');
-        }
+      if (selectedSampleId) {
+        // Send sample image ID directly
+        onSearch({
+          query_type: 'image',
+          sample_image_id: selectedSampleId
+        });
       } else {
-        alert('Please select or upload an image');
+        alert('Please select a sample image');
       }
     }
   };
@@ -242,40 +150,8 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
       {activeTab === 'image' && (
         <div>
           <Body size="small" style={{ marginBottom: spacing[2], color: palette.gray.dark1 }}>
-            Upload an image or select from samples to find similar images
+            Select a sample image to find similar images
           </Body>
-
-          {/* File Upload Area */}
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              border: `2px dashed ${dragActive ? palette.blue.base : palette.gray.light2}`,
-              borderRadius: '8px',
-              padding: spacing[4],
-              textAlign: 'center',
-              cursor: 'pointer',
-              backgroundColor: dragActive ? palette.blue.light3 : palette.gray.light3,
-              marginBottom: spacing[3]
-            }}
-          >
-            <Body style={{ marginTop: spacing[2] }}>
-              Drag & drop an image here, or click to browse
-            </Body>
-            <Body size="small" style={{ color: palette.gray.dark1 }}>
-              PNG, JPG, JPEG (Max 5MB)
-            </Body>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-          </div>
 
           {/* Preview */}
           {previewUrl && (
@@ -298,7 +174,7 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
           {/* Sample Images */}
           <div style={{ marginBottom: spacing[3] }}>
             <Body weight="medium" style={{ marginBottom: spacing[2] }}>
-              Or select a sample image:
+              Select a sample image:
             </Body>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: spacing[2] }}>
               {SAMPLE_IMAGES.map((sample) => (
@@ -338,7 +214,7 @@ function MultimodalSearchInput({ onSearch, isLoading, initialTextQuery = '' }: M
           <Button
             variant="primary"
             onClick={handleSearch}
-            disabled={isLoading || (!selectedFile && !selectedSampleId)}
+            disabled={isLoading || !selectedSampleId}
             style={{ width: '100%', marginTop: spacing[2] }}
           >
             {isLoading ? 'Searching...' : 'Search Similar Images'}

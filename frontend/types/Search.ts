@@ -141,7 +141,7 @@ export interface AskResponse {
 export interface MultimodalSearchRequest {
   query_type: 'text' | 'image';
   query_text?: string;
-  image_base64?: string;
+  sample_image_id?: string;
   limit: number;
   include_text_chunks: boolean;
   num_candidates_multiplier?: number;

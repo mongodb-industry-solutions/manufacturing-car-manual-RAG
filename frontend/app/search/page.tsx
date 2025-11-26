@@ -230,7 +230,7 @@ function SearchPageContent() {
   };
   
   // Handle multimodal search
-  const handleMultimodalSearch = async (params: { query_type: 'text' | 'image'; query_text?: string; image_base64?: string }) => {
+  const handleMultimodalSearch = async (params: { query_type: 'text' | 'image'; query_text?: string; sample_image_id?: string }) => {
     setMultimodalLoading(true);
     setMultimodalError(null);
     setMultimodalResults(null);

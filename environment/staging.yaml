@@ -36,14 +36,6 @@ serviceAccount:
   annotations:
     iam.gke.io/gcp-service-account: 'manufacturing-kanopy-sa@manufacturing-project-425012.iam.gserviceaccount.com'
 
-# Pod annotations to configure Istio/Envoy sidecar proxy
-# Increase max request body size to 10MB to handle base64-encoded images
-podAnnotations:
-  proxy.istio.io/config: |
-    proxy:
-      config:
-        maxRequestBodySize: 10485760
-
 # Mount GCP credential config and service account token
 extraVolumes:
   - name: gcp-creds

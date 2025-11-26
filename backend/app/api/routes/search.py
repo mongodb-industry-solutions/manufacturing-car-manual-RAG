@@ -389,7 +389,7 @@ async def multimodal_search(request: MultimodalSearchRequest, x_debug: Optional[
     
     - **query_type**: "text" or "image"
     - **query_text**: Text query (required if query_type="text")
-    - **image_base64**: Base64 encoded image (required if query_type="image")
+    - **sample_image_id**: Sample image filename (required if query_type="image")
     - **limit**: Maximum number of image results to return (1-50)
     - **include_text_chunks**: Whether to include associated text chunks
     
@@ -406,7 +406,8 @@ async def multimodal_search(request: MultimodalSearchRequest, x_debug: Optional[
         from app.services.multimodal_embedding import MultimodalEmbeddingService
         from app.db.repositories.images import ImageRepository
         from app.db.repositories.chunks import ChunkRepository
-        import base64
+        import os
+        from pathlib import Path
         
         logger.info(f"Multimodal search request: query_type='{request.query_type}', limit={request.limit}")
         
@@ -432,14 +433,23 @@ async def multimodal_search(request: MultimodalSearchRequest, x_debug: Optional[
             query_display = request.query_text
             
         elif request.query_type == "image":
-            if not request.image_base64:
-                raise HTTPException(status_code=400, detail="image_base64 is required for image queries")
+            if not request.sample_image_id:
+                raise HTTPException(status_code=400, detail="sample_image_id is required for image queries")
             
-            logger.info("Generating multimodal image embedding")
-            # Decode base64 image
-            image_bytes = base64.b64decode(request.image_base64)
+            logger.info(f"Generating multimodal image embedding for sample image: {request.sample_image_id}")
+            # Read image from public folder
+            public_folder = Path("public")
+            image_path = public_folder / request.sample_image_id
+            
+            if not image_path.exists():
+                raise HTTPException(status_code=404, detail=f"Sample image not found: {request.sample_image_id}")
+            
+            # Read image file
+            with open(image_path, 'rb') as f:
+                image_bytes = f.read()
+            
             query_embedding = await multimodal_service.generate_image_embedding(image_bytes)
-            query_display = "[Image Query]"
+            query_display = f"[Image Query: {request.sample_image_id}]"
             
         else:
             raise HTTPException(status_code=400, detail=f"Invalid query_type: {request.query_type}")
