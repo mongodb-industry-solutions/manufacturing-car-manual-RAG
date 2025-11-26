@@ -26,15 +26,13 @@ env:
 envSecrets:
   # MongoDB & Voyage AI Configuration
   # Secret name: manufacturing-car-manual-secrets
-  MONGODB_URI: manufacturing-car-manual-secrets
-  DATABASE_NAME: manufacturing-car-manual-secrets
-  CHUNKS_COLLECTION: manufacturing-car-manual-secrets
-  VOYAGE_API_KEY: manufacturing-car-manual-secrets
+  MONGODB_URI: manufacturing-car-manual-secrets-prod
+  DATABASE_NAME: manufacturing-car-manual-secrets-prod
+  CHUNKS_COLLECTION: manufacturing-car-manual-secrets-prod
+  VOYAGE_API_KEY: manufacturing-car-manual-secrets-prod
 
 serviceAccount:
   enabled: true
-  annotations:
-    iam.gke.io/gcp-service-account: 'manufacturing-kanopy-sa@manufacturing-project-425012.iam.gserviceaccount.com'
 
 # Mount GCP credential config and service account token
 extraVolumes:
