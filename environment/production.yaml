@@ -20,6 +20,7 @@ env:
 
   # API Configuration
   INTERNAL_API_URL: 'http://manufacturing-car-manual-rag-backend-prod-web-app:80'
+  ORIGINS: 'http://manufacturing-car-manual-rag-frontend-prod.industrysolutions.prod.corp.mongodb.com'
   DEBUG: 'False'
 
 envSecrets:
@@ -32,6 +33,8 @@ envSecrets:
 
 serviceAccount:
   enabled: true
+  annotations:
+    iam.gke.io/gcp-service-account: 'manufacturing-kanopy-prod-sa@manufacturing-project-425012.iam.gserviceaccount.com'
 
 # Mount GCP credential config and service account token
 extraVolumes:
