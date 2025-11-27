@@ -20,7 +20,6 @@ env:
 
   # API Configuration
   INTERNAL_API_URL: 'http://manufacturing-car-manual-rag-backend-web-app:80'
-  ORIGINS: 'http://manufacturing-car-manual-rag-frontend.industrysolutions.staging.corp.mongodb.com'
   DEBUG: 'False'
 
 envSecrets:
