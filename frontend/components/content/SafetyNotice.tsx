@@ -3,7 +3,7 @@
  */
 import React from 'react';
 import Callout from '@leafygreen-ui/callout';
-import { MyBody as Body } from '@/components/ui/TypographyWrapper';
+import { Body } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
 import { SafetyNotice as SafetyNoticeType } from '../../types/Chunk';
 

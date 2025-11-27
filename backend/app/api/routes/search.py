@@ -3,12 +3,14 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 
 from app.models.search import (
-    SearchRequest, VectorSearchRequest, TextSearchRequest, HybridSearchRequest,
-    SearchResponse, SearchResult
+    SearchRequest, VectorSearchRequest, TextSearchRequest, HybridSearchRequest, GraphSearchRequest,
+    SearchResponse, SearchResult, MultimodalSearchRequest, MultimodalSearchResponse, ImageResultWithChunks
 )
 from app.services.embedding import EmbeddingService
+from app.services.reranker import VoyageRerankerService
 # Import the new search repository
 from app.db.repositories.search_new import SearchRepository
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -83,13 +85,38 @@ async def vector_search(request: VectorSearchRequest, x_debug: Optional[str] = H
             num_candidates_multiplier=request.num_candidates_multiplier
         )
         
+        # Apply reranking if requested
+        reranking_metadata = None
+        if request.use_reranker and search_results:
+            try:
+                settings = get_settings()
+                reranker_service = VoyageRerankerService(api_key=settings.VOYAGE_API_KEY)
+                # Convert SearchResult objects to dicts for reranking
+                results_dicts = [result.model_dump() if hasattr(result, 'model_dump') else result for result in search_results]
+                reranked_dicts, reranking_metadata = reranker_service.rerank(
+                    query=request.query,
+                    results=results_dicts,
+                    include_position_tracking=True
+                )
+                # Convert back to SearchResult objects
+                search_results = [SearchResult(**r) for r in reranked_dicts]
+                logger.info(f"Reranking applied: {len(search_results)} results reranked")
+            except Exception as e:
+                logger.warning(f"Reranking failed, using original results: {e}")
+                reranking_metadata = {
+                    "reranking_applied": False,
+                    "reason": "Reranking error",
+                    "error": str(e)
+                }
+        
         # Return formatted response
         response = SearchResponse(
             query=request.query,
             method="vector",
             results=search_results,
             total=len(search_results),
-            debug_info=debug_info
+            debug_info=debug_info,
+            reranking_metadata=reranking_metadata
         )
         
         logger.info(f"Vector search completed: found {len(search_results)} results")
@@ -160,13 +187,38 @@ async def text_search(request: TextSearchRequest, x_debug: Optional[str] = Heade
             max_edits=request.max_edits
         )
         
+        # Apply reranking if requested
+        reranking_metadata = None
+        if request.use_reranker and search_results:
+            try:
+                settings = get_settings()
+                reranker_service = VoyageRerankerService(api_key=settings.VOYAGE_API_KEY)
+                # Convert SearchResult objects to dicts for reranking
+                results_dicts = [result.model_dump() if hasattr(result, 'model_dump') else result for result in search_results]
+                reranked_dicts, reranking_metadata = reranker_service.rerank(
+                    query=request.query,
+                    results=results_dicts,
+                    include_position_tracking=True
+                )
+                # Convert back to SearchResult objects
+                search_results = [SearchResult(**r) for r in reranked_dicts]
+                logger.info(f"Reranking applied: {len(search_results)} results reranked")
+            except Exception as e:
+                logger.warning(f"Reranking failed, using original results: {e}")
+                reranking_metadata = {
+                    "reranking_applied": False,
+                    "reason": "Reranking error",
+                    "error": str(e)
+                }
+        
         # Return formatted response
         response = SearchResponse(
             query=request.query,
             method="text",
             results=search_results,
             total=len(search_results),
-            debug_info=debug_info
+            debug_info=debug_info,
+            reranking_metadata=reranking_metadata
         )
         
         logger.info(f"Text search completed: found {len(search_results)} results")
@@ -263,13 +315,38 @@ async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = H
             num_candidates_multiplier=request.num_candidates_multiplier
         )
         
+        # Apply reranking if requested
+        reranking_metadata = None
+        if request.use_reranker and search_results:
+            try:
+                settings = get_settings()
+                reranker_service = VoyageRerankerService(api_key=settings.VOYAGE_API_KEY)
+                # Convert SearchResult objects to dicts for reranking
+                results_dicts = [result.model_dump() if hasattr(result, 'model_dump') else result for result in search_results]
+                reranked_dicts, reranking_metadata = reranker_service.rerank(
+                    query=request.query,
+                    results=results_dicts,
+                    include_position_tracking=True
+                )
+                # Convert back to SearchResult objects
+                search_results = [SearchResult(**r) for r in reranked_dicts]
+                logger.info(f"Reranking applied: {len(search_results)} results reranked")
+            except Exception as e:
+                logger.warning(f"Reranking failed, using original results: {e}")
+                reranking_metadata = {
+                    "reranking_applied": False,
+                    "reason": "Reranking error",
+                    "error": str(e)
+                }
+        
         # Return formatted response
         response = SearchResponse(
             query=request.query,
             method="hybrid_rrf",
             results=search_results,
             total=len(search_results),
-            debug_info=debug_info
+            debug_info=debug_info,
+            reranking_metadata=reranking_metadata
         )
         
         logger.info(f"Hybrid search completed: found {len(search_results)} results")
@@ -305,3 +382,163 @@ async def hybrid_search(request: HybridSearchRequest, x_debug: Optional[str] = H
             )
         raise HTTPException(status_code=500, detail=error_message)
 
+@router.post("/multimodal", response_model=MultimodalSearchResponse)
+async def multimodal_search(request: MultimodalSearchRequest, x_debug: Optional[str] = Header(None)):
+    """
+    Perform multimodal search using text or image input
+    
+    - **query_type**: "text" or "image"
+    - **query_text**: Text query (required if query_type="text")
+    - **sample_image_id**: Sample image filename (required if query_type="image")
+    - **limit**: Maximum number of image results to return (1-50)
+    - **include_text_chunks**: Whether to include associated text chunks
+    
+    For text queries: performs parallel multimodal image search + text vector search
+    For image queries: performs multimodal image search only
+    
+    For debug information, set the X-Debug header to "true"
+    """
+    debug_mode = get_debug_flag(x_debug)
+    debug_info = {} if debug_mode else None
+    
+    try:
+        # Import multimodal services
+        from app.services.multimodal_embedding import MultimodalEmbeddingService
+        from app.db.repositories.images import ImageRepository
+        from app.db.repositories.chunks import ChunkRepository
+        import os
+        from pathlib import Path
+        
+        logger.info(f"Multimodal search request: query_type='{request.query_type}', limit={request.limit}")
+        
+        if debug_mode:
+            debug_info["request"] = {
+                "query_type": request.query_type,
+                "limit": request.limit,
+                "include_text_chunks": request.include_text_chunks
+            }
+        
+        # Initialize services
+        multimodal_service = MultimodalEmbeddingService()
+        image_repo = ImageRepository()
+        chunk_repo = ChunkRepository()
+        
+        # Generate embedding based on query type
+        if request.query_type == "text":
+            if not request.query_text:
+                raise HTTPException(status_code=400, detail="query_text is required for text queries")
+            
+            logger.info(f"Generating multimodal text embedding for query: '{request.query_text}'")
+            query_embedding = await multimodal_service.generate_text_embedding(request.query_text)
+            query_display = request.query_text
+            
+        elif request.query_type == "image":
+            if not request.sample_image_id:
+                raise HTTPException(status_code=400, detail="sample_image_id is required for image queries")
+            
+            logger.info(f"Generating multimodal image embedding for sample image: {request.sample_image_id}")
+            # Read image from public folder
+            public_folder = Path("public")
+            image_path = public_folder / request.sample_image_id
+            
+            if not image_path.exists():
+                raise HTTPException(status_code=404, detail=f"Sample image not found: {request.sample_image_id}")
+            
+            # Read image file
+            with open(image_path, 'rb') as f:
+                image_bytes = f.read()
+            
+            query_embedding = await multimodal_service.generate_image_embedding(image_bytes)
+            query_display = f"[Image Query: {request.sample_image_id}]"
+            
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid query_type: {request.query_type}")
+        
+        logger.info(f"Generated multimodal embedding with {len(query_embedding)} dimensions")
+        
+        # Perform multimodal vector search on images
+        logger.info("Performing multimodal vector search on images...")
+        image_results = await image_repo.multimodal_vector_search(
+            query_embedding=query_embedding,
+            limit=request.limit,
+            num_candidates_multiplier=request.num_candidates_multiplier
+        )
+        
+        logger.info(f"Found {len(image_results)} image results")
+        
+        # Fetch associated text chunks for each image if requested
+        results_with_chunks = []
+        for img_result in image_results:
+            associated_chunks = None
+            
+            if request.include_text_chunks and img_result.associated_chunk_ids:
+                associated_chunks = []
+                for chunk_id in img_result.associated_chunk_ids:
+                    try:
+                        chunk = await chunk_repo.get_chunk_by_id(chunk_id)
+                        if chunk:
+                            search_result = SearchResult(
+                                score=1.0,
+                                chunk_id=chunk.id,
+                                text=chunk.text,
+                                context=chunk.context,
+                                breadcrumb_trail=chunk.breadcrumb_trail,
+                                page_numbers=chunk.page_numbers,
+                                content_type=chunk.content_type,
+                                metadata=chunk.metadata.model_dump() if chunk.metadata else None,
+                                vehicle_systems=chunk.vehicle_systems,
+                                heading_level_1=chunk.heading_level_1,
+                                heading_level_2=chunk.heading_level_2,
+                                heading_level_3=chunk.heading_level_3
+                            )
+                            associated_chunks.append(search_result)
+                    except Exception as e:
+                        logger.warning(f"Could not fetch chunk {chunk_id}: {e}")
+            
+            result_with_chunks = ImageResultWithChunks(
+                score=img_result.score,
+                image_id=img_result.image_id,
+                gridfs_file_id=img_result.gridfs_file_id,
+
+                # NEW: Include rich metadata
+                title=img_result.title,
+                description=img_result.description,
+                keywords=img_result.keywords,
+                languages=img_result.languages,
+                category=img_result.category,
+
+                # Existing fields
+                page_number=img_result.page_number,
+                breadcrumb_trail=img_result.breadcrumb_trail,
+                caption=img_result.caption,
+                diagram_type=img_result.diagram_type,
+                associated_chunks=associated_chunks
+            )
+            results_with_chunks.append(result_with_chunks)
+
+        # Build response
+        response = MultimodalSearchResponse(
+            query_type=request.query_type,
+            query_text=request.query_text if request.query_type == "text" else None,
+            image_results=results_with_chunks,
+            text_results=None,
+            total_images=len(results_with_chunks),
+            total_text=None
+        )
+
+        logger.info(f"Multimodal search completed: {len(results_with_chunks)} images")
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_message = f"Error in multimodal search: {str(e)}"
+        logger.error(error_message)
+        import traceback
+        traceback.print_exc()
+        
+        if debug_mode:
+            debug_info["error"] = error_message
+            debug_info["traceback"] = traceback.format_exc()
+        
+        raise HTTPException(status_code=500, detail=error_message)

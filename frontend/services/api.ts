@@ -3,7 +3,9 @@
  */
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+// Use relative path for proxy pattern (same origin).
+// Proxy implementation is configured in `frontend/app/api/v1/[...path]/route.ts`
+const API_BASE = '/api/v1';
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -75,8 +77,11 @@ export const apiGet = async <T>(url: string, params?: any): Promise<T> => {
   return response.data;
 };
 
-export const apiPost = async <T>(url: string, data?: any, params?: any): Promise<T> => {
-  const response = await api.post<T>(normalizeUrl(url), data, { params });
+export const apiPost = async <T>(url: string, data?: any, params?: any, headers?: any): Promise<T> => {
+  const response = await api.post<T>(normalizeUrl(url), data, { 
+    params,
+    headers: headers ? { ...api.defaults.headers, ...headers } : undefined
+  });
   return response.data;
 };
 
@@ -88,4 +93,24 @@ export const apiPut = async <T>(url: string, data: any): Promise<T> => {
 export const apiDelete = async <T>(url: string): Promise<T> => {
   const response = await api.delete<T>(normalizeUrl(url));
   return response.data;
+};
+
+/**
+ * Image API Functions
+ */
+import type { ImageDocument } from '@/types/Search';
+
+export const getAllImages = async (limit?: number): Promise<{ total: number; images: ImageDocument[] }> => {
+  return apiGet<{ total: number; images: ImageDocument[] }>(
+    '/images/all',
+    limit ? { limit } : undefined
+  );
+};
+
+export const getImageMetadata = async (imageId: string): Promise<ImageDocument> => {
+  return apiGet<ImageDocument>(`/images/${imageId}`);
+};
+
+export const getImageFileUrl = (imageId: string): string => {
+  return `${API_BASE}/images/${imageId}/file`;
 };

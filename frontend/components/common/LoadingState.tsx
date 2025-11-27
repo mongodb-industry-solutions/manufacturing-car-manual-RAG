@@ -2,10 +2,11 @@
  * Loading state component
  */
 import React from 'react';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
-import { MySpinner as Spinner } from '@/components/ui/TypographyWrapper';
-import { MyH3 as H3, MyBody as Body } from '@/components/ui/TypographyWrapper';
+import Card from '@leafygreen-ui/card';
+import { Spinner } from '@leafygreen-ui/loading-indicator';
+import { H3, Body } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 interface LoadingStateProps {
   message?: string;
@@ -45,14 +46,14 @@ const LoadingState: React.FC<LoadingStateProps> = ({
           width: '100%'
         }}
       >
-        <Card style={{ maxWidth: '500px', width: '100%' }}>
+        <Card style={{ ...CARD_STYLES.base, maxWidth: '500px', width: '100%' }}>
           {content}
         </Card>
       </div>
     );
   }
 
-  return <Card>{content}</Card>;
+  return <Card style={CARD_STYLES.base}>{content}</Card>;
 };
 
 export default LoadingState;

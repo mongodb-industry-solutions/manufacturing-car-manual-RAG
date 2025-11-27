@@ -1,80 +1,71 @@
 'use client';
 
 /**
- * Header component with navigation
+ * Header component with navigation - MongoDB Professional Design
  */
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MyH3 as H3, MyButton as Button, MyTooltip as Tooltip } from '@/components/ui/TypographyWrapper';
+import { Body } from '@leafygreen-ui/typography';
 import Icon from '@leafygreen-ui/icon';
+import Button from '@leafygreen-ui/button';
 import { BRANDING, TERMINOLOGY } from '@/constants/appConstants';
+import InfoWizard from '@/components/common/InfoWizard';
+import { platformOverviewInfo } from '@/content/platformOverviewInfo';
 
 const Header: React.FC = () => {
   const pathname = usePathname();
-  
-  // Convert hex color to rgb for lighter background
-  const hexToRgb = (hex: string) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : null;
-  };
-  
-  // Get the primary color from constants
-  const primaryColor = BRANDING.primaryColor;
-  const rgbColor = hexToRgb(primaryColor);
-  const bgColor = rgbColor ? `rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.1)` : palette.green.light2;
-  
+  const [platformInfoOpen, setPlatformInfoOpen] = useState(false);
+
   return (
-    <header
-      style={{
-        backgroundColor: 'white',
-        boxShadow: '0 4px 10px rgba(0, 0, 0, 0.08)',
-        padding: `${spacing[2]}px ${spacing[3]}px`,
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        borderBottom: `3px solid ${palette.green.base}`,
-      }}
-    >
-      <div
+    <>
+      <header
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          maxWidth: '1200px',
-          margin: '0 auto',
+          backgroundColor: palette.green.dark2,
+          boxShadow: '0 8px 16px rgba(0, 0, 0, 0.15)',
+          padding: `${spacing[4]}px ${spacing[3]}px`,
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          borderBottom: `1px solid ${palette.green.dark3}`,
         }}
       >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            maxWidth: '1200px',
+            margin: '0 auto',
+          }}
+        >
         <div style={{ display: 'flex', alignItems: 'center', gap: spacing[3] }}>
-          <Link href="/" style={{ display: 'flex', alignItems: 'center' }}>
-            <Tooltip
-              trigger={
-                <div style={{ 
-                  backgroundColor: bgColor, 
-                  borderRadius: '50%', 
-                  padding: spacing[1], 
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <Icon glyph="Database" size={30} fill={primaryColor} />
-                </div>
-              }
-              triggerEvent="hover"
-            >
-              Back to home
-            </Tooltip>
-          </Link>
-          
-          <H3 style={{ margin: 0, color: palette.gray.dark2, fontWeight: 'bold' }}>
-            {BRANDING.title}
-          </H3>
+          <Icon glyph="Resource" size={56} fill={palette.gray.light3} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1] }}>
+            <div style={{
+              margin: 0,
+              color: palette.gray.light3,
+              fontFamily: "'Euclid Circular A', sans-serif",
+              fontWeight: 700,
+              fontSize: '28px',
+              lineHeight: '32px'
+            }}>
+              {BRANDING.title}
+            </div>
+            <div style={{
+              margin: 0,
+              color: palette.gray.light2,
+              fontFamily: "'Euclid Circular A', sans-serif",
+              fontWeight: 400,
+              fontSize: '15px',
+              lineHeight: '20px',
+              opacity: 0.95
+            }}>
+              {BRANDING.subtitle}
+            </div>
+          </div>
         </div>
         
         <nav>
@@ -84,55 +75,129 @@ const Header: React.FC = () => {
               listStyle: 'none',
               margin: 0,
               padding: 0,
-              gap: spacing[2],
+              gap: spacing[3],
             }}
           >
             <li>
-              <Link href="/">
-                <div style={{ display: 'inline-block' }}>
-                  <Button
-                    variant={pathname === '/' ? 'primary' : 'default'}
-                    size="large"
-                    leftGlyph={<Icon glyph="Home" />}
-                  >
-                    Home
-                  </Button>
-                </div>
-              </Link>
-            </li>
-            
-            <li>
-              <Link href="/search">
-                <div style={{ display: 'inline-block' }}>
-                  <Button
-                    variant={pathname?.startsWith('/search') ? 'primary' : 'default'}
-                    size="large"
-                    leftGlyph={<Icon glyph="MagnifyingGlass" />}
-                  >
-                    {TERMINOLOGY.search}
-                  </Button>
-                </div>
-              </Link>
-            </li>
-            
-            <li>
-              <Link href="/browse">
-                <div style={{ display: 'inline-block' }}>
-                  <Button
-                    variant={pathname?.startsWith('/browse') ? 'primary' : 'default'}
-                    size="large"
-                    leftGlyph={<Icon glyph="Table" />}
-                  >
-                    {TERMINOLOGY.browse}
-                  </Button>
-                </div>
+              <Link
+                href="/"
+                style={{
+                  color: palette.gray.light3,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  padding: `${spacing[2]}px ${spacing[4]}px`,
+                  borderRadius: '6px',
+                  transition: 'background-color 0.2s ease',
+                  backgroundColor: pathname === '/' ? palette.green.dark1 : 'transparent',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = palette.green.dark1;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = pathname === '/' ? palette.green.dark1 : 'transparent';
+                }}
+              >
+                <Icon glyph="Home" size={20} fill={palette.gray.light3} />
+                <span style={{ fontFamily: "'Euclid Circular A', sans-serif" }}>
+                  Home
+                </span>
               </Link>
             </li>
 
+            <li>
+              <Link
+                href="/browse"
+                style={{
+                  color: palette.gray.light3,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  padding: `${spacing[2]}px ${spacing[4]}px`,
+                  borderRadius: '6px',
+                  transition: 'background-color 0.2s ease',
+                  backgroundColor: pathname?.startsWith('/browse') ? palette.green.dark1 : 'transparent',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = palette.green.dark1;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = pathname?.startsWith('/browse') ? palette.green.dark1 : 'transparent';
+                }}
+              >
+                <Icon glyph="Table" size={20} fill={palette.gray.light3} />
+                <span style={{ fontFamily: "'Euclid Circular A', sans-serif" }}>
+                  {TERMINOLOGY.browse}
+                </span>
+              </Link>
+            </li>
+
+            <li>
+              <Link
+                href="/search"
+                style={{
+                  color: palette.gray.light3,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: spacing[2],
+                  padding: `${spacing[2]}px ${spacing[4]}px`,
+                  borderRadius: '6px',
+                  transition: 'background-color 0.2s ease',
+                  backgroundColor: pathname?.startsWith('/search') ? palette.green.dark1 : 'transparent',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = palette.green.dark1;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = pathname?.startsWith('/search') ? palette.green.dark1 : 'transparent';
+                }}
+              >
+                <Icon glyph="MagnifyingGlass" size={20} fill={palette.gray.light3} />
+                <span style={{ fontFamily: "'Euclid Circular A', sans-serif" }}>
+                  {TERMINOLOGY.search}
+                </span>
+              </Link>
+            </li>
+
+            <li style={{ marginLeft: spacing[2], display: 'flex', alignItems: 'center' }}>
+              <Button
+                size="small"
+                variant="default"
+                leftGlyph={<Icon glyph="Wizard" />}
+                onClick={() => setPlatformInfoOpen(true)}
+                style={{
+                  backgroundColor: palette.white,
+                  color: palette.green.dark2,
+                  border: 'none',
+                  fontFamily: "'Euclid Circular A', sans-serif",
+                  fontWeight: 500,
+                }}
+              >
+                Tell me more
+              </Button>
+            </li>
           </ul>
         </nav>
       </div>
     </header>
+
+    <InfoWizard
+      open={platformInfoOpen}
+      setOpen={setPlatformInfoOpen}
+      iconGlyph="Diagram"
+      sections={platformOverviewInfo.sections}
+      showButton={false}
+    />
+  </>
   );
 };
 

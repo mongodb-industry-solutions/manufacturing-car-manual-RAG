@@ -2,9 +2,9 @@
  * Search result card component
  */
 import React from 'react';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
-import { MyH3 as H3, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
+import Card from '@leafygreen-ui/card';
+import Button from '@leafygreen-ui/button';
+import { H3, Body, Subtitle } from '@leafygreen-ui/typography';
 import Icon from '@leafygreen-ui/icon';
 import Callout from '@leafygreen-ui/callout';
 import Tooltip from '@leafygreen-ui/tooltip';
@@ -15,6 +15,8 @@ import { Chunk } from '../../types/Chunk';
 import Link from 'next/link';
 import Badge from '@leafygreen-ui/badge';
 import { BRANDING, TERMINOLOGY, DOCUMENT_CONFIG, FEATURES } from '@/constants/appConstants';
+import { PositionIndicator } from './PositionIndicator';
+import { CARD_STYLES, BADGE_STYLES } from '@/lib/styleConstants';
 
 interface SearchResultCardProps {
   result: SearchResult;
@@ -50,6 +52,17 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
   const heading_level_2 = result.heading_level_2 || chunk.heading_level_2;
   const heading_level_3 = result.heading_level_3 || chunk.heading_level_3;
   const chunk_id = result.chunk_id || chunk.id;
+  
+  // Hybrid Graph source and depth info
+  const source = result.source;
+  const depth = result.depth;
+  const isGraphRAG = source !== undefined && source !== null;
+  // CRITICAL: Only mark as seed if BOTH source is 'vector_seed' AND depth is 0
+  // This prevents graph-expanded results with depth=0 from incorrectly showing as seeds
+  const isSeed = source === 'vector_seed' && depth === 0;
+  
+  // Determine if this is hybrid search (has both vector and text scores but no source field)
+  const isHybridSearch = (vector_score !== undefined && text_score !== undefined) && !isGraphRAG;
   
   // Raw score from $rankFusion (typically 0-1 range)
   const displayScore = score;
@@ -95,18 +108,37 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
         }`,
         padding: `${spacing[3]}px ${spacing[3]}px ${spacing[2]}px`
       }}>
-        {/* Score indicators */}
+        {/* Score indicators and position indicator */}
         <div style={{ 
           float: 'right',
           display: 'flex',
           gap: spacing[2],
-          alignItems: 'center',
+          alignItems: 'flex-start',
           marginLeft: spacing[2],
           marginBottom: spacing[2],
-          flexDirection: 'column'
         }}>
-          {/* For hybrid search: show combined score and percentage breakdown */}
-          {(vector_score !== undefined && text_score !== undefined) && (
+          {/* Position Indicator - only show if reranker was actually applied */}
+          {result.reranker_score !== undefined && result.reranker_score !== null && result.position_change !== undefined && result.position_change !== null && (
+            <div style={{ paddingTop: '2px' }}>
+              <PositionIndicator
+                originalPosition={result.original_position}
+                newPosition={result.new_position}
+                positionChange={result.position_change}
+                rerankerScore={result.reranker_score}
+                showTooltip={true}
+              />
+            </div>
+          )}
+          
+          {/* Scores column */}
+          <div style={{ 
+            display: 'flex',
+            gap: spacing[2],
+            alignItems: 'center',
+            flexDirection: 'column'
+          }}>
+            {/* For hybrid search only: show combined score and percentage breakdown */}
+            {isHybridSearch && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: spacing[1], alignItems: 'flex-end' }}>
               {/* Combined Score */}
               <Tooltip
@@ -137,14 +169,14 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                     <div style={{
                       width: `${textPercentage}%`,
                       height: '100%',
-                      backgroundColor: palette.green.base,
+                      backgroundColor: palette.green.dark2,
                       transition: 'width 0.3s ease'
                     }} />
                     {/* Vector portion (blue) - right side */}
                     <div style={{
                       width: `${vectorPercentage}%`,
                       height: '100%',
-                      backgroundColor: palette.blue.base,
+                      backgroundColor: palette.blue.dark2,
                       transition: 'width 0.3s ease'
                     }} />
                   </div>
@@ -162,7 +194,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: spacing[1],
-                          color: palette.green.base
+                          color: palette.green.dark2
                         }}>
                           <Icon glyph="String" size="small" />
                           {textPercentage.toFixed(1)}%
@@ -179,7 +211,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
                           display: 'flex', 
                           alignItems: 'center', 
                           gap: spacing[1],
-                          color: palette.blue.base
+                          color: palette.blue.dark2
                         }}>
                           <Icon glyph="Diagram" size="small" />
                           {vectorPercentage.toFixed(1)}%
@@ -228,18 +260,53 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
               Full-text search score
             </Tooltip>
           )}
+          
+          {/* Reranker Score Badge */}
+          {result.reranker_score !== undefined && result.reranker_score !== null && (
+            <Tooltip
+              trigger={
+                <Badge variant="yellow">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                    <Icon glyph="Sparkle" size="small" />
+                    R: {result.reranker_score.toFixed(4)}
+                  </span>
+                </Badge>
+              }
+              triggerEvent="hover"
+            >
+              Voyage AI Reranker score
+            </Tooltip>
+          )}
+          </div>
         </div>
         
         {/* Header */}
-        <H3 style={{ marginBottom: spacing[1] }}>{title}</H3>
-        {subtitle && (
-          <Subtitle style={{ marginBottom: spacing[2], color: palette.gray.dark1 }}>
-            {subtitle}
-          </Subtitle>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginBottom: spacing[1] }}>
+          <H3 style={{ margin: 0 }}>{title}</H3>
+          
+          {/* GraphRAG Source Badge */}
+          {isGraphRAG && (
+            <Tooltip
+              trigger={
+                <Badge variant={isSeed ? 'blue' : 'green'}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: spacing[1] }}>
+                    {isSeed ? 'Seed' : 'Expanded'}
+                    {depth !== undefined && depth !== null && ` (D${depth})`}
+                  </span>
+                </Badge>
+              }
+              triggerEvent="hover"
+            >
+              {isSeed 
+                ? `Initial search result (depth ${depth || 0})` 
+                : `Found via graph traversal at depth ${depth}`
+              }
+            </Tooltip>
+          )}
+        </div>
         
-        {/* Breadcrumb */}
-        {breadcrumb_trail && (
+        {/* Breadcrumb - only show if different from title and has hierarchy */}
+        {breadcrumb_trail && breadcrumb_trail !== title && breadcrumb_trail.includes(' > ') && (
           <Body size="small" style={{ 
             marginBottom: spacing[2], 
             color: palette.gray.dark1,
@@ -256,7 +323,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
       <div style={{ padding: `0 ${spacing[3]}px ${spacing[3]}px` }}>
         {/* Content type badges */}
         {content_type && content_type.length > 0 && (
-          <div style={{ display: 'flex', gap: spacing[1], marginBottom: spacing[2], flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: spacing[1], marginBottom: spacing[3], flexWrap: 'wrap' }}>
             {content_type.map((type) => (
               <Badge key={type} variant="darkgray">
                 {type}
@@ -268,6 +335,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, highlight }
         {/* Text content preview - truncated */}
         <Card style={{ 
           padding: spacing[2], 
+          marginTop: spacing[3],
           marginBottom: spacing[2],
           backgroundColor: palette.gray.light3,
           border: 'none'

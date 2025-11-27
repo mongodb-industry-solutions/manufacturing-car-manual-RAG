@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     MONGODB_URI: str = Field(..., env="MONGODB_URI")
     DATABASE_NAME: str = Field(..., env="DATABASE_NAME")
     MONGODB_DB: Optional[str] = Field(None, env="DATABASE_NAME")  # Optional alias for DATABASE_NAME
-    CHUNKS_COLLECTION: str = "manual_chunks"  # Hardcoded for car manuals
+    CHUNKS_COLLECTION: str = Field("manuals", env="CHUNKS_COLLECTION")  # Unified collection for text chunks and images
     
     # GCP Vertex AI configuration
     GCP_PROJECT_ID: str = Field(..., env="GCP_PROJECT_ID")
@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     VECTOR_INDEX_NAME: str = "manual_vector_index"
     TEXT_INDEX_NAME: str = "manual_text_search_index"
     VECTOR_FIELD_NAME: str = "embedding"
+    
+    # Multimodal configuration - Voyage AI
+    VOYAGE_API_KEY: str = Field(..., env="VOYAGE_API_KEY")
+    MULTIMODAL_MODEL_ID: str = Field("voyage-multimodal-3", env="MULTIMODAL_MODEL_ID")
+    MULTIMODAL_VECTOR_INDEX_NAME: str = Field(..., env="MULTIMODAL_VECTOR_INDEX_NAME")
+    MULTIMODAL_VECTOR_DIMENSIONS: int = 1024
+    GRIDFS_BUCKET_NAME: str = "fs"
     
     # Document configuration - Hardcoded for car manuals
     DOCUMENT_TYPES: List[str] = ["manual", "maintenance", "troubleshooting", "specifications"]

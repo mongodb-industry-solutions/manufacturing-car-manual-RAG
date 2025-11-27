@@ -6,7 +6,7 @@
 import React from 'react';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MyBody as Body } from '@/components/ui/TypographyWrapper';
+import { Body } from '@leafygreen-ui/typography';
 import Icon from '@leafygreen-ui/icon';
 import Link from 'next/link';
 
@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
         backgroundColor: palette.gray.dark2,
         color: palette.gray.light3,
         padding: `${spacing[3]}px 0`,
-        borderTop: `3px solid ${palette.green.base}`,
+        borderTop: `1px solid ${palette.gray.dark1}`,
       }}
     >
       <div
@@ -42,14 +42,14 @@ const Footer: React.FC = () => {
               display: 'flex', 
               alignItems: 'center', 
               gap: spacing[1],
-              backgroundColor: palette.green.light3,
+              backgroundColor: palette.gray.dark1,
               padding: `${spacing[1]}px ${spacing[2]}px`,
               borderRadius: '4px',
-              border: `1px solid ${palette.green.light1}`
+              border: `1px solid ${palette.gray.base}`
             }}
           >
-            <Icon glyph="Database" size={24} fill={palette.green.base} />
-            <Body weight="medium" style={{ color: palette.green.dark2 }}>
+            <Icon glyph="Database" size={24} fill={palette.gray.light2} />
+            <Body weight="medium" style={{ color: palette.gray.light3 }}>
               Car Manual RAG
             </Body>
           </div>

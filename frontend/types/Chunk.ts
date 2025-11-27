@@ -46,6 +46,16 @@ export interface Chunk {
     note: string;
   };
   embedding_timestamp?: string;
+
+  // Image-specific fields (for image chunks stored in same collection)
+  multimodal_embedding?: number[];
+  gridfs_file_id?: string;
+  title?: string;
+  description?: string;
+  keywords?: string[];
+  languages?: string[];
+  category?: string;
+  associated_chunk_ids?: string[];
 }
 
 export interface ChunkList {

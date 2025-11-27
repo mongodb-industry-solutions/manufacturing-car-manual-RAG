@@ -2,12 +2,13 @@
  * Empty state component
  */
 import React from 'react';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
-import { MyH3 as H3, MyBody as Body } from '@/components/ui/TypographyWrapper';
+import Card from '@leafygreen-ui/card';
+import { H3, Body } from '@leafygreen-ui/typography';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 interface EmptyStateProps {
   title?: string;
@@ -68,14 +69,14 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           width: '100%'
         }}
       >
-        <Card style={{ maxWidth: '500px', width: '100%' }}>
+        <Card style={{ ...CARD_STYLES.base, maxWidth: '500px', width: '100%' }}>
           {content}
         </Card>
       </div>
     );
   }
 
-  return <Card>{content}</Card>;
+  return <Card style={CARD_STYLES.base}>{content}</Card>;
 };
 
 export default EmptyState;

@@ -1,0 +1,24 @@
+{
+  "engine_diagram_page_42.jpg": {
+    "chunk_ids": ["chunk_00123", "chunk_00124"],
+    "page_number": 42,
+    "caption": "V8 Engine Component Layout",
+    "diagram_type": "mechanical",
+    "breadcrumb_trail": "Engine > Components > Layout"
+  },
+  "electrical_system_page_85.jpg": {
+    "chunk_ids": ["chunk_00250", "chunk_00251"],
+    "page_number": 85,
+    "caption": "Main Electrical System Schematic",
+    "diagram_type": "electrical",
+    "breadcrumb_trail": "Electrical System > Main Circuits"
+  },
+  "brake_assembly_page_112.jpg": {
+    "chunk_ids": ["chunk_00345"],
+    "page_number": 112,
+    "caption": "Brake Assembly Components",
+    "diagram_type": "mechanical",
+    "breadcrumb_trail": "Brakes > Assembly > Components"
+  }
+}
+

@@ -1,0 +1,26 @@
+{
+  "example_image1.jpg": {
+    "title": "Multi-language Control Labels",
+    "description": "Table of control labels in English, Spanish, and French with hazard, trunk, and door ajar icons.",
+    "keywords": ["labels", "multilingual", "symbols", "hazard", "trunk", "door ajar", "English", "Español", "Français"],
+    "languages": ["English", "Spanish", "French"],
+    "category": "Labels & Warnings",
+    "breadcrumb_trail": "Reference > Labels & Warnings",
+    "page_numbers": [15],
+    "content_type": ["diagram", "reference"],
+    "vehicle_systems": ["safety", "controls"],
+    "associated_chunk_ids": []
+  },
+  "example_image2.jpg": {
+    "title": "Engine Component Diagram",
+    "description": "Detailed diagram showing major engine components and their locations in the V8 engine bay.",
+    "keywords": ["engine", "components", "V8", "diagram", "mechanical"],
+    "languages": ["English"],
+    "category": "Engine & Mechanical",
+    "breadcrumb_trail": "Engine > Components > Layout",
+    "page_numbers": [42],
+    "content_type": ["diagram", "technical"],
+    "vehicle_systems": ["engine", "powertrain"],
+    "associated_chunk_ids": ["chunk_00123", "chunk_00124"]
+  }
+}

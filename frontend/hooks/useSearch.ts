@@ -1,11 +1,12 @@
 /**
  * Custom hook for search functionality with caching support
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   SearchMethod, 
   SearchRequest, 
   HybridSearchRequest,
+  GraphSearchRequest,
   SearchResponse,
   HybridMethod
 } from '../types/Search';
@@ -19,15 +20,26 @@ interface SearchCache {
 // Create a static cache that persists between component mounts
 const GLOBAL_SEARCH_CACHE: SearchCache = {};
 
-// Cache version to invalidate old results after $rankFusion implementation
-const CACHE_VERSION = 'v3_rrf_contribution_scores';
+// Cache version to invalidate old results after GraphRAG implementation
+const CACHE_VERSION = 'v5_reranker_fix';
 
 export interface UseSearchResult {
   search: (
     method: SearchMethod, 
     query: string, 
-    limit?: number
+    limit?: number,
+    // GraphRAG-specific parameters
+    relationshipTypes?: string[],
+    // Reranker parameter
+    useReranker?: boolean
   ) => Promise<SearchResponse>;
+  searchRef: React.MutableRefObject<((
+    method: SearchMethod, 
+    query: string, 
+    limit?: number,
+    relationshipTypes?: string[],
+    useReranker?: boolean
+  ) => Promise<SearchResponse>) | null>;
   loading: boolean;
   error: string | null;
   results: SearchResponse | null;
@@ -39,25 +51,42 @@ export const useSearch = (): UseSearchResult => {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<SearchResponse | null>(null);
   
+  // Create a stable ref for the search function
+  const searchRef = useRef<((
+    method: SearchMethod, 
+    query: string, 
+    limit?: number,
+    relationshipTypes?: string[],
+    useReranker?: boolean
+  ) => Promise<SearchResponse>) | null>(null);
+  
   // Remove the automatic cache restoration on mount
   // The page component will handle URL params and trigger searches as needed
   
-  // Generate a consistent cache key for searches
-  const getCacheKey = (
-    method: SearchMethod, 
-    query: string, 
-    limit: number = 5
+  // Generate a consistent cache key for searches (memoized)
+  const getCacheKey = useCallback((
+    method: SearchMethod,
+    query: string,
+    limit: number = 5,
+    relationshipTypes?: string[],
+    useReranker: boolean = false
   ): string => {
-    return `${CACHE_VERSION}:${method}:${query}:${limit}`;
-  };
+    if (method === 'graph') {
+      const relTypes = relationshipTypes?.sort().join(',') || '';
+      return `${CACHE_VERSION}:${method}:${query}:${limit}:${relTypes}:${useReranker}`;
+    }
+    return `${CACHE_VERSION}:${method}:${query}:${limit}:${useReranker}`;
+  }, []);
   
-  const search = async (
-    method: SearchMethod, 
-    query: string, 
-    limit: number = 5
+  const search = useCallback(async (
+    method: SearchMethod,
+    query: string,
+    limit: number = 5,
+    relationshipTypes?: string[],
+    useReranker: boolean = false
   ): Promise<SearchResponse> => {
     // Generate a cache key for this search
-    const cacheKey = getCacheKey(method, query, limit);
+    const cacheKey = getCacheKey(method, query, limit, relationshipTypes, useReranker);
     
     // Check if we have a cached result for this exact search
     if (GLOBAL_SEARCH_CACHE[cacheKey]) {
@@ -76,7 +105,7 @@ export const useSearch = (): UseSearchResult => {
       
       switch (method) {
         case 'vector':
-          response = await searchService.vectorSearch({ query, limit });
+          response = await searchService.vectorSearch({ query, limit, use_reranker: useReranker });
           
           // For vector search, clear any text_score fields in results to avoid confusion
           if (response && response.results) {
@@ -88,7 +117,7 @@ export const useSearch = (): UseSearchResult => {
           break;
           
         case 'text':
-          response = await searchService.textSearch({ query, limit });
+          response = await searchService.textSearch({ query, limit, use_reranker: useReranker });
           
           // For text search, clear any vector_score fields in results to avoid confusion
           if (response && response.results) {
@@ -102,7 +131,17 @@ export const useSearch = (): UseSearchResult => {
         case 'hybrid':
           response = await searchService.hybridSearch({
             query,
-            limit
+            limit,
+            use_reranker: useReranker
+          });
+          break;
+          
+        case 'graph':
+          response = await searchService.graphSearch({
+            query,
+            limit,
+            relationship_types: relationshipTypes,
+            use_reranker: useReranker
           });
           break;
           
@@ -122,7 +161,7 @@ export const useSearch = (): UseSearchResult => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // Empty deps - function doesn't depend on any state
   
   // Function to clear the cache if needed
   const clearCache = () => {
@@ -132,5 +171,10 @@ export const useSearch = (): UseSearchResult => {
     });
   };
   
-  return { search, loading, error, results, clearCache };
+  // Keep searchRef in sync with the search function
+  useEffect(() => {
+    searchRef.current = search;
+  }, [search]);
+  
+  return { search, searchRef, loading, error, results, clearCache };
 };

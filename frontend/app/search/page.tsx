@@ -2,15 +2,17 @@
 
 import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MyH1 as H1, MyH2 as H2, MyBody as Body, MySubtitle as Subtitle } from '@/components/ui/TypographyWrapper';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
+import { H1, H2, Body, Subtitle } from '@leafygreen-ui/typography';
+import Card from '@leafygreen-ui/card';
 import Banner from '@leafygreen-ui/banner';
 import { ParagraphSkeleton } from '@leafygreen-ui/skeleton-loader';
 import { spacing } from '@leafygreen-ui/tokens';
 import { palette } from '@leafygreen-ui/palette';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
 import Tabs from '@leafygreen-ui/tabs';
+import Badge from '@leafygreen-ui/badge';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 import dynamic from 'next/dynamic';
 const SearchInput = dynamic(() => import('@/components/search/SearchInput'));
@@ -20,9 +22,14 @@ const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
 const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
 const QueryVisualizationPanel = dynamic(() => import('@/components/content/QueryVisualizationPanel'));
+const MultimodalSearchInput = dynamic(() => import('@/components/search/MultimodalSearchInput'));
+const MultimodalSearchResults = dynamic(() => import('@/components/search/MultimodalSearchResults'));
+const CustomButton = dynamic(() => import('@/components/common/CustomButton'));
+import { RerankingSummary } from '@/components/search/PositionIndicator';
 
 import { useSearch } from '@/hooks/useSearch';
-import { SearchMethod, HybridMethod } from '@/types/Search';
+import { SearchMethod, HybridMethod, MultimodalSearchResponse } from '@/types/Search';
+import { searchService } from '@/services/searchService';
 
 // Client Component that uses searchParams
 function SearchPageContent() {
@@ -30,62 +37,98 @@ function SearchPageContent() {
   const searchParams = useSearchParams();
   const queryParam = searchParams.get('q');
   const methodParam = searchParams.get('method');
-  const modeParam = searchParams.get('mode');
   
-  // State
+  // State - derived from URL params
   const [query, setQuery] = useState('');
   const [searchMethod, setSearchMethod] = useState<SearchMethod>('text'); // Default to keyword (text) search
   const [activeTab] = useState<'search'>('search');
   const [searchPlaceholder, setSearchPlaceholder] = useState('How do I change a flat tire?');
   
-  // Custom hooks
-  const { search, loading, error, results, clearCache } = useSearch();
+  // Reranker state - not persisted (resets on page reload)
+  const [useReranker, setUseReranker] = useState(false);
   
-  // This ref helps us keep track of previous searches to avoid duplicates
-  const prevSearchRef = useRef({ query: '', method: '' });
+  // Multimodal search state
+  const [multimodalResults, setMultimodalResults] = useState<MultimodalSearchResponse | null>(null);
+  const [multimodalLoading, setMultimodalLoading] = useState(false);
+  const [multimodalError, setMultimodalError] = useState<string | null>(null);
+  const [multimodalTextQuery, setMultimodalTextQuery] = useState('');
+  
+  // Custom hooks
+  const { search, searchRef, loading, error, results, clearCache } = useSearch();
+  
+  // Track last executed search to prevent infinite loops
+  const lastSearchRef = useRef<{
+    query: string;
+    method: string;
+    useReranker: boolean;
+  } | null>(null);
   
   // Handle search based on URL parameters
+  // This useEffect handles:
+  // 1. Initial page loads (when user navigates directly to a search URL)
+  // 2. Browser back/forward button navigation
+  // It does NOT execute when search is triggered directly via handleSearch/handleMethodChange
   useEffect(() => {
     // Skip if no query parameter is present
     if (!queryParam) {
       return;
     }
-
-    // Update local state from URL params
-    setQuery(queryParam);
-    
-    if (methodParam && ['vector', 'text', 'hybrid'].includes(methodParam)) {
-      setSearchMethod(methodParam as SearchMethod);
-    }
     
     // Determine method to use for search
-    const method = methodParam && ['vector', 'text', 'hybrid'].includes(methodParam) 
-      ? (methodParam as SearchMethod) 
-      : 'hybrid';
+    const method = (methodParam && ['vector', 'text', 'hybrid', 'graph', 'multimodal'].includes(methodParam) 
+      ? methodParam 
+      : 'text') as SearchMethod;
     
-    // Check if this is a new search (different from the last search we performed)
-    const isNewSearch = 
-      queryParam !== prevSearchRef.current.query || 
-      method !== prevSearchRef.current.method;
-    
-    // Only perform search if it's actually a new search
-    if (isNewSearch) {
-      // Update the ref with current search parameters
-      prevSearchRef.current = { query: queryParam, method };
-      
-      // Save the URL to sessionStorage only for new searches
-      if (typeof window !== 'undefined') {
-        console.log('Performing new search, saving URL to sessionStorage');
-        sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
-        sessionStorage.setItem('car_manual_referrer_type', 'search');
-      }
-      
-      // Use the direct search function without URL manipulation to avoid loops
-      search(method, queryParam, 10);
+    // Skip URL-based search for multimodal (it has its own flow)
+    if (method === 'multimodal') {
+      // Only update state if it changed
+      if (query !== queryParam) setQuery(queryParam);
+      if (searchMethod !== 'multimodal') setSearchMethod('multimodal');
+      return;
     }
     
-  // Remove 'results' from dependencies to prevent re-triggers when results update
-  }, [queryParam, methodParam, search]);
+    // Check if this exact search was just executed directly (via handleSearch/handleMethodChange)
+    const lastSearch = lastSearchRef.current;
+    const isSameSearch = lastSearch && 
+      lastSearch.query === queryParam && 
+      lastSearch.method === method && 
+      lastSearch.useReranker === useReranker;
+    
+    if (isSameSearch) {
+      // Same search already executed directly, just sync state if needed
+      if (query !== queryParam) setQuery(queryParam);
+      if (searchMethod !== method) setSearchMethod(method);
+      return;
+    }
+    
+    // This is either:
+    // - An initial page load with URL params
+    // - Browser back/forward navigation
+    // Execute the search
+    
+    // Update state
+    setQuery(queryParam);
+    setSearchMethod(method);
+    
+    // Save URL to sessionStorage for navigation tracking
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('car_manual_previous_search_url', window.location.href);
+      sessionStorage.setItem('car_manual_referrer_type', 'search');
+    }
+    
+    // Execute search with appropriate limit
+    const resultLimit = method === 'graph' ? 30 : 10;
+    searchRef.current?.(method, queryParam, resultLimit, undefined, useReranker);
+    
+    // Record this search as executed
+    lastSearchRef.current = {
+      query: queryParam,
+      method: method,
+      useReranker: useReranker
+    };
+    
+  // Dependencies: Only URL params and useReranker - query/searchMethod are derived state, not dependencies
+  }, [queryParam, methodParam, useReranker]);
   
   const updateSearchParams = () => {
     const params = new URLSearchParams();
@@ -111,245 +154,518 @@ function SearchPageContent() {
     params.set('q', searchQuery);
     params.set('method', methodToUse);
     
-    
     return `/search?${params.toString()}`;
   };
   
-  const handleSearch = (newQuery: string) => {
+  const handleSearch = async (newQuery: string) => {
     if (!newQuery.trim()) return;
     
     // Update local state
     setQuery(newQuery);
     setSearchPlaceholder(newQuery); // Update placeholder to match current query
     
-    // Get the search URL
-    const searchUrl = performSearch(newQuery, searchMethod);
+    // Create URL params
+    const params = new URLSearchParams();
+    params.set('q', newQuery);
+    params.set('method', searchMethod);
+    const searchUrl = `/search?${params.toString()}`;
     
-    // Save to sessionStorage before navigation
+    // Update URL silently without navigation (no re-render, no blink)
     if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', searchUrl);
       sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
       sessionStorage.setItem('car_manual_referrer_type', 'search');
     }
     
-    // Use router.push for client-side navigation - this will trigger a re-render
-    // which will then call the useEffect, which performs the search
-    router.push(searchUrl);
+    // Record this search to prevent duplicate execution in useEffect
+    lastSearchRef.current = {
+      query: newQuery,
+      method: searchMethod,
+      useReranker: useReranker
+    };
+    
+    // Execute search directly without navigation
+    const resultLimit = searchMethod === 'graph' ? 30 : 10;
+    searchRef.current?.(searchMethod, newQuery, resultLimit, undefined, useReranker);
   };
   
-  const handleMethodChange = (method: SearchMethod) => {
+  const handleMethodChange = async (method: SearchMethod) => {
     console.log(`Method changed to: ${method}`);
     
-    // Only update the URL if we have a query
-    if (query.trim()) {
-      // Get the search URL with the new method
-      const searchUrl = performSearch(query, method);
+    // Clear multimodal results when switching away
+    if (method !== 'multimodal' && multimodalResults) {
+      setMultimodalResults(null);
+      setMultimodalError(null);
+    }
+    
+    // Update state
+    setSearchMethod(method);
+    
+    // Only perform search and update URL if we have a query and it's not multimodal
+    if (query.trim() && method !== 'multimodal') {
+      // Create URL params
+      const params = new URLSearchParams();
+      params.set('q', query);
+      params.set('method', method);
+      const searchUrl = `/search?${params.toString()}`;
       
-      // Save to sessionStorage before navigation
+      // Update URL silently without navigation (no re-render, no blink)
       if (typeof window !== 'undefined') {
+        window.history.pushState({}, '', searchUrl);
         sessionStorage.setItem('car_manual_previous_search_url', searchUrl);
         sessionStorage.setItem('car_manual_referrer_type', 'search');
       }
       
-      // Use router.push to navigate, which will trigger useEffect to perform the search
-      router.push(searchUrl);
-    } else {
-      // If no query, just update the state without navigation
-      setSearchMethod(method);
+      // Record this search to prevent duplicate execution in useEffect
+      lastSearchRef.current = {
+        query: query,
+        method: method,
+        useReranker: useReranker
+      };
+      
+      // Execute search directly without navigation
+      const resultLimit = method === 'graph' ? 30 : 10;
+      searchRef.current?.(method, query, resultLimit, undefined, useReranker);
     }
   };
+  
+  // Handle multimodal search
+  const handleMultimodalSearch = async (params: { query_type: 'text' | 'image'; query_text?: string; sample_image_id?: string }) => {
+    setMultimodalLoading(true);
+    setMultimodalError(null);
+    setMultimodalResults(null);
+    
+    try {
+      const response = await searchService.multimodalSearch({
+        ...params,
+        limit: 3,
+        include_text_chunks: true,
+        num_candidates_multiplier: 10
+      });
+      
+      setMultimodalResults(response);
+    } catch (err: any) {
+      setMultimodalError(err.message || 'Failed to perform multimodal search');
+      console.error('Multimodal search error:', err);
+    } finally {
+      setMultimodalLoading(false);
+    }
+  };
+  
   
   
   return (
     <MainLayout>
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: spacing[3] }}>
-        <H1 style={{ marginBottom: spacing[3] }}>Car Manual Search</H1>
-        
-        {/* Search input */}
-        <Card style={{ padding: spacing[3], marginBottom: spacing[3] }}>
-          <SearchInput 
-            onSearch={handleSearch} 
-            initialValue={query}
-            loading={loading}
-            placeholder={searchPlaceholder}
-          />
-        </Card>
-        
-        
-        {/* Keyword Search Suggestions */}
-        <div style={{ marginBottom: spacing[2] }}>
-          <div style={{ 
-            marginBottom: spacing[1],
-            paddingLeft: spacing[1]
-          }}>
-            <span style={{ 
-              fontWeight: 'bold', 
-              fontSize: '14px',
-              color: palette.gray.dark2 
-            }}>
-              Popular Topics (Keyword Search)
-            </span>
-          </div>
-          
-          <div style={{ 
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: spacing[2],
-            paddingBottom: spacing[2]
-          }}>
-            <Button 
-              size="small"
-              variant="primaryOutline"
-              onClick={() => handleSearch("Oil change procedure")}
-              leftGlyph={<Icon glyph="Wrench" size="small" />}
-            >
-              Oil change procedure
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="primaryOutline"
-              onClick={() => handleSearch("Check engine light")}
-              leftGlyph={<Icon glyph="Warning" size="small" />}
-            >
-              Check engine light
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="primaryOutline"
-              onClick={() => handleSearch("Tire pressure")}
-              leftGlyph={<Icon glyph="Plus" size="small" />}
-            >
-              Tire pressure
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="primaryOutline"
-              onClick={() => handleSearch("Battery replacement")}
-              leftGlyph={<Icon glyph="LightningBolt" size="small" />}
-            >
-              Battery replacement
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="primaryOutline"
-              onClick={() => handleSearch("Brake maintenance")}
-              leftGlyph={<Icon glyph="Settings" size="small" />}
-            >
-              Brake maintenance
-            </Button>
-          </div>
-        </div>
-        
-        {/* Natural Language Search Suggestions */}
-        <div style={{ 
-          marginBottom: spacing[3],
-          borderBottom: '1px solid #E1E1E1',
-          paddingBottom: spacing[2]
+        <H1 style={{
+          marginBottom: spacing[4],
+          color: palette.gray.dark3,
+          fontFamily: "'Euclid Circular A', sans-serif",
+          fontSize: '36px',
+          fontWeight: 400,
+          letterSpacing: '-0.5px',
         }}>
-          <div style={{ 
-            marginBottom: spacing[1],
-            paddingLeft: spacing[1]
-          }}>
-            <span style={{ 
-              fontWeight: 'bold', 
-              fontSize: '14px',
-              color: palette.gray.dark2 
+          Car Manual Search
+        </H1>
+        
+        {/* Search input - conditional based on method */}
+        {searchMethod !== 'multimodal' ? (
+          <Card style={{ padding: spacing[3], marginBottom: spacing[3] }}>
+            <SearchInput 
+              onSearch={handleSearch} 
+              initialValue={query}
+              loading={loading}
+              placeholder={searchPlaceholder}
+            />
+            
+            {/* Voyage AI Reranker Toggle */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing[2],
+              marginTop: spacing[3],
+              paddingTop: spacing[3],
+              borderTop: `1px solid ${palette.gray.light2}`,
             }}>
-              Natural Language Queries (Vector Search)
-            </span>
-          </div>
-          
-          <div style={{ 
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: spacing[2],
-            paddingBottom: spacing[2]
-          }}>
-            <Button 
-              size="small"
-              variant="default"
-              onClick={() => handleSearch("What should I do if my car won't start on a cold morning?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Car won't start on cold morning
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("How can I improve my car's fuel efficiency?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Improve fuel efficiency
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("What's the best way to clean the interior of my car?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Best way to clean interior
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("What noise indicates a problem with the transmission?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Noise indicating transmission problem
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("How do I know when it's time to replace my brakes?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              When to replace brakes
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("Why does my steering wheel shake when I brake?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Steering wheel shakes during braking
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("What causes my car to pull to one side when driving?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Car pulls to one side
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("How do driving habits affect my car's lifespan?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Driving habits impact on car lifespan
-            </Button>
-            
-            <Button 
-              size="small" 
-              variant="default"
-              onClick={() => handleSearch("What maintenance should I do before a long road trip?")}
-              leftGlyph={<Icon glyph="Bulb" size="small" />}
-            >
-              Maintenance before road trip
-            </Button>
-          </div>
-        </div>
+              <label style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: spacing[2],
+                cursor: 'pointer',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={useReranker}
+                  onChange={(e) => setUseReranker(e.target.checked)}
+                  style={{
+                    width: '40px',
+                    height: '24px',
+                    cursor: 'pointer',
+                    accentColor: palette.green.dark2,
+                  }}
+                />
+                <Body weight="medium" style={{
+                  color: palette.gray.dark2,
+                  margin: 0,
+                }}>
+                  Voyage AI Reranker
+                </Body>
+              </label>
+              
+              {/* Status Badge */}
+              <Badge variant={useReranker ? 'green' : 'lightgray'}>
+                {useReranker ? 'ENABLED' : 'DISABLED'}
+              </Badge>
+              
+              {useReranker && (
+                <Badge variant="blue">Smart Relevance</Badge>
+              )}
+              
+              <Body style={{
+                color: palette.gray.dark1,
+                fontSize: '13px',
+                margin: 0,
+                marginLeft: 'auto',
+              }}>
+                Improve result relevance using AI reranking
+              </Body>
+            </div>
+          </Card>
+        ) : (
+          <MultimodalSearchInput 
+            onSearch={handleMultimodalSearch}
+            isLoading={multimodalLoading}
+            initialTextQuery={multimodalTextQuery}
+          />
+        )}
+        
+
+        {/* Conditional Query Suggestions based on search method */}
+        {searchMethod !== 'multimodal' ? (
+          <>
+            {/* Keyword Search Suggestions */}
+            <div style={{ marginBottom: spacing[2] }}>
+              <div style={{
+                marginBottom: spacing[1],
+                paddingLeft: spacing[1]
+              }}>
+                <span style={{
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  color: palette.gray.dark2
+                }}>
+                  Popular Topics (Keyword Search)
+                </span>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: spacing[2],
+                paddingBottom: spacing[2]
+              }}>
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("Oil change procedure")}
+                  leftGlyph={<Icon glyph="Wrench" size="small" />}
+                  style={{
+                    borderColor: palette.green.dark2,
+                    color: palette.green.dark2
+                  }}
+                >
+                  Oil change procedure
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("Check engine light")}
+                  leftGlyph={<Icon glyph="Warning" size="small" />}
+                  style={{
+                    borderColor: palette.green.dark2,
+                    color: palette.green.dark2
+                  }}
+                >
+                  Check engine light
+                </Button>
+
+
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("Battery replacement")}
+                  leftGlyph={<Icon glyph="LightningBolt" size="small" />}
+                  style={{
+                    borderColor: palette.green.dark2,
+                    color: palette.green.dark2
+                  }}
+                >
+                  Battery replacement
+                </Button>
+
+              </div>
+            </div>
+
+            {/* Natural Language Search Suggestions */}
+            <div style={{
+              marginBottom: spacing[2]
+            }}>
+              <div style={{
+                marginBottom: spacing[1],
+                paddingLeft: spacing[1]
+              }}>
+                <span style={{
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  color: palette.gray.dark2
+                }}>
+                  Natural Language Queries (Vector Search)
+                </span>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: spacing[2],
+                paddingBottom: spacing[2]
+              }}>
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("What should I do if my car won't start on a cold morning?")}
+                  leftGlyph={<Icon glyph="Bulb" size="small" />}
+                  style={{
+                    borderColor: palette.blue.dark2,
+                    color: palette.blue.dark2
+                  }}
+                >
+                  Car won't start on cold morning
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("How can I improve my car's fuel efficiency?")}
+                  leftGlyph={<Icon glyph="Bulb" size="small" />}
+                  style={{
+                    borderColor: palette.blue.dark2,
+                    color: palette.blue.dark2
+                  }}
+                >
+                  Improve fuel efficiency
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("What's the best way to clean the interior of my car?")}
+                  leftGlyph={<Icon glyph="Bulb" size="small" />}
+                  style={{
+                    borderColor: palette.blue.dark2,
+                    color: palette.blue.dark2
+                  }}
+                >
+                  Best way to clean interior
+                </Button>
+
+              </div>
+            </div>
+
+            {/* Hybrid Graph Search Suggestions */}
+            <div style={{
+              marginBottom: spacing[3]
+            }}>
+              <div style={{
+                marginBottom: spacing[1],
+                paddingLeft: spacing[1]
+              }}>
+                <span style={{
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  color: palette.gray.dark2
+                }}>
+                  Hybrid Graph Queries (Vector + Graph)
+                </span>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: spacing[2],
+                paddingBottom: spacing[2]
+              }}>
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("Tire replacement steps")}
+                  leftGlyph={<Icon glyph="Relationship" size="small" />}
+                  style={{
+                    borderColor: palette.red.dark2,
+                    color: palette.red.dark2
+                  }}
+                >
+                  Tire replacement steps
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("Electrical system troubleshooting")}
+                  leftGlyph={<Icon glyph="Relationship" size="small" />}
+                  style={{
+                    borderColor: palette.red.dark2,
+                    color: palette.red.dark2
+                  }}
+                >
+                  Electrical system troubleshooting
+                </Button>
+
+                <Button
+                  size="small"
+                  variant="default"
+                  onClick={() => handleSearch("Transmission fluid check")}
+                  leftGlyph={<Icon glyph="Relationship" size="small" />}
+                  style={{
+                    borderColor: palette.red.dark2,
+                    color: palette.red.dark2
+                  }}
+                >
+                  Transmission fluid check
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Multimodal Search Suggestions - English */}
+            <div style={{ marginBottom: spacing[2] }}>
+              <div style={{
+                marginBottom: spacing[1],
+                paddingLeft: spacing[1]
+              }}>
+                <span style={{
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  color: palette.gray.dark2
+                }}>
+                  Quick Searches (English)
+                </span>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: spacing[2],
+                paddingBottom: spacing[2]
+              }}>
+                {['Infotainment System', 'Climate Control', 'Electrical System'].map((query) => (
+                  <Button
+                    key={query}
+                    size="small"
+                    variant="default"
+                    onClick={() => {
+                      setMultimodalTextQuery(query);
+                      handleMultimodalSearch({ query_type: 'text', query_text: query });
+                    }}
+                    leftGlyph={<Icon glyph="Camera" size="small" />}
+                    style={{
+                      borderColor: palette.yellow.dark2,
+                      color: palette.yellow.dark2
+                    }}
+                  >
+                    {query}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Multimodal Search Suggestions - Other Languages */}
+            <div style={{
+              marginBottom: spacing[3],
+              borderBottom: '1px solid #E1E1E1',
+              paddingBottom: spacing[2]
+            }}>
+              <div style={{
+                marginBottom: spacing[1],
+                paddingLeft: spacing[1]
+              }}>
+                <span style={{
+                  fontWeight: 'bold',
+                  fontSize: '14px',
+                  color: palette.gray.dark2
+                }}>
+                  Multi-Language Searches
+                </span>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: spacing[2],
+                paddingBottom: spacing[2]
+              }}>
+
+                {/* German */}
+                <CustomButton
+                  minWidth="180px"
+                  onClick={() => {
+                    setMultimodalTextQuery('Gangschaltung');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'Gangschaltung' });
+                  }}
+                  leftGlyph={<Icon glyph="Camera" size="small" />}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>🇩🇪 Gangschaltung</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(gear shift)</span>
+                  </div>
+                </CustomButton>
+
+                {/* Japanese */}
+                <CustomButton
+                  minWidth="180px"
+                  onClick={() => {
+                    setMultimodalTextQuery('氷が溶ける');
+                    handleMultimodalSearch({ query_type: 'text', query_text: '氷が溶ける' });
+                  }}
+                  leftGlyph={<Icon glyph="Camera" size="small" />}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>🇯🇵 氷が溶ける</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(ice melts)</span>
+                  </div>
+                </CustomButton>
+
+                {/* Hindi */}
+                <CustomButton
+                  minWidth="200px"
+                  onClick={() => {
+                    setMultimodalTextQuery('आपातकालीन किट');
+                    handleMultimodalSearch({ query_type: 'text', query_text: 'आपातकालीन किट' });
+                  }}
+                  leftGlyph={<Icon glyph="Camera" size="small" />}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>🇮🇳 आपातकालीन किट</span>
+                    <span style={{ fontSize: '11px', opacity: 0.8, whiteSpace: 'nowrap' }}>(emergency kit)</span>
+                  </div>
+                </CustomButton>
+              </div>
+            </div>
+          </>
+        )}
         
         {/* Search Results */}
           <div style={{ 
@@ -373,46 +689,129 @@ function SearchPageContent() {
             <div style={{ 
               flexGrow: 1
             }}>
-              {/* Error state */}
-              {error && (
-                <ErrorState 
-                  title="Search Error"
-                  message={error}
-                />
-              )}
-              
-              {/* Loading state */}
-              {loading && (
-                <LoadingState message="Searching the car manual..." />
-              )}
-              
-              {/* Results state */}
-              {!loading && results && (
+              {/* Multimodal Search Results */}
+              {searchMethod === 'multimodal' ? (
                 <>
-                  <Card style={{ padding: spacing[3], marginBottom: spacing[3] }}>
-                    <Subtitle>
-                      Found {results.total} results for &quot;{results.query}&quot; using MongoDB Atlas {results.method} search
-                    </Subtitle>
-                  </Card>
+                  {/* Multimodal Error state */}
+                  {multimodalError && (
+                    <ErrorState 
+                      title="Multimodal Search Error"
+                      message={multimodalError}
+                    />
+                  )}
                   
-                  {/* MongoDB Query Visualization Panel */}
-                  <QueryVisualizationPanel
-                    searchMethod={results.method as SearchMethod}
-                    query={results.query}
-                  />
+                  {/* Multimodal Loading state */}
+                  {multimodalLoading && (
+                    <LoadingState message="Searching images with multimodal embeddings..." />
+                  )}
                   
-                  <SearchResultList 
-                    results={results.results}
-                    highlight={query}
-                  />
+                  {/* Multimodal Results state */}
+                  {!multimodalLoading && multimodalResults && (
+                    <MultimodalSearchResults response={multimodalResults} />
+                  )}
+                  
+                  {/* Multimodal Empty initial state */}
+                  {!multimodalLoading && !multimodalResults && !multimodalError && (
+                    <Card style={{ padding: spacing[3], textAlign: 'center' }}>
+                      <Body>Enter a text query or upload/select an image to search</Body>
+                    </Card>
+                  )}
                 </>
-              )}
-              
-              {/* Empty initial state (no search performed yet) */}
-              {!loading && !results && !error && (
-                <Card style={{ padding: spacing[3], textAlign: 'center' }}>
-                  <Body>Enter a search term to find results in the car manual</Body>
-                </Card>
+              ) : (
+                <>
+                  {/* Standard Search Error state */}
+                  {error && (
+                    <ErrorState 
+                      title="Search Error"
+                      message={error}
+                    />
+                  )}
+                  
+                  {/* Standard Search Loading state */}
+                  {loading && (
+                    <LoadingState message="Searching the car manual..." />
+                  )}
+                  
+                  {/* Standard Search Results state */}
+                  {!loading && results && (
+                    <>
+                      {/* Query Summary Card - matching multimodal search style */}
+                      <div style={{
+                        padding: spacing[3],
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        marginBottom: spacing[3],
+                        border: `1px solid ${palette.gray.light2}`,
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                      }}>
+                        <Body weight="medium" style={{ fontSize: '16px', marginBottom: spacing[1] }}>
+                          Found {results.total} result{results.total !== 1 ? 's' : ''} for &quot;{results.query}&quot; using MongoDB Atlas {
+                            results.method === 'text' ? 'Full-text Search' :
+                            results.method === 'vector' ? 'Vector Search' :
+                            (results.method === 'hybrid' || results.method === 'hybrid_rrf') ? 'Hybrid RRF Search' :
+                            results.method.includes('graph') ? 'Vector → Graph' :
+                            results.method
+                          }
+                        </Body>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: spacing[2], marginTop: spacing[2], flexWrap: 'wrap' }}>
+                          {/* Search Method Badge */}
+                          <Badge variant={
+                            results.method === 'text' ? 'green' :
+                            results.method === 'vector' ? 'blue' :
+                            (results.method === 'hybrid' || results.method === 'hybrid_rrf') ? 'purple' :
+                            results.method.includes('graph') ? 'red' :
+                            'darkgray'
+                          }>
+                            {results.method === 'text' && 'Full-text Search'}
+                            {results.method === 'vector' && 'Vector Search'}
+                            {(results.method === 'hybrid' || results.method === 'hybrid_rrf') && 'Hybrid RRF Search'}
+                            {results.method.includes('graph') && 'Vector → Graph'}
+                          </Badge>
+
+                          {/* Technology badges */}
+                          {results.method === 'text' && (
+                            <Badge variant="lightgray">Atlas Search</Badge>
+                          )}
+                          {(results.method === 'vector' || results.method === 'hybrid' || results.method === 'hybrid_rrf' || results.method.includes('graph')) && (
+                            <Badge variant="lightgray">Google Vertex AI Embeddings</Badge>
+                          )}
+                          {results.method.includes('graph') && (
+                            <Badge variant="lightgray">$graphLookup</Badge>
+                          )}
+
+                          {/* Reranking Summary */}
+                          {results.reranking_metadata?.reranking_applied && results.reranking_metadata.position_stats && (
+                            <RerankingSummary
+                              positionStats={results.reranking_metadata.position_stats}
+                              reranking={results.reranking_metadata}
+                            />
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* MongoDB Query Visualization Panel */}
+                      <QueryVisualizationPanel
+                        searchMethod={results.method as SearchMethod}
+                        query={results.query}
+                        debugInfo={results.debug_info}
+                      />
+                      
+                      <SearchResultList 
+                        results={results.results}
+                        highlight={query}
+                        query={query}
+                        searchMethod={results.method}
+                      />
+                    </>
+                  )}
+                  
+                  {/* Standard Search Empty initial state */}
+                  {!loading && !results && !error && (
+                    <Card style={{ padding: spacing[3], textAlign: 'center' }}>
+                      <Body>Enter a search term to find results in the car manual</Body>
+                    </Card>
+                  )}
+                </>
               )}
             </div>
           </div>

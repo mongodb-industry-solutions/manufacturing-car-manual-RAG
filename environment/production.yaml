@@ -1,0 +1,55 @@
+env:
+  # Backend Configuration
+  BACKEND_PORT: 8000
+  BACKEND_HOST: 0.0.0.0
+  RELOAD_ENABLED: false
+
+  # Application Settings
+  GCP_PROJECT_ID: 'manufacturing-project-425012'
+  GCP_LOCATION: 'us-central1'
+
+  # Search Configuration
+  TEXT_INDEX_NAME: 'manual_text_search_index'
+  VECTOR_INDEX_NAME: 'manual_vector_search_index'
+  VECTOR_FIELD_NAME: 'embedding'
+  MULTIMODAL_VECTOR_INDEX_NAME: 'multimodal_vector_index'
+
+  # Model Configuration
+  EMBEDDINGS_MODEL_ID: 'text-embedding-005'
+  MULTIMODAL_MODEL_ID: 'voyage-multimodal-3'
+
+  # API Configuration
+  INTERNAL_API_URL: 'http://manufacturing-car-manual-rag-backend-web-app:80'
+  DEBUG: 'False'
+
+envSecrets:
+  # MongoDB & Voyage AI Configuration
+  # Secret name: manufacturing-car-manual-secrets
+  MONGODB_URI: manufacturing-car-manual-secrets-prod
+  DATABASE_NAME: manufacturing-car-manual-secrets-prod
+  CHUNKS_COLLECTION: manufacturing-car-manual-secrets-prod
+  VOYAGE_API_KEY: manufacturing-car-manual-secrets-prod
+
+serviceAccount:
+  enabled: true
+
+# Mount GCP credential config and service account token
+extraVolumes:
+  - name: gcp-creds
+    configMap:
+      name: gcp-wif-config-prod
+  - name: gcp-token
+    projected:
+      sources:
+        - serviceAccountToken:
+            path: token
+            expirationSeconds: 3600
+            audience: '//iam.googleapis.com/projects/362614368442/locations/global/workloadIdentityPools/kanopy-mfg-wif-pool-prod/providers/kanopy-mfg-provider-prod'
+
+extraVolumeMounts:
+  - name: gcp-creds
+    mountPath: /etc/gcp
+    readOnly: true
+  - name: gcp-token
+    mountPath: /var/run/service-account
+    readOnly: true

@@ -2,7 +2,7 @@ from typing import List, Dict, Any, Optional
 import logging
 import os
 from google.cloud import aiplatform
-from google.oauth2 import service_account
+import google.auth
 from vertexai.preview.language_models import TextEmbeddingModel
 
 from app.core.config import get_settings
@@ -21,14 +21,31 @@ class EmbeddingService:
         logger.info(f"Initialized Vertex AI embedding model: {self.model_id}")
     
     def _initialize_client(self):
-        """Initialize the Vertex AI client"""
+        """Initialize the Vertex AI client with Application Default Credentials"""
         try:
-            # Check if service account key file exists in environment variable
-            credentials = None
-            if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-                credentials = service_account.Credentials.from_service_account_file(
-                    os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-                )
+            # Auto-configure GOOGLE_APPLICATION_CREDENTIALS for Workload Identity
+            # Check for common credential configuration file locations
+            if not os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+                potential_cred_files = [
+                    '/etc/gcp/credential-configuration.json',  # GKE Workload Identity (hyphenated)
+                    '/etc/gcp/credential_configuration.json',  # Alternative (underscore)
+                    '/etc/gcp/config.json',
+                    '/etc/gcp/application_default_credentials.json',
+                    '/var/secrets/google/key.json'
+                ]
+                
+                for cred_file in potential_cred_files:
+                    if os.path.exists(cred_file):
+                        logger.info(f"Found credential file: {cred_file}")
+                        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = cred_file
+                        break
+            
+            # Use Application Default Credentials (ADC)
+            # Automatically detects: Workload Identity, service account file, or gcloud auth
+            credentials, project = google.auth.default()
+            
+            logger.info(f"Authenticated as {type(credentials).__name__} for project {self.settings.GCP_PROJECT_ID}")
+            logger.info(f"Detected project from credentials: {project}")
             
             # Initialize Vertex AI client
             aiplatform.init(
@@ -37,9 +54,10 @@ class EmbeddingService:
                 credentials=credentials
             )
             
-            logger.info(f"Successfully initialized Vertex AI client for project {self.settings.GCP_PROJECT_ID}")
+            logger.info(f"Successfully initialized Vertex AI client")
         except Exception as e:
-            logger.error(f"Failed to initialize Vertex AI client: {e}")
+            logger.error(f"Failed to initialize Vertex AI: {e}")
+            logger.error(f"Verify service account has 'Vertex AI User' role")
             raise
     
     async def generate_embedding(self, text: str) -> List[float]:

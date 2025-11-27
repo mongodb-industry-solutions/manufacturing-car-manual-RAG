@@ -3,14 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { MyH1 as H1, MyBody as Body } from '@/components/ui/TypographyWrapper';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import { H1, Body } from '@leafygreen-ui/typography';
+import Button from '@leafygreen-ui/button';
 import Banner from '@leafygreen-ui/banner';
 import Icon from '@leafygreen-ui/icon';
-import { MyCard as Card } from '@/components/ui/TypographyWrapper';
+import Card from '@leafygreen-ui/card';
 import { spacing } from '@leafygreen-ui/tokens';
-import { MySpinner as Spinner } from '@/components/ui/TypographyWrapper';
+import { Spinner } from '@leafygreen-ui/loading-indicator';
 import { palette } from '@leafygreen-ui/palette';
+import { CARD_STYLES } from '@/lib/styleConstants';
 
 const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
 const ChunkViewer = dynamic(() => import('@/components/content/ChunkViewer'));

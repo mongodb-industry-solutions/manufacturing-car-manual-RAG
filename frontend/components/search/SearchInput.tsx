@@ -2,11 +2,11 @@
  * Search input component
  */
 import React, { useState, useEffect } from 'react';
-import TextInput from '@leafygreen-ui/text-input';
-import { MyButton as Button } from '@/components/ui/TypographyWrapper';
+import Button from '@leafygreen-ui/button';
 import Icon from '@leafygreen-ui/icon';
 import { spacing } from '@leafygreen-ui/tokens';
-import { MySpinner as Spinner } from '@/components/ui/TypographyWrapper';
+import { palette } from '@leafygreen-ui/palette';
+import { Spinner } from '@leafygreen-ui/loading-indicator';
 
 interface SearchInputProps {
   onSearch: (query: string) => void;
@@ -50,20 +50,49 @@ const SearchInput: React.FC<SearchInputProps> = ({
       style={{ 
         display: 'flex', 
         gap: spacing[2],
-        marginBottom: spacing[3]
+        marginBottom: spacing[3],
+        alignItems: 'flex-end'
       }}
     >
-      <div style={{ flexGrow: 1 }}>
-        <TextInput
-          label="Search the car manual"
-          description="Enter keywords or ask a question"
-          placeholder={placeholder}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          value={query}
-          disabled={loading}
-          aria-label="Search query"
-        />
+      <div style={{ flex: 1 }}>
+        <label style={{ display: 'block' }}>
+          <div style={{ 
+            fontSize: '14px', 
+            fontWeight: 600, 
+            color: palette.gray.dark3,
+            marginBottom: spacing[1]
+          }}>
+            Search the car manual
+          </div>
+          <div style={{ 
+            fontSize: '12px', 
+            color: palette.gray.dark1,
+            marginBottom: spacing[2]
+          }}>
+            Enter keywords or ask a question
+          </div>
+          <input
+            type="text"
+            placeholder={placeholder}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            value={query}
+            disabled={loading}
+            aria-label="Search query"
+            style={{
+              width: '100%',
+              padding: `${spacing[2]}px ${spacing[3]}px`,
+              fontSize: '16px',
+              border: `1px solid ${palette.gray.light1}`,
+              borderRadius: '6px',
+              outline: 'none',
+              transition: 'border-color 0.2s ease',
+              boxSizing: 'border-box'
+            }}
+            onFocus={(e) => e.target.style.borderColor = palette.green.base}
+            onBlur={(e) => e.target.style.borderColor = palette.gray.light1}
+          />
+        </label>
       </div>
       
       <Button 
@@ -71,7 +100,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
         type="submit"
         disabled={loading || !query.trim()}
         leftGlyph={loading ? <Spinner /> : <Icon glyph="MagnifyingGlass" />}
-        style={{ alignSelf: 'flex-end', width: '120px' }}
+        style={{ width: '120px', flexShrink: 0 }}
       >
         {loading ? 'Searching...' : 'Search'}
       </Button>
