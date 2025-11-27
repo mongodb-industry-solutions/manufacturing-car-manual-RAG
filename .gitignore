@@ -183,3 +183,4 @@ makefile
 .DS_Store
 /reference
 /images
+security_check.sh
