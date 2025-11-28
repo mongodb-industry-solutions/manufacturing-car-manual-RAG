@@ -152,7 +152,7 @@ steps:
       chart_version: 4.25.0
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
       namespace: industrysolutions
-      release: manufacturing-car-manual-rag-backend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-backend-prod
+      release: mfg-car-manual-backend-prod ## NEED TO CHANGE - based on your demo name for eg.: financial-news-vector-search-backend-prod
       values:
         - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}-prod'
         - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-rag-backend-prod' ## NEED TO CHANGE replace manufacturing-car-manual-rag with your backend pod name from above
@@ -178,7 +178,7 @@ steps:
       chart_version: 4.25.0
       add_repos: [mongodb=https://10gen.github.io/helm-charts]
       namespace: industrysolutions
-      release: manufacturing-car-manual-rag-frontend-prod
+      release: mfg-car-manual-frontend-prod
       values:
         - 'image.tag=git-${DRONE_COMMIT_SHA:0:7}-prod'
         - 'image.repository=795250896452.dkr.ecr.us-east-1.amazonaws.com/industrysolutions/manufacturing-car-manual-rag-frontend-prod'
