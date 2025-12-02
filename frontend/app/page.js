@@ -87,7 +87,7 @@ export default function Home() {
               lineHeight: '30px',
             }}
           >
-            Context-Aware Hybrid RAG for Technical Docs
+            Context-Aware Multimodal Retrieval for Technical Docs
           </H2>
 
           <Description
