@@ -64,10 +64,14 @@ export default function ChunkDetailPage() {
           setReferrerType('browse');
         } 
         else if (source === 'search') {
-          // If we navigated from search page, use search URL
           console.log("Setting search as referrer source");
-          // Default to /search if referrer isn't available
-          const referrer = document.referrer || '/search';
+          // FIRST check sessionStorage for saved URL (from SearchResultCard)
+          const savedReferrer = sessionStorage.getItem(STORAGE_KEY_REFERRER);
+          
+          // Use saved referrer if available, otherwise fall back to /search
+          // Do NOT use document.referrer as it may be an external URL
+          const referrer = savedReferrer || '/search';
+          
           sessionStorage.setItem(STORAGE_KEY_REFERRER, referrer);
           sessionStorage.setItem('car_manual_referrer_type', 'search');
           setReferrerUrl(referrer);
