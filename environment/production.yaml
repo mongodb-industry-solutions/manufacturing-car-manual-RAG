@@ -32,6 +32,8 @@ envSecrets:
 
 serviceAccount:
   enabled: true
+  annotations:
+    iam.gke.io/gcp-service-account: 'manufacturing-kanopy-sa-prod@manufacturing-project-425012.iam.gserviceaccount.com'
 
 # Mount GCP credential config and service account token
 extraVolumes:

@@ -15,16 +15,16 @@ import Badge from '@leafygreen-ui/badge';
 import { CARD_STYLES } from '@/lib/styleConstants';
 
 import dynamic from 'next/dynamic';
-const SearchInput = dynamic(() => import('@/components/search/SearchInput'));
-const SearchMethodSelector = dynamic(() => import('@/components/search/SearchMethodSelector'));
-const SearchResultList = dynamic(() => import('@/components/search/SearchResultList'));
-const MainLayout = dynamic(() => import('@/components/layout/MainLayout'));
-const LoadingState = dynamic(() => import('@/components/common/LoadingState'));
-const ErrorState = dynamic(() => import('@/components/common/ErrorState'));
-const QueryVisualizationPanel = dynamic(() => import('@/components/content/QueryVisualizationPanel'));
-const MultimodalSearchInput = dynamic(() => import('@/components/search/MultimodalSearchInput'));
-const MultimodalSearchResults = dynamic(() => import('@/components/search/MultimodalSearchResults'));
-const CustomButton = dynamic(() => import('@/components/common/CustomButton'));
+const SearchInput = dynamic(() => import('@/components/search/SearchInput'), { ssr: false });
+const SearchMethodSelector = dynamic(() => import('@/components/search/SearchMethodSelector'), { ssr: false });
+const SearchResultList = dynamic(() => import('@/components/search/SearchResultList'), { ssr: false });
+const MainLayout = dynamic(() => import('@/components/layout/MainLayout'), { ssr: false });
+const LoadingState = dynamic(() => import('@/components/common/LoadingState'), { ssr: false });
+const ErrorState = dynamic(() => import('@/components/common/ErrorState'), { ssr: false });
+const QueryVisualizationPanel = dynamic(() => import('@/components/content/QueryVisualizationPanel'), { ssr: false });
+const MultimodalSearchInput = dynamic(() => import('@/components/search/MultimodalSearchInput'), { ssr: false });
+const MultimodalSearchResults = dynamic(() => import('@/components/search/MultimodalSearchResults'), { ssr: false });
+const CustomButton = dynamic(() => import('@/components/common/CustomButton'), { ssr: false });
 import { RerankingSummary } from '@/components/search/PositionIndicator';
 
 import { useSearch } from '@/hooks/useSearch';

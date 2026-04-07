@@ -296,7 +296,7 @@ Replace the placeholder values with your actual MongoDB URI and other settings.
 
 ### Install Dependencies
 
-While in the `backend` directory, install the required dependencies using Poetry:
+While in `backend` directory, install the required dependencies using Poetry:
 
 ```bash
 poetry install
