@@ -285,9 +285,6 @@ MULTIMODAL_MODEL_ID=voyage-multimodal-3
 MULTIMODAL_VECTOR_INDEX_NAME=manual_multimodal_vector_index
 ```
 
-> [!Note]
-> The text vector index (`manual_vector_index`), text search index (`manual_text_search_index`), vector field (`embedding`) and embeddings model (`text-embedding-005`) are hardcoded in `backend/app/core/config.py`. Your Atlas indexes must use these exact names.
-
 Replace the placeholder values with your actual MongoDB URI and other settings.
 
 > [!Note]
