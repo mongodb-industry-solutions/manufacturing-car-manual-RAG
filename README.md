@@ -72,7 +72,7 @@ Let's get started!
 
 Before you begin working with this project, ensure that you have the following prerequisites set up in your development environment:
 
-- **Python 3.10**: The backend of this project is built with Python 3.10 specifically. You can download it from the [official website](https://www.python.org/downloads/).
+- **Python 3.11 or 3.12**: The backend of this project requires Python 3.11 or 3.12 (`>=3.11,<3.13`). You can download it from the [official website](https://www.python.org/downloads/).
 
 - **Node.js 18+**: The frontend requires Node.js 18 or higher, which includes npm for package management. You can download it from the [official Node.js website](https://nodejs.org/).
 
@@ -266,7 +266,7 @@ Create a `.env` file with the following configuration settings:
 # MongoDB Connection
 MONGODB_URI=mongodb+srv://<username>:<password>@cluster-name.xxxxx.mongodb.net/
 DATABASE_NAME=
-COLLECTION_NAME=
+CHUNKS_COLLECTION=manuals  # optional, defaults to "manuals"
 
 # For Google Vertex AI
 GCP_PROJECT_ID=your-project-id
@@ -284,6 +284,9 @@ VOYAGE_API_KEY=your_voyage_api_key_here
 MULTIMODAL_MODEL_ID=voyage-multimodal-3
 MULTIMODAL_VECTOR_INDEX_NAME=manual_multimodal_vector_index
 ```
+
+> [!Note]
+> The text vector index (`manual_vector_index`), text search index (`manual_text_search_index`), vector field (`embedding`) and embeddings model (`text-embedding-005`) are hardcoded in `backend/app/core/config.py`. Your Atlas indexes must use these exact names.
 
 Replace the placeholder values with your actual MongoDB URI and other settings.
 
